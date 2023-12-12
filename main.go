@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,20 +17,17 @@ import (
 
 var (
 	httpClient = &http.Client{Timeout: 30 * time.Second}
+	flags      flag.FlagSet
+	content    bool
+	help       bool
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		usage(1)
-	}
-	url := os.Args[1]
-	if url == "-h" || url == "--help" {
-		usage(0)
-	}
+	url := flags.Arg(0)
 	parsedUrl, err := nurl.Parse(url)
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
-		usage(1)
+		usage()
 	}
 	response, err := httpClient.Get(url)
 	if err != nil {
@@ -45,19 +43,34 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to extract: %v", err)
 	}
-	// fmt.Printf("Result for %s: \n%#v\n", url, result.Metadata)
+	if content {
+		fmt.Println(result.ContentText)
+		return
+	}
 	marshaled, err := json.MarshalIndent(result.Metadata, "", "  ")
 	if err != nil {
 		log.Fatalf("failed to marshal: %v", err)
 	}
 	fmt.Println(string(marshaled))
-	fmt.Println("Extracted content to follow:\n-----------------------------")
-	fmt.Println(result.ContentText)
-
 }
 
-func usage(exitCode int) {
+func init() {
+	flags.Init("", flag.ExitOnError)
+	flags.BoolVar(&content, "c", false, "Get content only")
+	// flags automatically adds -h and --help
+	flags.Usage = usage
+	flags.Parse(os.Args[1:])
+	if flags.NArg() != 1 {
+		fmt.Print("Error: URL is required\n\n")
+		flags.Usage()
+		os.Exit(1)
+	}
+}
+
+func usage() {
 	fmt.Println(`Usage: 
 	scrape :url
-	`)
+
+  -h	Show this help message`)
+	flags.PrintDefaults()
 }
