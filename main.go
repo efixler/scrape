@@ -19,7 +19,6 @@ var (
 	httpClient = &http.Client{Timeout: 30 * time.Second}
 	flags      flag.FlagSet
 	content    bool
-	help       bool
 )
 
 func main() {
