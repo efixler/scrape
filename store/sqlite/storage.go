@@ -95,7 +95,7 @@ func (s *sqliteStore) Store(u *store.StoredUrlData) (uint32, error) {
 		return 0, err
 	}
 	if rows != 1 {
-		return 0, fmt.Errorf("Expected 1 row affected, got %d", rows)
+		return 0, fmt.Errorf("expected 1 row affected, got %d", rows)
 	}
 	return key, nil
 }

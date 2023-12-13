@@ -14,7 +14,7 @@ const (
 )
 
 var (
-	ErrorDatabaseNotFound = errors.New("Database not found")
+	ErrorDatabaseNotFound = errors.New("database not found")
 	nowf                  = time.Now
 )
 
