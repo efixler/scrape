@@ -81,8 +81,6 @@ func (s *sqliteStore) Store(u *store.StoredUrlData) (uint32, error) {
 	db := dbs[s.dsn()]
 	if s.storeStmt == nil {
 		stmt, err := db.PrepareContext(s.ctx, qInsert)
-		fmt.Println("make store statement")
-		fmt.Printf("stmt: %v\n", s.storeStmt)
 		if err != nil {
 			return 0, err
 		}

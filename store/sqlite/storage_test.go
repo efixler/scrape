@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	nurl "net/url"
 	"scrape/store"
 	"testing"
@@ -61,9 +60,9 @@ func TestStore(t *testing.T) {
 		Metadata:    meta,
 		ContentText: "Some dummy content",
 	}
-	key, err := s.Store(&urlData)
+	_, err = s.Store(&urlData)
 	if err != nil {
 		t.Errorf("Error storing data: %v", err)
 	}
-	fmt.Println("key:", key)
+
 }
