@@ -47,6 +47,7 @@ func main() {
 		return
 	}
 	marshaled, err := json.MarshalIndent(result.Metadata, "", "  ")
+	//marshaled, err := result.Metadata.MarshalText(result.Metadata)
 	if err != nil {
 		log.Fatalf("failed to marshal: %v", err)
 	}
