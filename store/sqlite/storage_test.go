@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	nurl "net/url"
-	"scrape/store"
 	"testing"
+
+	"github.com/efixler/scrape/store"
 
 	"github.com/markusmobius/go-trafilatura"
 )

@@ -1,4 +1,4 @@
-module scrape
+module github.com/efixler/scrape
 
 go 1.21
 

@@ -22,7 +22,7 @@ Built binaries are self-contained, and operate as a shell command or a server wi
 ## Usage as a CLI Application
 ### Installing for shell usage
 ```
-go get -u -v github.com/efixler/scrape/cmd/scrape
+go install github.com/efixler/scrape/cmd/scrape@latest
 ```
 The `scrape` command provides single and batch retrieval, using or bypassing the connected storage db. It also provide command to manage the backing store.
 

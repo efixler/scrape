@@ -9,8 +9,9 @@ import (
 	nurl "net/url"
 	"os"
 	"path/filepath"
-	"scrape/store"
 	"time"
+
+	"github.com/efixler/scrape/store"
 
 	_ "github.com/mattn/go-sqlite3"
 )
