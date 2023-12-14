@@ -1,18 +1,16 @@
 package store
 
 import (
-	nurl "net/url"
 	"testing"
 	"time"
 
+	"github.com/efixler/scrape/resource"
 	"github.com/markusmobius/go-trafilatura"
 )
 
 func TestAssertTimes(t *testing.T) {
 	u := StoredUrlData{
-		Url:         &nurl.URL{},
-		Metadata:    trafilatura.Metadata{},
-		ContentText: "",
+		Data: resource.WebPage{Metadata: trafilatura.Metadata{}, ContentText: ""},
 	}
 	oldNowf := nowf
 	defer func() { nowf = oldNowf }()

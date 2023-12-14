@@ -2,11 +2,12 @@ package store
 
 import (
 	"errors"
+	"fmt"
 	"hash/fnv"
 	nurl "net/url"
 	"time"
 
-	"github.com/markusmobius/go-trafilatura"
+	"github.com/efixler/scrape/resource"
 )
 
 const (
@@ -19,11 +20,9 @@ var (
 )
 
 type StoredUrlData struct {
-	Url         *nurl.URL
-	Metadata    trafilatura.Metadata
-	ContentText string
-	TTL         *time.Duration
-	FetchTime   *time.Time
+	Data      resource.WebPage
+	TTL       *time.Duration
+	FetchTime *time.Time
 }
 
 type UrlDataStore interface {
@@ -34,9 +33,10 @@ type UrlDataStore interface {
 }
 
 // todo: SQL supports int64 but not uint64 with high bit set
-func GetKey(url *nurl.URL) uint32 {
+func GetKey[T string | *nurl.URL](url T) uint32 {
 	h := fnv.New32a()
-	h.Write([]byte(url.String()))
+	s := fmt.Sprintf("%s", url)
+	h.Write([]byte(s))
 	return h.Sum32()
 }
 

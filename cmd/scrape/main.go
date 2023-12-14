@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/efixler/scrape/resource"
 	_ "github.com/go-shiori/go-readability"
 	_ "github.com/markusmobius/go-domdistiller"
 	"github.com/markusmobius/go-trafilatura"
@@ -32,6 +33,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not get url: %s", err)
 	}
+	fmt.Printf("url: %s\n", parsedUrl)
 	defer response.Body.Close()
 	topts := trafilatura.Options{
 		IncludeImages:      true,
@@ -46,7 +48,12 @@ func main() {
 		fmt.Println(result.ContentText)
 		return
 	}
-	marshaled, err := json.MarshalIndent(result.Metadata, "", "  ")
+	resource := &resource.WebPage{
+		Metadata:    result.Metadata,
+		ContentText: result.ContentText,
+		ParsedUrl:   parsedUrl,
+	}
+	marshaled, err := json.MarshalIndent(resource, "", "  ")
 	//marshaled, err := result.Metadata.MarshalText(result.Metadata)
 	if err != nil {
 		log.Fatalf("failed to marshal: %v", err)

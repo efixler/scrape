@@ -26,4 +26,4 @@ build: vet
 
 clean:
 	@echo "Cleaning $(MODULE_NAME)..."
-	@rm -f bin/scrape
+	@rm -f bin/scrape*
