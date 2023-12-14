@@ -22,21 +22,28 @@ const (
 	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
 	qInsert              = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	qClear               = `DELETE FROM urls`
+	qLookupId            = `SELECT url_id FROM id_map WHERE parsed_url_id = ?`
+	qStoreId             = `REPLACE INTO id_map (parsed_url_id, url_id) VALUES (?, ?)`
+	qClearId             = `DELETE FROM id_map where url_id = ?`
 	qFetch               = `SELECT parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
 	qDelete              = `DELETE FROM urls WHERE id = ?`
 )
 
 var (
-	dbs map[string]*sql.DB
+	dbs                map[string]*sql.DB
+	ErrMappingNotFound = errors.New("id mapping not found")
 )
 
 type sqliteStore struct {
-	ctx         context.Context
-	filename    string
-	busyTimeout time.Duration
-	fetchStmt   *sql.Stmt
-	storeStmt   *sql.Stmt
-	deleteStmt  *sql.Stmt
+	ctx          context.Context
+	filename     string
+	busyTimeout  time.Duration
+	fetchStmt    *sql.Stmt
+	storeStmt    *sql.Stmt
+	deleteStmt   *sql.Stmt
+	storeIdStmt  *sql.Stmt
+	lookupIdStmt *sql.Stmt
+	// clearIdStmt  *sql.Stmt
 }
 
 func Open(ctx context.Context, filename string) (*sqliteStore, error) {
@@ -111,18 +118,44 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
+	// todo: this can fail silently
+	err_id_map := s.storeIdMap(u.Data.ParsedUrl, key)
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return 0, err
+		return 0, errors.Join(err, err_id_map)
 	}
 	if rows != 1 {
-		return 0, fmt.Errorf("expected 1 row affected, got %d", rows)
+		return 0, errors.Join(fmt.Errorf("expected 1 row affected, got %d", rows), err_id_map)
 	}
 	return key, nil
 }
 
+func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint32) error {
+	key := store.GetKey(parsedUrl)
+	db := dbs[s.dsn()]
+	if s.storeIdStmt == nil {
+		stmt, err := db.PrepareContext(s.ctx, qStoreId)
+		if err != nil {
+			return err
+		}
+		s.storeIdStmt = stmt
+	}
+	_, err := s.storeIdStmt.ExecContext(s.ctx, key, canonicalId)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
-	key := store.GetKey(url)
+	key, err := s.lookupId(url)
+	switch err {
+	case ErrMappingNotFound:
+		key = store.GetKey(url)
+	case nil: // do nothing
+	default:
+		return nil, err
+	}
 	db := dbs[s.dsn()]
 	if s.fetchStmt == nil {
 		stmt, err := db.PrepareContext(s.ctx, qFetch)
@@ -176,6 +209,33 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 
 	//fmt.Println(parsedUrl, fetchEpoch, expiryEpoch, metadata, contentText)
 	return sud, nil
+}
+
+func (s sqliteStore) lookupId(parsedUrl *nurl.URL) (uint32, error) {
+	key := store.GetKey(parsedUrl)
+	db := dbs[s.dsn()]
+	if s.lookupIdStmt == nil {
+		stmt, err := db.PrepareContext(s.ctx, qLookupId)
+		if err != nil {
+			return 0, err
+		}
+		s.lookupIdStmt = stmt
+	}
+
+	rows, err := s.lookupIdStmt.QueryContext(s.ctx, key)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return 0, ErrMappingNotFound
+	}
+	var lookupId uint32
+	err = rows.Scan(&lookupId)
+	if err != nil {
+		return 0, err
+	}
+	return lookupId, nil
 }
 
 func (s *sqliteStore) Clear() error {
