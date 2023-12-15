@@ -9,6 +9,7 @@ import (
 	"net/http"
 	nurl "net/url"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/efixler/scrape/resource"
@@ -22,14 +23,17 @@ import (
 var (
 	httpClient = &http.Client{Timeout: 30 * time.Second}
 	flags      flag.FlagSet
-	// content_only bool
-	noContent bool
-	createDB  bool
-	dbPath    string
+	noContent  bool
+	createDB   bool
+	dbPath     string
+	wg         sync.WaitGroup
 )
 
 func fetch(url string) (*resource.WebPage, error) {
 	// change this interface to work through higher level store.
+	// currently leaking statements because there is no good way to
+	// get a handle to call store from here. Fix this before
+	// letting the progra, grab multiple resources at once.
 	db, err := sqlite.Open(context.TODO(), dbPath)
 	if err != nil {
 		return nil, err
@@ -70,15 +74,14 @@ func fetch(url string) (*resource.WebPage, error) {
 	sd := &store.StoredUrlData{
 		Data: *resource,
 	}
-	// need to make sure the app quit waits for the go func to finish
-	// go func() {
-	// 	// possibly need a better way to do this, or at least to capture errors
-	// 	//
-	_, err = db.Store(sd)
-	if err != nil {
-		log.Printf("Error storing %s: %s", url, err)
-	}
-	// }()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		_, err = db.Store(sd)
+		if err != nil {
+			log.Printf("Error storing %s: %s", url, err)
+		}
+	}()
 
 	return resource, nil
 }
@@ -98,7 +101,7 @@ func main() {
 		fmt.Printf("Error: %s\n", err)
 		usage()
 	}
-
+	defer wg.Wait()
 	// maybe filter utm_sources here
 	page, err := fetch(parsedUrl.String())
 	if err != nil {

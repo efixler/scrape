@@ -94,7 +94,6 @@ func Open(ctx context.Context, filename string) (*sqliteStore, error) {
 		fmt.Println("error opening db", err)
 		return nil, err
 	}
-	fmt.Println("opened db", s.dsn)
 	dbs[s.dsn] = db
 	return s, nil
 }
