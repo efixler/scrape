@@ -1,5 +1,7 @@
 module github.com/efixler/scrape
 
+// replace github.com/efixler/scrape/resource => ./resource
+
 go 1.21
 
 require (

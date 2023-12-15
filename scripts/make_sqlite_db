@@ -1,0 +1,25 @@
+#!/bin/zsh
+
+# This script is used to create the sqlite database for the project.
+
+
+CREATE TABLE urls (
+    id           INTEGER PRIMARY KEY ON CONFLICT ABORT
+                         NOT NULL,
+    url          TEXT    NOT NULL
+                         COLLATE NOCASE,
+    parsed_url   TEXT    NOT NULL,
+    fetch_time   INTEGER DEFAULT (unixepoch() ),
+    expires      INTEGER DEFAULT (0),
+    metadata     TEXT,
+    content_text TEXT
+)
+WITHOUT ROWID,
+STRICT;
+
+CREATE TABLE id_map (
+    parsed_url_id INTEGER PRIMARY KEY,
+    url_id         INTEGER
+)
+WITHOUT ROWID,
+STRICT;
