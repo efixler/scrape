@@ -3,12 +3,12 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	nurl "net/url"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/efixler/scrape/resource"
@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	DEFAULT_DB_FILENAME  = "scrape_data/scrape.db"
 	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
-	qInsert              = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
+	qStore               = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	qClear               = `DELETE FROM urls`
 	qLookupId            = `SELECT url_id FROM id_map WHERE parsed_url_id = ?`
 	qStoreId             = `REPLACE INTO id_map (parsed_url_id, url_id) VALUES (?, ?)`
@@ -29,21 +28,41 @@ const (
 	qDelete              = `DELETE FROM urls WHERE id = ?`
 )
 
+type stmtIndex int
+
+const (
+	_ stmtIndex = iota
+	Store
+	Clear
+	LookupId
+	StoreId
+	ClearId
+	Fetch
+	Delete
+)
+
 var (
 	dbs                map[string]*sql.DB
 	ErrMappingNotFound = errors.New("id mapping not found")
+	ErrStoreNotOpen    = errors.New("store not opened for this dsn")
 )
 
+type sqliteOptions struct {
+	busyTimeout time.Duration
+}
+
 type sqliteStore struct {
-	ctx          context.Context
-	filename     string
-	busyTimeout  time.Duration
-	fetchStmt    *sql.Stmt
-	storeStmt    *sql.Stmt
-	deleteStmt   *sql.Stmt
-	storeIdStmt  *sql.Stmt
-	lookupIdStmt *sql.Stmt
-	// clearIdStmt  *sql.Stmt
+	ctx      context.Context
+	filename string
+	dsn      string
+	options  sqliteOptions
+	stmts    map[stmtIndex]*sql.Stmt
+}
+
+func defaultOptions() sqliteOptions {
+	return sqliteOptions{
+		busyTimeout: DEFAULT_BUSY_TIMEOUT,
+	}
 }
 
 func Open(ctx context.Context, filename string) (*sqliteStore, error) {
@@ -52,22 +71,38 @@ func Open(ctx context.Context, filename string) (*sqliteStore, error) {
 		return nil, err
 	}
 	s := &sqliteStore{
-		filename:    fqn,
-		busyTimeout: DEFAULT_BUSY_TIMEOUT,
-		ctx:         ctx,
+		filename: fqn,
+		options:  defaultOptions(),
+		ctx:      ctx,
+		stmts:    make(map[stmtIndex]*sql.Stmt, 8),
 	}
-	dsn := s.dsn()
-	_, err = s.openDB(dsn)
+	// SQLLite will open even if the the DB file is not present, it will only fail later.
+	// So, we grab the db directly from the DSN map here, while we have the filename,
+	// to make sure that we can print an informative error message if the file is missing.
+	// This should only get called the first time a dsn is opened, as all instances of a struct
+	// using the same dsn will share the same db.
+	s.dsn = dsn(s.filename, s.options)
+	_, ok := dbs[s.dsn]
+	if ok {
+		return s, nil
+	}
+	if _, err := os.Stat(fqn); os.IsNotExist(err) {
+		return nil, fmt.Errorf("database file %s does not exist", fqn)
+	}
+	db, err := sql.Open("sqlite3", s.dsn)
 	if err != nil {
+		fmt.Println("error opening db", err)
 		return nil, err
 	}
+	fmt.Println("opened db", s.dsn)
+	dbs[s.dsn] = db
 	return s, nil
 }
 
 // Caller must close when done
 func (s *sqliteStore) Close() error {
 	var errs []error
-	for _, stmt := range []*sql.Stmt{s.fetchStmt, s.storeStmt} {
+	for _, stmt := range s.stmts {
 		if stmt != nil {
 			err := stmt.Close()
 			if err != nil {
@@ -75,6 +110,7 @@ func (s *sqliteStore) Close() error {
 			}
 		}
 	}
+	clear(s.stmts)
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
@@ -106,15 +142,16 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint32, error) {
 		string(metadata),
 		contentText,
 	}
-	db := dbs[s.dsn()]
-	if s.storeStmt == nil {
-		stmt, err := db.PrepareContext(s.ctx, qInsert)
+	db := dbs[dsn(s.filename, s.options)]
+	stmt, ok := s.stmts[Store]
+	if !ok {
+		stmt, err = db.PrepareContext(s.ctx, qStore)
 		if err != nil {
 			return 0, err
 		}
-		s.storeStmt = stmt
+		s.stmts[Store] = stmt
 	}
-	result, err := s.storeStmt.ExecContext(s.ctx, values...)
+	result, err := stmt.ExecContext(s.ctx, values...)
 	if err != nil {
 		return 0, err
 	}
@@ -132,15 +169,17 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint32, error) {
 
 func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint32) error {
 	key := store.GetKey(parsedUrl)
-	db := dbs[s.dsn()]
-	if s.storeIdStmt == nil {
-		stmt, err := db.PrepareContext(s.ctx, qStoreId)
+	db := dbs[dsn(s.filename, s.options)]
+	stmt, ok := s.stmts[StoreId]
+	if !ok {
+		var err error
+		stmt, err = db.PrepareContext(s.ctx, qStoreId)
 		if err != nil {
 			return err
 		}
-		s.storeIdStmt = stmt
+		s.stmts[StoreId] = stmt
 	}
-	_, err := s.storeIdStmt.ExecContext(s.ctx, key, canonicalId)
+	_, err := stmt.ExecContext(s.ctx, key, canonicalId)
 	if err != nil {
 		return err
 	}
@@ -156,15 +195,16 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	default:
 		return nil, err
 	}
-	db := dbs[s.dsn()]
-	if s.fetchStmt == nil {
-		stmt, err := db.PrepareContext(s.ctx, qFetch)
+	db := dbs[dsn(s.filename, s.options)]
+	stmt, ok := s.stmts[Fetch]
+	if !ok {
+		stmt, err = db.PrepareContext(s.ctx, qFetch)
 		if err != nil {
 			return nil, err
 		}
-		s.fetchStmt = stmt
+		s.stmts[Fetch] = stmt
 	}
-	rows, err := s.fetchStmt.QueryContext(s.ctx, key)
+	rows, err := stmt.QueryContext(s.ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -213,16 +253,18 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 
 func (s sqliteStore) lookupId(parsedUrl *nurl.URL) (uint32, error) {
 	key := store.GetKey(parsedUrl)
-	db := dbs[s.dsn()]
-	if s.lookupIdStmt == nil {
-		stmt, err := db.PrepareContext(s.ctx, qLookupId)
+	db := dbs[dsn(s.filename, s.options)]
+	stmt, ok := s.stmts[LookupId]
+	if !ok {
+		var err error
+		stmt, err = db.PrepareContext(s.ctx, qLookupId)
 		if err != nil {
 			return 0, err
 		}
-		s.lookupIdStmt = stmt
+		s.stmts[LookupId] = stmt
 	}
 
-	rows, err := s.lookupIdStmt.QueryContext(s.ctx, key)
+	rows, err := stmt.QueryContext(s.ctx, key)
 	if err != nil {
 		return 0, err
 	}
@@ -239,11 +281,11 @@ func (s sqliteStore) lookupId(parsedUrl *nurl.URL) (uint32, error) {
 }
 
 func (s *sqliteStore) Clear() error {
-	db, err := s.openDB(s.dsn())
-	if err != nil {
-		return err
+	db, ok := dbs[dsn(s.filename, s.options)]
+	if !ok {
+		return ErrStoreNotOpen
 	}
-	if _, err = db.ExecContext(s.ctx, qClear); err != nil {
+	if _, err := db.ExecContext(s.ctx, createSQL); err != nil {
 		return err
 	}
 	return nil
@@ -252,15 +294,16 @@ func (s *sqliteStore) Clear() error {
 func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	ustr := url.String()
 	key := store.GetKey(ustr)
-	db := dbs[s.dsn()]
-	if s.deleteStmt == nil {
+	db := dbs[dsn(s.filename, s.options)]
+	stmt, ok := s.stmts[Delete]
+	if !ok {
 		stmt, err := db.PrepareContext(s.ctx, qDelete)
 		if err != nil {
 			return false, err
 		}
-		s.deleteStmt = stmt
+		s.stmts[Delete] = stmt
 	}
-	result, err := s.deleteStmt.ExecContext(s.ctx, key)
+	result, err := stmt.ExecContext(s.ctx, key)
 	if err != nil {
 		return false, err
 	}
@@ -276,40 +319,6 @@ func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	default:
 		return false, fmt.Errorf("expected 0 or 1 row affected, got %d", rows)
 	}
-}
-
-func (s *sqliteStore) openDB(dsn string) (*sql.DB, error) {
-	db, ok := dbs[dsn]
-	if ok {
-		return db, nil
-	}
-	db, err := sql.Open("sqlite3", dsn)
-	if err != nil {
-		return nil, err
-	}
-	dbs[dsn] = db
-	return db, nil
-}
-
-func (s sqliteStore) dsn() string {
-	dsn := fmt.Sprintf("file:%s?_busy_timeout=%d", s.filename, s.busyTimeout)
-	return dsn
-}
-
-// dbPath returns the path to the database file. If filename is empty,
-// the path to the executable + the default path is returned.
-// If filename is not empty filename is returned and its
-// existence is checked.
-func dbPath(filename string) (string, error) {
-	if filename == "" {
-		root, err := os.Executable()
-		if err != nil {
-			return "", err
-		}
-		return filepath.Join(root, DEFAULT_DB_FILENAME), nil
-	}
-	_, err := os.Stat(filename)
-	return filename, err
 }
 
 func init() {

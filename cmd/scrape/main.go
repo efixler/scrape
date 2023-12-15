@@ -24,11 +24,13 @@ var (
 	flags      flag.FlagSet
 	// content_only bool
 	noContent bool
+	createDB  bool
+	dbPath    string
 )
 
 func fetch(url string) (*resource.WebPage, error) {
-	// change this interface to work through hiher level store.
-	db, err := sqlite.Open(context.TODO(), "./scrape_data/scrape.db")
+	// change this interface to work through higher level store.
+	db, err := sqlite.Open(context.TODO(), dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +84,14 @@ func fetch(url string) (*resource.WebPage, error) {
 }
 
 func main() {
+	if createDB {
+		err := sqlite.CreateDB(context.Background(), dbPath)
+		if err != nil {
+			log.Fatalf("Error creating database: %s", err)
+		}
+		log.Printf("Created database %s", dbPath)
+		return
+	}
 	url := flags.Arg(0)
 	parsedUrl, err := nurl.Parse(url)
 	if err != nil {
@@ -103,11 +113,16 @@ func main() {
 }
 
 func init() {
-	flags.Init("xyz", flag.ExitOnError)
-	flags.BoolVar(&noContent, "T", false, "Skip text content")
-	// flags automatically adds -h and --help
+	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
+	flags.BoolVar(&noContent, "T", false, "Skip text content")
+	flags.BoolVar(&createDB, "create", false, "Create the database and exit")
+	flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
+	// flags automatically adds -h and --help
 	flags.Parse(os.Args[1:])
+	if createDB {
+		return
+	}
 	if flags.NArg() != 1 {
 		fmt.Print("Error: URL is required\n\n")
 		flags.Usage()
@@ -118,7 +133,7 @@ func init() {
 func usage() {
 	fmt.Println(`Usage: 
 	scrape [flags] :url [...urls]
-
+ 
   -C    Don't use the cache to retrieve content
   -p    Prune local storage and exit
   -P    Remove all stored entries from the cache

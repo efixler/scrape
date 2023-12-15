@@ -17,7 +17,7 @@ func TestOpen(t *testing.T) {
 		t.Errorf("Error opening database: %v", err)
 	}
 	defer s.Close()
-	_, ok := dbs[s.dsn()]
+	_, ok := dbs[dsn(s.filename, s.options)]
 	if !ok {
 		t.Errorf("Database reference not stored in dbs map")
 	}
