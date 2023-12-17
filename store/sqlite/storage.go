@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	nurl "net/url"
 	"os"
 	"time"
@@ -47,6 +48,17 @@ var (
 	ErrStoreNotOpen    = errors.New("store not opened for this dsn")
 )
 
+func Factory(filename string) store.Factory {
+	return func() (store.URLDataStore, error) {
+		s := &sqliteStore{
+			filename: filename,
+			options:  defaultOptions(),
+			stmts:    make(map[stmtIndex]*sql.Stmt, 8),
+		}
+		return s, nil
+	}
+}
+
 type sqliteOptions struct {
 	busyTimeout time.Duration
 }
@@ -65,16 +77,11 @@ func defaultOptions() sqliteOptions {
 	}
 }
 
-func Open(ctx context.Context, filename string) (*sqliteStore, error) {
-	fqn, err := dbPath(filename)
+func (s *sqliteStore) Open(ctx context.Context) error {
+	s.ctx = ctx
+	fqn, err := dbPath(s.filename)
 	if err != nil {
-		return nil, err
-	}
-	s := &sqliteStore{
-		filename: fqn,
-		options:  defaultOptions(),
-		ctx:      ctx,
-		stmts:    make(map[stmtIndex]*sql.Stmt, 8),
+		return err
 	}
 	// SQLLite will open even if the the DB file is not present, it will only fail later.
 	// So, we grab the db directly from the DSN map here, while we have the filename,
@@ -84,18 +91,18 @@ func Open(ctx context.Context, filename string) (*sqliteStore, error) {
 	s.dsn = dsn(s.filename, s.options)
 	_, ok := dbs[s.dsn]
 	if ok {
-		return s, nil
+		return nil
 	}
 	if _, err := os.Stat(fqn); os.IsNotExist(err) {
-		return nil, fmt.Errorf("database file %s does not exist", fqn)
+		return fmt.Errorf("database file %s does not exist", fqn)
 	}
 	db, err := sql.Open("sqlite3", s.dsn)
 	if err != nil {
-		fmt.Println("error opening db", err)
-		return nil, err
+		log.Printf("error opening db: %v", err)
+		return err
 	}
 	dbs[s.dsn] = db
-	return s, nil
+	return nil
 }
 
 // Caller must close when done
@@ -117,15 +124,18 @@ func (s *sqliteStore) Close() error {
 }
 
 func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
-	uptr.AssertTimes()             // modify the original with times if needed
-	u := *uptr                     // copy this so we don't modify the original below
-	key := store.Key(u.Data.URL()) // key is for the canonical URL
+	uptr.AssertTimes()        // modify the original with times if needed
+	u := *uptr                // copy this so we don't modify the original below
+	key := store.Key(u.URL()) // key is for the canonical URL
 	contentText := u.Data.ContentText
 	u.Data.ContentText = "" // make sure this is a copy
 	if u.Data.RequestedURL == nil {
 		u.Data.RequestedURL = u.Data.URL()
 	}
-	fmt.Println("storing parsed url", u.Data.RequestedURL)
+	requestUrl := u.Data.RequestedURL.String()
+	u.Data.RequestedURL = nil // make sure this is a copy
+	fetchEpoch := u.Data.FetchTime.Unix()
+	u.Data.FetchTime = nil
 	metadata, err := json.Marshal(u.Data)
 	if err != nil {
 		return 0, err
@@ -136,8 +146,8 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 	values := []any{
 		key,
 		u.Data.URL().String(),
-		u.Data.RequestedURL.String(),
-		u.FetchTime.Unix(),
+		requestUrl,
+		fetchEpoch,
 		expires,
 		string(metadata),
 		contentText,
@@ -156,7 +166,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 		return 0, err
 	}
 	// todo: this can fail silently
-	err_id_map := s.storeIdMap(u.Data.RequestedURL, key)
+	err_id_map := s.storeIdMap(uptr.Data.RequestedURL, key)
 
 	rows, err := result.RowsAffected()
 	if err != nil {
@@ -229,11 +239,11 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	exptime := time.Unix(expiryEpoch, 0)
 	if time.Now().After(exptime) {
 		// todo: delete this record (async, without leaking)
-		return nil, nil
+		return nil, store.ErrorResourceNotFound
 	}
-	fetchTime := time.Unix(fetchEpoch, 0)
+	fetchTime := time.Unix(fetchEpoch, 0).UTC()
 	ttl := exptime.Sub(fetchTime)
-	page := &resource.WebPage{}
+	page := &resource.WebPage{FetchTime: &fetchTime}
 	page.RequestedURL, err = nurl.Parse(parsedUrl)
 	if err != nil {
 		return nil, err
@@ -244,9 +254,8 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	}
 	page.ContentText = contentText
 	sud := &store.StoredUrlData{
-		Data:      *page,
-		FetchTime: &fetchTime,
-		TTL:       &ttl,
+		Data: *page,
+		TTL:  &ttl,
 	}
 
 	//fmt.Println(parsedUrl, fetchEpoch, expiryEpoch, metadata, contentText)

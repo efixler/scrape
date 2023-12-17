@@ -35,17 +35,14 @@ func TestAssertTimes(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		u.FetchTime = test.FetchTime
+		u.Data.FetchTime = test.FetchTime
 		u.TTL = test.TTL
 		u.AssertTimes()
-		if u.FetchTime == nil {
-			t.Errorf("%s FetchTime was nil", test.Name)
-		}
-		if u.FetchTime.IsZero() {
+		if u.Data.FetchTime.IsZero() {
 			t.Errorf("%s FetchTime was zero", test.Name)
 		}
-		if *u.FetchTime != test.wantFetchTime {
-			t.Errorf("%s FetchTime was %v, want %v", test.Name, *u.FetchTime, test.wantFetchTime)
+		if u.Data.FetchTime.Unix() != test.wantFetchTime.Unix() {
+			t.Errorf("%s FetchTime was %v, want %v", test.Name, u.Data.FetchTime, test.wantFetchTime)
 		}
 		if u.TTL == nil {
 			t.Errorf("%s TTL was nil", test.Name)

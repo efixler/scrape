@@ -6,89 +6,21 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
 	nurl "net/url"
 	"os"
-	"sync"
-	"time"
 
-	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape"
+	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/store/sqlite"
-	_ "github.com/go-shiori/go-readability"
-	_ "github.com/markusmobius/go-domdistiller"
-	"github.com/markusmobius/go-trafilatura"
+	//"github.com/efixler/scrape/trafilatura"
 )
 
 var (
-	httpClient = &http.Client{Timeout: 30 * time.Second}
-	flags      flag.FlagSet
-	noContent  bool
-	createDB   bool
-	dbPath     string
-	wg         sync.WaitGroup
+	flags     flag.FlagSet
+	noContent bool
+	createDB  bool
+	dbPath    string
 )
-
-// NewResourceFetcher()
-
-func fetch(url string) (*resource.WebPage, error) {
-	// change this interface to work through higher level store.
-	// currently leaking statements because there is no good way to
-	// get a handle to call store from here. Fix this before
-	// letting the progra, grab multiple resources at once.
-	db, err := sqlite.Open(context.TODO(), dbPath)
-	if err != nil {
-		return nil, err
-	}
-	parsedUrl, err := nurl.Parse(url)
-	if err != nil {
-		return nil, err
-	}
-	item, err := db.Fetch(parsedUrl)
-	if err != nil {
-		return nil, err
-	}
-	if item != nil {
-		fmt.Printf("Found %s in cache\n", url)
-		return &item.Data, nil
-	}
-	// if we get here we're not cached
-	fmt.Printf("%s not found in cache\n", url)
-	response, err := httpClient.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer response.Body.Close()
-	topts := trafilatura.Options{
-		IncludeImages:      true,
-		OriginalURL:        parsedUrl,
-		FallbackCandidates: &trafilatura.FallbackConfig{},
-	}
-	result, err := trafilatura.Extract(response.Body, topts)
-	if err != nil {
-		return nil, err
-	}
-	resource := &resource.WebPage{
-		Metadata:     result.Metadata,
-		ContentText:  result.ContentText,
-		RequestedURL: parsedUrl,
-	}
-	resource.ContentTextInJSON(!noContent)
-	// this is annoying and dumb
-	sd := &store.StoredUrlData{
-		Data: *resource,
-	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		_, err = db.Store(sd)
-		if err != nil {
-			log.Printf("Error storing %s: %s", url, err)
-		}
-	}()
-
-	return resource, nil
-}
 
 func main() {
 	if createDB {
@@ -105,11 +37,25 @@ func main() {
 		fmt.Printf("Error: %s\n", err)
 		usage()
 	}
-	defer wg.Wait()
-	// maybe filter utm_sources here
-	page, err := fetch(parsedUrl.String())
+	fetcher, err := scrape.NewStorageBackedFetcher(
+		trafilatura.Factory(),
+		sqlite.Factory(dbPath),
+	)
 	if err != nil {
-		log.Fatalf("Error fetching %s: %s", url, err)
+		log.Fatalf("Error creating storage backed fetcher: %s", err)
+	}
+	err = fetcher.Open(context.TODO())
+	if err != nil {
+		log.Fatalf("Error opening storage backed fetcher: %s", err)
+	}
+	defer fetcher.Close() // not sure if this will work right with the waitgroup
+	// maybe filter utm_sources here
+	page, err := fetcher.Fetch(parsedUrl)
+	if err != nil {
+		log.Fatalf("Error fetching %s: %s", parsedUrl.String(), err)
+	}
+	if noContent {
+		page.ContentText = ""
 	}
 	marshaled, err := json.MarshalIndent(page, "", "  ")
 	//marshaled, err := result.Metadata.MarshalText(result.Metadata)

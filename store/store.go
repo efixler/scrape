@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	nurl "net/url"
@@ -17,26 +18,35 @@ const (
 
 var (
 	ErrorDatabaseNotFound = errors.New("database not found")
+	ErrorResourceNotFound = errors.New("resource not found in data store")
 	nowf                  = time.Now
 )
 
+type Factory func() (URLDataStore, error)
+
 type StoredUrlData struct {
-	Data      resource.WebPage
-	TTL       *time.Duration
-	FetchTime *time.Time
+	Data resource.WebPage //todo promote this to default embedding
+	TTL  *time.Duration
 }
 
-type UrlDataStore interface {
-	// Open(context.Context, string) (UrlDataStore, error)
-	Store(StoredUrlData) (uint64, error)
+// When we can close the gap between StoredUrlData and resource.WebPage, we can
+// unite these interfaces maybe
+// type URLDataStore interface {
+// 	fetch.URLData
+// 	Store(*StoredUrlData) (uint64, error)
+// }
+
+type URLDataStore interface {
+	Open(context.Context) error
+	Store(*StoredUrlData) (uint64, error)
 	Fetch(*nurl.URL) (*StoredUrlData, error)
 	Close() error
 }
 
 func (u *StoredUrlData) AssertTimes() {
-	if u.FetchTime == nil || u.FetchTime.IsZero() {
+	if u.Data.FetchTime == nil || u.Data.FetchTime.IsZero() {
 		now := nowf()
-		u.FetchTime = &now
+		u.Data.FetchTime = &now
 	}
 	if u.TTL == nil {
 		ttl := DEFAULT_TTL

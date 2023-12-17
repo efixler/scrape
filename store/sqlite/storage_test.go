@@ -12,12 +12,20 @@ import (
 )
 
 func TestOpen(t *testing.T) {
-	s, err := Open(context.TODO(), "test.db")
+	db, err := Factory("test.db")()
+	if err != nil {
+		t.Errorf("Error opening database factory: %v", err)
+	}
+	err = db.Open(context.TODO())
 	if err != nil {
 		t.Errorf("Error opening database: %v", err)
 	}
-	defer s.Close()
-	_, ok := dbs[dsn(s.filename, s.options)]
+	defer db.Close()
+	realDb, ok := db.(*sqliteStore)
+	if !ok {
+		t.Errorf("Database not of type sqliteStore")
+	}
+	_, ok = dbs[dsn(realDb.filename, realDb.options)]
 	if !ok {
 		t.Errorf("Database reference not stored in dbs map")
 	}
@@ -43,7 +51,11 @@ var mdata = `{
   }`
 
 func TestStore(t *testing.T) {
-	s, err := Open(context.TODO(), "test.db")
+	s, err := Factory("test.db")()
+	if err != nil {
+		t.Errorf("Error opening database factory: %v", err)
+	}
+	err = s.Open(context.TODO())
 	if err != nil {
 		t.Errorf("Error opening database: %v", err)
 	}
@@ -78,8 +90,8 @@ func TestStore(t *testing.T) {
 	if stored.TTL.Seconds() != fetched.TTL.Seconds() {
 		t.Errorf("TTL changed from %v to %v", stored.TTL, fetched.TTL)
 	}
-	if stored.FetchTime.Unix() != fetched.FetchTime.Unix() {
-		t.Errorf("FetchTime changed from %v to %v", stored.FetchTime, fetched.FetchTime)
+	if stored.Data.FetchTime.Unix() != fetched.Data.FetchTime.Unix() {
+		t.Errorf("FetchTime changed from %v to %v", stored.Data.FetchTime, fetched.Data.FetchTime)
 	}
 	if stored.Data.ContentText != fetched.Data.ContentText {
 		t.Errorf("ContentText changed from %q to %q", stored.Data.ContentText, fetched.Data.ContentText)

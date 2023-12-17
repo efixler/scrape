@@ -3,25 +3,18 @@ package resource
 import (
 	"encoding/json"
 	nurl "net/url"
+	"time"
 
 	"github.com/markusmobius/go-trafilatura"
 )
 
 type WebPage struct {
 	trafilatura.Metadata
-	ContentText         string    `json:",omitempty"`
-	RequestedURL        *nurl.URL `json:"-"`
-	canonicalUrl        *nurl.URL
-	noContentTextInJSON bool
+	ContentText  string     `json:",omitempty"`
+	RequestedURL *nurl.URL  `json:"-"`
+	FetchTime    *time.Time `json:",omitempty"`
+	canonicalUrl *nurl.URL
 }
-
-func (r *WebPage) ContentTextInJSON(on bool) {
-	r.noContentTextInJSON = !on
-}
-
-// type ResourceFetcher struct {
-// 	store.UrlDataStore
-// }
 
 func (r WebPage) URL() *nurl.URL {
 	if r.canonicalUrl == nil {
@@ -30,37 +23,20 @@ func (r WebPage) URL() *nurl.URL {
 	return r.canonicalUrl
 }
 
-// func (r WebPage) UnmarshalJSON(data []byte) error {
-// 	type alias WebPage
-// 	ar := &struct {
-// 		RequestedUrlString string `json:"RequestedURL"`
-// 		*alias
-// 	}{
-// 		alias:              (*alias)(&r),
-// 		RequestedUrlString: r.RequestedURL.String(),
-// 	}
-// 	//ar.RequestedUrl = r.RequestedURL.String()
-
-// 	if err := json.Unmarshal(data, &ar); err != nil {
-// 		return err
-// 	}
-// 	return json.Unmarshal(data, &ar)
-
-// }
-
 func (r WebPage) MarshalJSON() ([]byte, error) {
 	type alias WebPage
 	ar := &struct {
-		RequestedUrlString string `json:"RequestedURL"`
+		RequestedUrlString string `json:"RequestedURL,omitempty"`
 		*alias
 	}{
 		alias:              (*alias)(&r),
-		RequestedUrlString: r.RequestedURL.String(),
+		RequestedUrlString: "",
 	}
-	if r.noContentTextInJSON {
-		ar.ContentText = ""
+	// We can control the output by clearing these fields
+	// (in addition to ContentText.)
+	if r.RequestedURL != nil {
+		ar.RequestedUrlString = r.RequestedURL.String()
 	}
-	ar.RequestedUrlString = r.RequestedURL.String()
 
 	return json.Marshal(ar)
 }
