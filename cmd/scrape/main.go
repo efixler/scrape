@@ -47,10 +47,11 @@ func fetch(url string) (*resource.WebPage, error) {
 		return nil, err
 	}
 	if item != nil {
+		fmt.Printf("Found %s in cache\n", url)
 		return &item.Data, nil
 	}
 	// if we get here we're not cached
-
+	fmt.Printf("%s not found in cache\n", url)
 	response, err := httpClient.Get(url)
 	if err != nil {
 		return nil, err

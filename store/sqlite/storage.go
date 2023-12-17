@@ -21,9 +21,9 @@ const (
 	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
 	qStore               = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	qClear               = `DELETE FROM urls`
-	qLookupId            = `SELECT url_id FROM id_map WHERE parsed_url_id = ?`
-	qStoreId             = `REPLACE INTO id_map (parsed_url_id, url_id) VALUES (?, ?)`
-	qClearId             = `DELETE FROM id_map where url_id = ?`
+	qLookupId            = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
+	qStoreId             = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
+	qClearId             = `DELETE FROM id_map where canonical_id = ?`
 	qFetch               = `SELECT parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
 	qDelete              = `DELETE FROM urls WHERE id = ?`
 )
@@ -116,15 +116,16 @@ func (s *sqliteStore) Close() error {
 	return nil
 }
 
-func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint32, error) {
-	uptr.AssertTimes() // modify the original with times if needed
-	u := *uptr         // copy this so we don't modify the original below
-	key := store.GetKey(u.Data.URL())
+func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
+	uptr.AssertTimes()             // modify the original with times if needed
+	u := *uptr                     // copy this so we don't modify the original below
+	key := store.Key(u.Data.URL()) // key is for the canonical URL
 	contentText := u.Data.ContentText
 	u.Data.ContentText = "" // make sure this is a copy
 	if u.Data.ParsedUrl == nil {
 		u.Data.ParsedUrl = u.Data.URL()
 	}
+	fmt.Println("storing parsed url", u.Data.ParsedUrl)
 	metadata, err := json.Marshal(u.Data)
 	if err != nil {
 		return 0, err
@@ -156,6 +157,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint32, error) {
 	}
 	// todo: this can fail silently
 	err_id_map := s.storeIdMap(u.Data.ParsedUrl, key)
+
 	rows, err := result.RowsAffected()
 	if err != nil {
 		return 0, errors.Join(err, err_id_map)
@@ -166,8 +168,8 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint32, error) {
 	return key, nil
 }
 
-func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint32) error {
-	key := store.GetKey(parsedUrl)
+func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
+	// key := store.Key(parsedUrl)
 	db := dbs[dsn(s.filename, s.options)]
 	stmt, ok := s.stmts[StoreId]
 	if !ok {
@@ -178,7 +180,7 @@ func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint32) error {
 		}
 		s.stmts[StoreId] = stmt
 	}
-	_, err := stmt.ExecContext(s.ctx, key, canonicalId)
+	_, err := stmt.ExecContext(s.ctx, store.Key(parsedUrl), canonicalId)
 	if err != nil {
 		return err
 	}
@@ -186,10 +188,11 @@ func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint32) error {
 }
 
 func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
-	key, err := s.lookupId(url)
+	requested_key := store.Key(url)
+	key, err := s.lookupId(requested_key)
 	switch err {
 	case ErrMappingNotFound:
-		key = store.GetKey(url)
+		key = requested_key
 	case nil: // do nothing
 	default:
 		return nil, err
@@ -225,7 +228,7 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	}
 	exptime := time.Unix(expiryEpoch, 0)
 	if time.Now().After(exptime) {
-		// todo: delete this record
+		// todo: delete this record (async, without leaking)
 		return nil, nil
 	}
 	fetchTime := time.Unix(fetchEpoch, 0)
@@ -250,8 +253,9 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	return sud, nil
 }
 
-func (s sqliteStore) lookupId(parsedUrl *nurl.URL) (uint32, error) {
-	key := store.GetKey(parsedUrl)
+// Will search url_ids to see if there's a parent entry for this url.
+func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
+	// key := store.Key(parsedUrl)
 	db := dbs[dsn(s.filename, s.options)]
 	stmt, ok := s.stmts[LookupId]
 	if !ok {
@@ -263,7 +267,7 @@ func (s sqliteStore) lookupId(parsedUrl *nurl.URL) (uint32, error) {
 		s.stmts[LookupId] = stmt
 	}
 
-	rows, err := stmt.QueryContext(s.ctx, key)
+	rows, err := stmt.QueryContext(s.ctx, requested_id)
 	if err != nil {
 		return 0, err
 	}
@@ -271,7 +275,7 @@ func (s sqliteStore) lookupId(parsedUrl *nurl.URL) (uint32, error) {
 	if !rows.Next() {
 		return 0, ErrMappingNotFound
 	}
-	var lookupId uint32
+	var lookupId uint64
 	err = rows.Scan(&lookupId)
 	if err != nil {
 		return 0, err
@@ -291,8 +295,7 @@ func (s *sqliteStore) Clear() error {
 }
 
 func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
-	ustr := url.String()
-	key := store.GetKey(ustr)
+	key := store.Key(url)
 	db := dbs[dsn(s.filename, s.options)]
 	stmt, ok := s.stmts[Delete]
 	if !ok {

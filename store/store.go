@@ -3,12 +3,13 @@ package store
 import (
 	"errors"
 	"fmt"
-	"hash/fnv"
 	nurl "net/url"
 	"time"
 
 	"github.com/efixler/scrape/resource"
 )
+
+type DatabaseOptions fmt.Stringer
 
 const (
 	DEFAULT_TTL = 24 * time.Hour * 30
@@ -30,14 +31,6 @@ type UrlDataStore interface {
 	Store(StoredUrlData) (uint64, error)
 	Fetch(*nurl.URL) (*StoredUrlData, error)
 	Close() error
-}
-
-// todo: SQL supports int64 but not uint64 with high bit set
-func GetKey[T string | *nurl.URL](url T) uint32 {
-	h := fnv.New32a()
-	s := fmt.Sprintf("%s", url)
-	h.Write([]byte(s))
-	return h.Sum32()
 }
 
 func (u *StoredUrlData) AssertTimes() {

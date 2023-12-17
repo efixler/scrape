@@ -7,11 +7,13 @@ PRAGMA foreign_keys = off;
 BEGIN TRANSACTION;
 
 -- Table: id_map
+
 DROP TABLE IF EXISTS id_map;
 
 CREATE TABLE id_map (
-    parsed_url_id INTEGER PRIMARY KEY,
-    url_id        INTEGER
+    requested_id INTEGER PRIMARY KEY ON CONFLICT REPLACE
+                         NOT NULL,
+    canonical_id INTEGER NOT NULL
 )
 WITHOUT ROWID,
 STRICT;
@@ -21,7 +23,7 @@ STRICT;
 DROP TABLE IF EXISTS urls;
 
 CREATE TABLE urls (
-    id           INTEGER PRIMARY KEY ON CONFLICT ABORT
+    id           INTEGER PRIMARY KEY ON CONFLICT REPLACE
                          NOT NULL,
     url          TEXT    NOT NULL
                          COLLATE NOCASE,
