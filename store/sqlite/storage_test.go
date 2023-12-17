@@ -57,7 +57,7 @@ func TestStore(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error parsing url: %v", err)
 	}
-	meta.ParsedUrl = url
+	meta.RequestedURL = url
 	cText := meta.ContentText
 	stored := store.StoredUrlData{
 		Data: meta,
@@ -87,8 +87,8 @@ func TestStore(t *testing.T) {
 	if stored.Data.URL().String() != fetched.Data.URL().String() {
 		t.Errorf("Url changed from %q to %q", stored.Data.URL(), fetched.Data.URL())
 	}
-	if stored.Data.ParsedUrl.String() != fetched.Data.ParsedUrl.String() {
-		t.Errorf("Url changed from %q to %q", stored.Data.ParsedUrl.String(), fetched.Data.ParsedUrl.String())
+	if stored.Data.RequestedURL.String() != fetched.Data.RequestedURL.String() {
+		t.Errorf("Url changed from %q to %q", stored.Data.RequestedURL.String(), fetched.Data.RequestedURL.String())
 	}
 	if stored.Data.Title != fetched.Data.Title {
 		t.Errorf("Title changed from %q to %q", stored.Data.Title, fetched.Data.Title)

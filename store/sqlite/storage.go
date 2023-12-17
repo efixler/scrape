@@ -122,10 +122,10 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 	key := store.Key(u.Data.URL()) // key is for the canonical URL
 	contentText := u.Data.ContentText
 	u.Data.ContentText = "" // make sure this is a copy
-	if u.Data.ParsedUrl == nil {
-		u.Data.ParsedUrl = u.Data.URL()
+	if u.Data.RequestedURL == nil {
+		u.Data.RequestedURL = u.Data.URL()
 	}
-	fmt.Println("storing parsed url", u.Data.ParsedUrl)
+	fmt.Println("storing parsed url", u.Data.RequestedURL)
 	metadata, err := json.Marshal(u.Data)
 	if err != nil {
 		return 0, err
@@ -136,7 +136,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 	values := []any{
 		key,
 		u.Data.URL().String(),
-		u.Data.ParsedUrl.String(),
+		u.Data.RequestedURL.String(),
 		u.FetchTime.Unix(),
 		expires,
 		string(metadata),
@@ -156,7 +156,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 		return 0, err
 	}
 	// todo: this can fail silently
-	err_id_map := s.storeIdMap(u.Data.ParsedUrl, key)
+	err_id_map := s.storeIdMap(u.Data.RequestedURL, key)
 
 	rows, err := result.RowsAffected()
 	if err != nil {
@@ -234,7 +234,7 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	fetchTime := time.Unix(fetchEpoch, 0)
 	ttl := exptime.Sub(fetchTime)
 	page := &resource.WebPage{}
-	page.ParsedUrl, err = nurl.Parse(parsedUrl)
+	page.RequestedURL, err = nurl.Parse(parsedUrl)
 	if err != nil {
 		return nil, err
 	}

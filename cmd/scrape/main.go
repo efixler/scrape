@@ -29,6 +29,8 @@ var (
 	wg         sync.WaitGroup
 )
 
+// NewResourceFetcher()
+
 func fetch(url string) (*resource.WebPage, error) {
 	// change this interface to work through higher level store.
 	// currently leaking statements because there is no good way to
@@ -67,10 +69,11 @@ func fetch(url string) (*resource.WebPage, error) {
 		return nil, err
 	}
 	resource := &resource.WebPage{
-		Metadata:    result.Metadata,
-		ContentText: result.ContentText,
-		ParsedUrl:   parsedUrl,
+		Metadata:     result.Metadata,
+		ContentText:  result.ContentText,
+		RequestedURL: parsedUrl,
 	}
+	resource.ContentTextInJSON(!noContent)
 	// this is annoying and dumb
 	sd := &store.StoredUrlData{
 		Data: *resource,
@@ -119,7 +122,7 @@ func main() {
 func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
-	flags.BoolVar(&noContent, "T", false, "Skip text content")
+	flags.BoolVar(&noContent, "notext", false, "Skip text content")
 	flags.BoolVar(&createDB, "create", false, "Create the database and exit")
 	flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
 	// flags automatically adds -h and --help
@@ -141,8 +144,7 @@ func usage() {
   -C    Don't use the cache to retrieve content
   -p    Prune local storage and exit
   -P    Remove all stored entries from the cache
-  -h	Show this help message
-  -T 	Don't get text content`)
+  -h	Show this help message`)
 
 	flags.PrintDefaults()
 }
