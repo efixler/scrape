@@ -118,15 +118,16 @@ func (s *sqliteStore) Close() error {
 	}
 	clear(s.stmts)
 	if len(errs) > 0 {
-		return errors.Join(errs...)
+		err := errors.Join(errs...)
+		log.Printf("error closing sqlite: %v", err)
 	}
 	return nil
 }
 
 func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
-	uptr.AssertTimes()        // modify the original with times if needed
-	u := *uptr                // copy this so we don't modify the original below
-	key := store.Key(u.URL()) // key is for the canonical URL
+	uptr.AssertTimes()             // modify the original with times if needed
+	u := *uptr                     // copy this so we don't modify the original below
+	key := store.Key(u.Data.URL()) // key is for the canonical URL
 	contentText := u.Data.ContentText
 	u.Data.ContentText = "" // make sure this is a copy
 	if u.Data.RequestedURL == nil {
