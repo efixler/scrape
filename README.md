@@ -18,7 +18,7 @@ Fast web scraping
 ### Features:
 - Reliable, accurate and fast parsing of web content using [go-trafilatura](https://github.com/markusmobius/go-trafilatura)
 - Content stored in a database to minimize outbound requests and optimize performance
-- Uses sqlite by default - no database server needed
+- Uses sqlite by default - no external server needed
 - Adaptable to other storage backends
 
 ### Output Format
@@ -48,32 +48,43 @@ Parsed field content is largely dependent on metadata included in the page. GIGO
 Here's an example, with long fields truncated:
 ```json
 {
-  "RequestedURL": "https://www.theverge.com/2023/12/6/23990466/google-gemini-llm-ai-model",
-  "Title": "Google launches Gemini, the AI model it hopes will take down GPT-4",
-  "Author": "David Pierce",
-  "URL": "https://www.theverge.com/2023/12/6/23990466/google-gemini-llm-ai-model",
-  "Hostname": "www.theverge.com",
-  "Description": "Google let OpenAI take the lead in the AI race — now, it’s mounting a comeback.",
-  "Sitename": "The Verge",
-  "Date": "2023-12-06T00:00:00Z",
-  "Categories": null,
+  "RequestedURL": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
+  "Title": "NASA’s Webb Stuns With New High-Definition Look at Exploded Star - NASA",
+  "Author": "Steve Sabia",
+  "URL": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
+  "Hostname": "www.nasa.gov",
+  "Description": "Like a shiny, round ornament ready to be placed in the perfect spot on a holiday tree, supernova remnant Cassiopeia A (Cas A) gleams in a new image from",
+  "Sitename": "NASA",
+  "Date": "2023-12-10T00:00:00Z",
+  "Categories": [
+    "Astrophysics",
+    "Goddard Space Flight Center",
+    "James Webb Space Telescope (JWST)",
+    "Missions",
+    "Nebulae",
+    "Science \u0026 Research",
+    "Stars",
+    "Supernovae",
+    "The Universe"
+  ],
   "Tags": [
-    "verge",
-    "front-page",
-    "google",
-    "tech",
-    "ai-artificial-intelligence",
-    "news",
-    "stream-23374468"
+    "Astrophysics",
+    "Goddard Space Flight Center",
+    "James Webb Space Telescope (JWST)",
+    "Missions",
+    "Nebulae",
+    "Science \u0026 Research",
+    "Stars",
+    "Supernovae",
+    "The Universe"
   ],
   "ID": "",
   "Fingerprint": "",
   "License": "",
   "Language": "en",
-  "Image": "https://cdn.vox-cdn.com/thumbor/VyXNzykQp5u4OHAsOFeo2cJc34E=/0x0:1920x1080/1200x628/filters:focal(960x540:961x541)/cdn.vox-cdn.com/uploads/chorus_asset/file/25137172/gemini_mm_02.png",
+  "Image": "https://www.nasa.gov/wp-content/uploads/2023/12/webb-stsci-01hggzdyh8ghhssnwzd71mf0xh-2k.png",
   "PageType": "article",
-  "ContentText": "It’s the beginning of a new era of AI at Google, says CEO Sundar Pichai: the Gemini era. Gemini is Google....",
-  "FetchTime": "2023-12-18T02:32:48Z"
+  "ContentText": "Mysterious features hide in near-infrared light Like a shiny, round ornament ready to be placed in the perfect spot on a holiday tree, supernova remnant Cassiopeia A (Cas A) gleams in a new image from NASA’s James Webb Space Telescope. As part of the 2023...(there's about 10x more content in this example, truncated in the docs for readability)
 }
 ```
 
