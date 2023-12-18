@@ -45,7 +45,7 @@ type URLDataStore interface {
 
 func (u *StoredUrlData) AssertTimes() {
 	if u.Data.FetchTime == nil || u.Data.FetchTime.IsZero() {
-		now := nowf()
+		now := nowf().UTC().Truncate(time.Second)
 		u.Data.FetchTime = &now
 	}
 	if u.TTL == nil {

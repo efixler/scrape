@@ -46,7 +46,14 @@ func CreateDB(ctx context.Context, filename string) error {
 }
 
 func dsn(filename string, options sqliteOptions) string {
-	dsn := fmt.Sprintf("file:%s?_busy_timeout=%d", filename, options.busyTimeout)
+	dsn := fmt.Sprintf(
+		"file:%s?_busy_timeout=%d&_journal_mode=%s&_cache_size=%d&_sync=%s",
+		filename,
+		options.busyTimeout,
+		options.journalMode,
+		options.cacheSize,
+		options.synchronous,
+	)
 	return dsn
 }
 

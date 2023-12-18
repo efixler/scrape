@@ -3,7 +3,6 @@ package scrape
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	nurl "net/url"
 	"sync"
@@ -64,8 +63,6 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 
 	// if we get here we're not cached
-	fmt.Printf("%s not found in cache\n", url)
-	// fetch
 	resource, err := f.fetcher.Fetch(url)
 	if err != nil {
 		return nil, err
@@ -79,7 +76,7 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		defer wg.Done()
 		_, err = f.storage.Store(sd)
 		if err != nil {
-			log.Printf("Error storing %s: %s", url, err)
+			log.Printf("Error storing %s: %s\n", url, err)
 		}
 	}()
 	return resource, nil

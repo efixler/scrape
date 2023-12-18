@@ -20,8 +20,11 @@ import (
 
 const (
 	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
+	DEFAULT_JOURNAL_MODE = "WAL"
+	DEFAULT_CACHE_SIZE   = -256000
+	DEFAULT_SYNC         = "OFF"
 	qStore               = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	qClear               = `DELETE FROM urls`
+	qClear               = `DELETE FROM urls; DELETE FROM id_map`
 	qLookupId            = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
 	qStoreId             = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
 	qClearId             = `DELETE FROM id_map where canonical_id = ?`
@@ -61,6 +64,9 @@ func Factory(filename string) store.Factory {
 
 type sqliteOptions struct {
 	busyTimeout time.Duration
+	journalMode string
+	cacheSize   int
+	synchronous string
 }
 
 type sqliteStore struct {
@@ -74,6 +80,9 @@ type sqliteStore struct {
 func defaultOptions() sqliteOptions {
 	return sqliteOptions{
 		busyTimeout: DEFAULT_BUSY_TIMEOUT,
+		journalMode: DEFAULT_JOURNAL_MODE,
+		cacheSize:   DEFAULT_CACHE_SIZE,
+		synchronous: DEFAULT_SYNC,
 	}
 }
 
@@ -298,7 +307,7 @@ func (s *sqliteStore) Clear() error {
 	if !ok {
 		return ErrStoreNotOpen
 	}
-	if _, err := db.ExecContext(s.ctx, createSQL); err != nil {
+	if _, err := db.ExecContext(s.ctx, qClear); err != nil {
 		return err
 	}
 	return nil

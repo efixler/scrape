@@ -52,7 +52,7 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	if err != nil {
 		return nil, err
 	}
-	fetchTime := time.Now().UTC()
+	fetchTime := time.Now().UTC().Truncate(time.Second)
 	resource := &resource.WebPage{
 		Metadata:     result.Metadata,
 		ContentText:  result.ContentText,

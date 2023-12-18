@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	nurl "net/url"
 	"os"
@@ -12,15 +14,59 @@ import (
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/store/sqlite"
-	//"github.com/efixler/scrape/trafilatura"
 )
 
 var (
-	flags     flag.FlagSet
-	noContent bool
-	createDB  bool
-	dbPath    string
+	flags       flag.FlagSet
+	noContent   bool
+	createDB    bool
+	dbPath      string
+	csvPath     string
+	csvUrlIndex int
+	clear       bool
 )
+
+func initFetcher() (*scrape.StorageBackedFetcher, error) {
+	fetcher, err := scrape.NewStorageBackedFetcher(
+		trafilatura.Factory(),
+		sqlite.Factory(dbPath),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
+	}
+	err = fetcher.Open(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("error opening storage backed fetcher: %s", err)
+	}
+	return fetcher, nil
+}
+
+func getArgs() []string {
+	if csvPath != "" {
+		csvFile, err := os.Open(csvPath)
+		if err != nil {
+			log.Fatalf("Error opening CSV file %s: %s", csvPath, err)
+		}
+		defer csvFile.Close()
+		reader := csv.NewReader(csvFile)
+		reader.FieldsPerRecord = -1 // allow variable number of fields, we only care about the first
+		reader.TrimLeadingSpace = true
+		reader.ReuseRecord = true
+		rval := make([]string, 0)
+		for {
+			record, err := reader.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("error reading CSV file %s: %s", csvPath, err)
+			}
+			rval = append(rval, record[csvUrlIndex])
+		}
+		return rval
+	}
+	return flags.Args()
+}
 
 func main() {
 	if createDB {
@@ -31,38 +77,47 @@ func main() {
 		log.Printf("Created database %s", dbPath)
 		return
 	}
-	url := flags.Arg(0)
-	parsedUrl, err := nurl.Parse(url)
+
+	fetcher, err := initFetcher()
 	if err != nil {
-		fmt.Printf("Error: %s\n", err)
-		usage()
+		log.Fatalf("Error initializing fetcher: %s", err)
 	}
-	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(),
-		sqlite.Factory(dbPath),
-	)
-	if err != nil {
-		log.Fatalf("Error creating storage backed fetcher: %s", err)
+	defer fetcher.Close()
+	if clear {
+		log.Fatal("Clearing database, not yet available here")
 	}
-	err = fetcher.Open(context.TODO())
-	if err != nil {
-		log.Fatalf("Error opening storage backed fetcher: %s", err)
+
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	args := getArgs()
+	if len(args) == 0 {
+		log.Print("Error: At least one URL is required\n\n")
+		flags.Usage()
+		os.Exit(1)
 	}
-	defer fetcher.Close() // not sure if this will work right with the waitgroup
-	// maybe filter utm_sources here
-	page, err := fetcher.Fetch(parsedUrl)
-	if err != nil {
-		log.Fatalf("Error fetching %s: %s", parsedUrl.String(), err)
+	for i := 0; i < len(args); i++ {
+		fmt.Println(args[i])
+		url := args[i]
+		parsedUrl, err := nurl.Parse(url)
+		if err != nil {
+			log.Printf("Error: invalue url %s, %s\n", url, err)
+			usage()
+		}
+		page, err := fetcher.Fetch(parsedUrl)
+		if err != nil {
+			log.Printf("Error fetching %s, skipping: %s", parsedUrl.String(), err)
+			continue
+		}
+		if noContent {
+			page.ContentText = ""
+		}
+		err = encoder.Encode(page)
+		if err != nil {
+			log.Fatalf("failed to marshal for url %s, skipping: %v", url, err)
+			continue
+		}
+		os.Stdout.Write([]byte(",\n"))
 	}
-	if noContent {
-		page.ContentText = ""
-	}
-	marshaled, err := json.MarshalIndent(page, "", "  ")
-	//marshaled, err := result.Metadata.MarshalText(result.Metadata)
-	if err != nil {
-		log.Fatalf("failed to marshal: %v", err)
-	}
-	fmt.Println(string(marshaled))
 }
 
 func init() {
@@ -71,15 +126,13 @@ func init() {
 	flags.BoolVar(&noContent, "notext", false, "Skip text content")
 	flags.BoolVar(&createDB, "create", false, "Create the database and exit")
 	flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
+	flags.StringVar(&csvPath, "csv", "", "CSV file path")
+	flags.IntVar(&csvUrlIndex, "csv-column", 1, "The index of the column in the CSV that contains the URLs")
+	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
 	// flags automatically adds -h and --help
 	flags.Parse(os.Args[1:])
 	if createDB {
 		return
-	}
-	if flags.NArg() != 1 {
-		fmt.Print("Error: URL is required\n\n")
-		flags.Usage()
-		os.Exit(1)
 	}
 }
 
@@ -87,10 +140,8 @@ func usage() {
 	fmt.Println(`Usage: 
 	scrape [flags] :url [...urls]
  
-  -C    Don't use the cache to retrieve content
-  -p    Prune local storage and exit
-  -P    Remove all stored entries from the cache
-  -h	Show this help message`)
+  -h	
+  	Show this help message`)
 
 	flags.PrintDefaults()
 }

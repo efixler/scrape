@@ -1,0 +1,25 @@
+2023/12/17 21:04:32 Error fetching RESOLVED_URL, skipping: Get "RESOLVED_URL": unsupported protocol scheme ""
+2023/12/17 21:07:01 Error fetching https://gizmodo.com/google-notebooklm-ai-notes-app-1851084245, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:07:12 Error fetching https://venturebeat.com/ai/chatgpt-rival-pi-launches-on-android/, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:07:43 Error fetching https://gizmodo.com/google-launches-gemini-ai-bard-pixel-8-preview-1851076747, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:07:52 Error fetching https://venturebeat.com/ai/meta-unveils-audiobox-an-ai-that-clones-voices-and-generates-ambient-sounds/, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:08:20 Error fetching https://www.europarl.europa.eu/news/en/press-room/20231206IPR15699/artificial-intelligence-act-deal-on-comprehensive-rules-for-trustworthy-ai, skipping: Get "https://www.europarl.europa.eu/news/en/press-room/20231206IPR15699/artificial-intelligence-act-deal-on-comprehensive-rules-for-trustworthy-ai": read tcp 192.168.50.85:55884->136.173.69.97:443: read: connection reset by peer
+2023/12/17 21:08:30 Error fetching https://kotaku.com/war-games-muslim-arab-call-of-duty-palestine-1851055848, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:09:13 Error fetching https://gizmodo.com/indiana-jones-5-ending-spoiler-alternate-harrison-ford-1851085747, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:09:25 Error fetching https://gizmodo.com/doctor-who-the-giggle-recap-bigeneration-ncuti-gatwa-1851087704, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:09:50 Error fetching https://gizmodo.com/sam-altman-ceo-psychologically-abusive-openai-1851082091, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:10:01 Error fetching https://gizmodo.com/paul-walker-fast-and-furious-death-fast-11-vin-diesel-1851028733, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:10:12 Error fetching https://www.politico.com/news/magazine/2023/12/12/zelenskyy-in-lilliput-someone-shrunk-ukraines-war-coalition-00131199, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:10:54 Error fetching https://gizmodo.com/water-spritz-improve-espresso-grinding-science-volcano-1851071303, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:11:19 Error fetching https://www.seattletimes.com/seattle-news/politics/attacked-by-conservatives-uw-misinformation-researcher-gears-up-for-2024/, skipping: Get "https://www.seattletimes.com/seattle-news/politics/attacked-by-conservatives-uw-misinformation-researcher-gears-up-for-2024/": stream error: stream ID 1; INTERNAL_ERROR; received from peer
+2023/12/17 21:11:38 Error fetching https://gizmodo.com/doctor-who-bigeneration-explained-ncuti-gatwa-bbc-1851093740, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:12:07 Error fetching https://gizmodo.com/zepbound-tirzepatide-weight-loss-have-to-keep-taking-it-1851092818, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:12:20 Error fetching https://gizmodo.com/google-gemini-nano-pixel-8-pro-ai-phone-1851076797, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:13:30 Error fetching https://gizmodo.com/freewrite-alpha-review-performance-e-typewriter-writing-1851082685, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:13:50 Error fetching https://venturebeat.com/ai/how-ai-can-cut-two-hours-of-work-into-15-minutes-with-sap-cto-juergen-mueller/, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:14:08 Error fetching https://gizmodo.com/apple-iphone-15-journal-app-ios-emotions-1851090952, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:14:11 Error fetching https://jalopnik.com/over-2-million-new-cars-are-just-sitting-on-dealer-lots-1851088858, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:14:30 Error fetching https://gizmodo.com/robert-pattinson-boy-and-the-heron-ghibli-miyazaki-dub-1851081654, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:14:36 Error fetching https://gizmodo.com/nasa-shows-off-concept-for-an-alien-hunting-cryobot-pro-1851074827, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:15:34 Error fetching https://kotaku.com/analogue-duo-review-pc-engine-turbografx-16-1851088702, skipping: text and comments are not long enough: 0 0
+2023/12/17 21:16:38 Error fetching https://www.avclub.com/poor-things-review-emma-stone-comes-to-life-in-a-femin-1851000633, skipping: text and comments are not long enough: 0 0
