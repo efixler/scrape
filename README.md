@@ -13,9 +13,7 @@ Fast web scraping
 ## Description
 `scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages at medium scale.
 
-Install or build the binary, and operate 
-
-A tool to grab metadata (including description, image) and text content from web pages. Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or a server with a REST API.
+ Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or a server with a REST API.
 
 ### Features:
 - Reliable, accurate and fast parsing of web content using [go-trafilatura](https://github.com/markusmobius/go-trafilatura)
@@ -30,7 +28,7 @@ JSON output is a superset of Trafilatura format.
 | ----  | ---- | ------------|
 | `Hostname` | Domain name | The domain serving this resource |
 | `RequestedURL` | URL | The URL that was requested |
-| `URL` | URL | The (canonical) URL for the page. If not present, will report the same value as RequestedURL |
+| `URL` | URL | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |
 | `Date` | ISO8601 | The publish date of the page, in UTC time |
 | `Sitename` | Text | Identifies the publisher. Can be domain, company name, or other text, IRL usage not consistent |
 | `Image` | URL | Hero image link |
@@ -43,7 +41,7 @@ JSON output is a superset of Trafilatura format.
 | `License` | Text | Generally empty |
 | `Language` | Text | 2-letter language code |
 | `PageType` | Text | If it's there it's usually "article" following the `og`` usage |
-| `ContentText` | Text | The text of the page, will all HML removed |
+| `ContentText` | Text | The text of the page, with all HTML removed |
 
 Parsed field content is largely dependent on metadata included in the page. GIGO/YMMV.
 
