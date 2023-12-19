@@ -50,6 +50,11 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	result, err := trafilatura.Extract(resp.Body, topts)
 	if err != nil {
+		// there's an error that is thrown here that typically indicates
+		// a JS-loaded page (that has no content at all, which isn't necessarily
+		// true in all of these cases)
+		// It's a plain error with the message:
+		// "text and comments are not long enough: 0 0"
 		return nil, err
 	}
 	fetchTime := time.Now().UTC().Truncate(time.Second)

@@ -21,7 +21,7 @@ import (
 const (
 	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
 	DEFAULT_JOURNAL_MODE = "WAL"
-	DEFAULT_CACHE_SIZE   = -256000
+	DEFAULT_CACHE_SIZE   = 20000
 	DEFAULT_SYNC         = "OFF"
 	qStore               = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	qClear               = `DELETE FROM urls; DELETE FROM id_map`

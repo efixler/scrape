@@ -96,7 +96,7 @@ func main() {
 		os.Exit(1)
 	}
 	for i := 0; i < len(args); i++ {
-		fmt.Println(args[i])
+		// fmt.Println(args[i])
 		url := args[i]
 		parsedUrl, err := nurl.Parse(url)
 		if err != nil {
@@ -105,7 +105,7 @@ func main() {
 		}
 		page, err := fetcher.Fetch(parsedUrl)
 		if err != nil {
-			log.Printf("Error fetching %s, skipping: %s", parsedUrl.String(), err)
+			log.Printf("Error fetching %s, skipping: %v", parsedUrl.String(), err)
 			continue
 		}
 		if noContent {
