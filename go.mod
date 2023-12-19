@@ -28,9 +28,9 @@ require (
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/rivo/uniseg v0.4.3 // indirect
 	github.com/rs/zerolog v1.29.1 // indirect
-	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/tetratelabs/wazero v1.2.1 // indirect
-	github.com/wasilibs/go-re2 v1.3.0 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/tetratelabs/wazero v1.5.0 // indirect
+	github.com/wasilibs/go-re2 v1.4.1 // indirect
 	github.com/yosssi/gohtml v0.0.0-20201013000340-ee4748c638f4 // indirect
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/net v0.19.0 // indirect

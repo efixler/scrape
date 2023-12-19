@@ -17,9 +17,10 @@ Fast web scraping
 
 ### Features:
 - Reliable, accurate and fast parsing of web content using [go-trafilatura](https://github.com/markusmobius/go-trafilatura)
-- Content stored in a database to minimize outbound requests and optimize performance
-- Uses sqlite by default - no external server needed
-- Adaptable to other storage backends
+- Scraped content backed by a database to minimize outbound requests and optimize performance
+  - Resources stored with a TTL (30 days by default) to limit storage size and prevent staleness
+  - Uses [sqlite](https://www.sqlite.org/index.html) - no external server needed
+  - Adaptable to other storage backends
 
 ### Output Format
 JSON output is a superset of Trafilatura format. 
@@ -30,6 +31,7 @@ JSON output is a superset of Trafilatura format.
 | `RequestedURL` | URL | The URL that was requested |
 | `URL` | URL | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |
 | `Date` | ISO8601 | The publish date of the page, in UTC time |
+| `FetchTime` | ISO8601 | The time that URL was retrieved |
 | `Sitename` | Text | Identifies the publisher. Can be domain, company name, or other text, IRL usage not consistent |
 | `Image` | URL | Hero image link |
 | `Title` | Text | The page's title | 
