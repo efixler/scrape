@@ -14,6 +14,7 @@ import (
 
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
+	"golang.org/x/exp/slog"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -87,7 +88,12 @@ func defaultOptions() sqliteOptions {
 }
 
 func (s *sqliteStore) Open(ctx context.Context) error {
+
 	s.ctx = ctx
+	// close this handle when the context is done
+	context.AfterFunc(ctx, func() {
+		s.Close()
+	})
 	fqn, err := dbPath(s.filename)
 	if err != nil {
 		return err
@@ -114,8 +120,10 @@ func (s *sqliteStore) Open(ctx context.Context) error {
 	return nil
 }
 
-// Caller must close when done
+// Close will be called when the context passed to Open() is cancelled
+// TODO: When the last instance using this db is done, close the DB
 func (s *sqliteStore) Close() error {
+	slog.Debug("Really Closing sqlite store", "dsn", s.dsn)
 	var errs []error
 	for _, stmt := range s.stmts {
 		if stmt != nil {
@@ -128,7 +136,8 @@ func (s *sqliteStore) Close() error {
 	clear(s.stmts)
 	if len(errs) > 0 {
 		err := errors.Join(errs...)
-		log.Printf("error closing sqlite: %v", err)
+		slog.Error("error closing sqlite", "dsn", s.dsn, "error", err)
+		return err
 	}
 	return nil
 }

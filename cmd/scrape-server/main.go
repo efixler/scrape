@@ -8,8 +8,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/efixler/scrape/server"
 )
 
 var (
@@ -18,8 +21,14 @@ var (
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handleHome)
+	slog.Info("scrape-server starting up", "port", port)
+	// use this context to handle resources hanging off mux handlers
+	ctx, cancel := context.WithCancel(context.Background())
+	mux, err := server.InitMux(ctx)
+	if err != nil {
+		slog.Error("scrape-server error initializing the server's mux", "error", err)
+		os.Exit(1)
+	}
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", port),
 		Handler:        mux,
@@ -28,33 +37,70 @@ func main() {
 		IdleTimeout:    60 * time.Second,
 		MaxHeaderBytes: 1 << 16,
 	}
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	slog.Info("Starting scrape-server", "port", port)
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("scrape-server shutting down", "error", err)
 		}
 	}()
-	slog.Info("scrape-server started")
-	<-done
+	slog.Info("scape-server started", "addr", s.Addr)
+	kill := make(chan os.Signal, 1)
+	signal.Notify(kill, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	<-kill
+	wchan := shutdownServer(s, cancel)
+	<-wchan
+	slog.Info("scrape-server bye!")
+}
+
+// Shutdown the server and then progate the shutdown to the mux
+// This will let the requests finish before shutting down the db
+// cf is the cancel function for the mux context
+func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
+	slog.Info("scrape-server shutting down")
+	wchan := make(chan bool)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel() // releases resources.
+	context.AfterFunc(ctx, func() {
+		cf()
+		// if main() exits before the cancelfunc is done, logs don't get flushed
+		// so we wait a bit here. There isn't really a good way to find out when
+		// cancel _finishes_ so we wait instead. This would logically be a little
+		// better as an AfterFunc to the mux context, but that doesn't work any
+		// better than this.
+		time.Sleep(2 * time.Second)
+		close(wchan)
+	})
+	defer cancel()
 	if err := s.Shutdown(ctx); err != nil {
 		slog.Error("scrape-server shutdown failed", "error", err)
 	}
 	slog.Info("scrape-server stopped")
-}
-
-func handleHome(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello, world!"))
+	return wchan
 }
 
 func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
+	// flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
 	flags.IntVar(&port, "port", 8080, "The port to run the server on")
+	var logLevel slog.Level
+	flags.Func("log-level", "Set the log level [debug|error|info|warn] (info)", func(s string) error {
+		switch strings.ToLower(s) {
+		case "debug":
+			logLevel = slog.LevelDebug
+		case "warn":
+			logLevel = slog.LevelWarn
+		case "error":
+			logLevel = slog.LevelError
+		}
+		return nil
+	})
 	flags.Parse(os.Args[1:])
+	logger := slog.New(slog.NewTextHandler(
+		os.Stderr,
+		&slog.HandlerOptions{
+			Level: logLevel,
+		},
+	))
+	slog.SetDefault(logger)
 }
 
 func usage() {

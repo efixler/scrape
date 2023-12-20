@@ -19,6 +19,7 @@ var (
 type StorageBackedFetcher struct {
 	fetcher fetch.URLData
 	storage store.URLDataStore
+	closed  bool
 }
 
 func NewStorageBackedFetcher(
@@ -41,14 +42,17 @@ func NewStorageBackedFetcher(
 
 // We will need the ctx here at some point (and will need to change to a reference pointer)
 func (f StorageBackedFetcher) Open(ctx context.Context) error {
-	err := f.storage.Open(ctx)
+	err := f.fetcher.Open(ctx)
 	if err != nil {
 		return err
 	}
-	err = f.fetcher.Open(ctx)
+	err = f.storage.Open(ctx)
 	if err != nil {
 		return err
 	}
+	context.AfterFunc(ctx, func() {
+		f.Close()
+	})
 	return nil
 }
 
@@ -82,25 +86,18 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	return resource, nil
 }
 
-// You must exolicitly call Close() on this object to ensure that
-// all resources are released.
-func (f StorageBackedFetcher) Close() error {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := f.fetcher.Close()
-		if err != nil {
-			log.Printf("Error closing fetcher: %s", err)
-		}
+// Close() will be invoked when the context sent to Open() is done
+// If that context doesn't get cancelled, Close() must be called to
+// release resources
+func (f *StorageBackedFetcher) Close() error {
+	if f.closed {
+		return nil
+	}
+	defer func() {
+		f.closed = true
 	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := f.storage.Close()
-		if err != nil {
-			log.Printf("Error closing storage: %s", err)
-		}
-	}()
-	wg.Wait()
+	f.fetcher.Close()
+	f.storage.Close()
+
 	return nil
 }
