@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
+	"io/fs"
 	nurl "net/url"
 	"os"
 	"time"
 
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/store/internal/connection"
 	"golang.org/x/exp/slog"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -47,9 +48,9 @@ const (
 )
 
 var (
-	dbs                map[string]*sql.DB
 	ErrMappingNotFound = errors.New("id mapping not found")
 	ErrStoreNotOpen    = errors.New("store not opened for this dsn")
+	ErrNoDatabase      = errors.New("the database did not exist")
 )
 
 func Factory(filename string) store.Factory {
@@ -98,32 +99,28 @@ func (s *sqliteStore) Open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	s.dsn = dsn(s.filename, s.options)
 	// SQLLite will open even if the the DB file is not present, it will only fail later.
 	// So, we grab the db directly from the DSN map here, while we have the filename,
 	// to make sure that we can print an informative error message if the file is missing.
 	// This should only get called the first time a dsn is opened, as all instances of a struct
 	// using the same dsn will share the same db.
-	s.dsn = dsn(s.filename, s.options)
-	_, ok := dbs[s.dsn]
-	if ok {
-		return nil
+	if !connection.HasOpenedDB(s.dsn) {
+		if _, err := os.Stat(fqn); errors.Is(err, fs.ErrNotExist) {
+			return errors.Join(
+				ErrNoDatabase,
+				fmt.Errorf("database file %s does not exist", fqn),
+			)
+		}
 	}
-	if _, err := os.Stat(fqn); os.IsNotExist(err) {
-		return fmt.Errorf("database file %s does not exist", fqn)
-	}
-	db, err := sql.Open("sqlite3", s.dsn)
-	if err != nil {
-		log.Printf("error opening db: %v", err)
-		return err
-	}
-	dbs[s.dsn] = db
-	return nil
+	_, err = connection.OpenDB(connection.SQLite, s.dsn)
+	return err
 }
 
 // Close will be called when the context passed to Open() is cancelled
 // TODO: When the last instance using this db is done, close the DB
 func (s *sqliteStore) Close() error {
-	slog.Debug("Really Closing sqlite store", "dsn", s.dsn)
+	slog.Info("Really Closing sqlite store", "dsn", s.dsn)
 	var errs []error
 	for _, stmt := range s.stmts {
 		if stmt != nil {
@@ -138,6 +135,11 @@ func (s *sqliteStore) Close() error {
 		err := errors.Join(errs...)
 		slog.Error("error closing sqlite", "dsn", s.dsn, "error", err)
 		return err
+	}
+	if connection.CloseDB(s.dsn) {
+		slog.Info("Closed sqlite store", "dsn", s.dsn)
+	} else {
+		slog.Debug("Not closing sqlite store, probably a repeat call", "dsn", s.dsn)
 	}
 	return nil
 }
@@ -171,7 +173,10 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 		string(metadata),
 		contentText,
 	}
-	db := dbs[dsn(s.filename, s.options)]
+	// the expectation here is that the DB was already opened in Open()
+	// if not we will end up with a leak, so db will be null and we will
+	// get a panic here if that happens
+	db := connection.GetDB(s.dsn)
 	stmt, ok := s.stmts[Store]
 	if !ok {
 		stmt, err = db.PrepareContext(s.ctx, qStore)
@@ -198,8 +203,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 }
 
 func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
-	// key := store.Key(parsedUrl)
-	db := dbs[dsn(s.filename, s.options)]
+	db := connection.GetDB(s.dsn)
 	stmt, ok := s.stmts[StoreId]
 	if !ok {
 		var err error
@@ -226,7 +230,7 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	default:
 		return nil, err
 	}
-	db := dbs[dsn(s.filename, s.options)]
+	db := connection.GetDB(s.dsn)
 	stmt, ok := s.stmts[Fetch]
 	if !ok {
 		stmt, err = db.PrepareContext(s.ctx, qFetch)
@@ -284,7 +288,7 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 // Will search url_ids to see if there's a parent entry for this url.
 func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
 	// key := store.Key(parsedUrl)
-	db := dbs[dsn(s.filename, s.options)]
+	db := connection.GetDB(s.dsn)
 	stmt, ok := s.stmts[LookupId]
 	if !ok {
 		var err error
@@ -312,8 +316,8 @@ func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
 }
 
 func (s *sqliteStore) Clear() error {
-	db, ok := dbs[dsn(s.filename, s.options)]
-	if !ok {
+	db := connection.GetDB(s.dsn)
+	if db == nil {
 		return ErrStoreNotOpen
 	}
 	if _, err := db.ExecContext(s.ctx, qClear); err != nil {
@@ -324,7 +328,7 @@ func (s *sqliteStore) Clear() error {
 
 func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
-	db := dbs[dsn(s.filename, s.options)]
+	db := connection.GetDB(s.dsn)
 	stmt, ok := s.stmts[Delete]
 	if !ok {
 		stmt, err := db.PrepareContext(s.ctx, qDelete)
@@ -349,8 +353,4 @@ func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	default:
 		return false, fmt.Errorf("expected 0 or 1 row affected, got %d", rows)
 	}
-}
-
-func init() {
-	dbs = make(map[string]*sql.DB, 1)
 }

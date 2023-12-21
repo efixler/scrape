@@ -20,6 +20,7 @@ var (
 	port  int
 )
 
+// TODO: Create the db on startup if it doesn't exist
 func main() {
 	slog.Info("scrape-server starting up", "port", port)
 	// use this context to handle resources hanging off mux handlers
@@ -53,11 +54,15 @@ func main() {
 
 // Shutdown the server and then progate the shutdown to the mux
 // This will let the requests finish before shutting down the db
-// cf is the cancel function for the mux context
+// cf is the cancel function for the mux context, or, generically
+// speaking, a cancel function to queue up after the server is done
+// Caller should block on the returned channel.
 func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
 	slog.Info("scrape-server shutting down")
 	wchan := make(chan bool)
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	// a large request set can take a while to finish,
+	// so we give the server a couple minutes to finish if it needs to
+	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	context.AfterFunc(ctx, func() {
 		cf()
 		// if main() exits before the cancelfunc is done, logs don't get flushed
@@ -82,6 +87,7 @@ func init() {
 	// flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
 	flags.IntVar(&port, "port", 8080, "The port to run the server on")
 	var logLevel slog.Level
+
 	flags.Func("log-level", "Set the log level [debug|error|info|warn] (info)", func(s string) error {
 		switch strings.ToLower(s) {
 		case "debug":
@@ -94,6 +100,7 @@ func init() {
 		return nil
 	})
 	flags.Parse(os.Args[1:])
+	fmt.Printf("Setting log level to %d\n", logLevel)
 	logger := slog.New(slog.NewTextHandler(
 		os.Stderr,
 		&slog.HandlerOptions{

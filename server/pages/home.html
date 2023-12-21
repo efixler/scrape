@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<title>scrape</title>
+	<style>
+		label {
+			display: block;
+			font: 1rem 'Verdana'
+		}
+		input,
+		label {
+  			margin: 0.2rem 0;
+		}
+	</style>
+</head>
+<body>
+<p>
+<form action="/extract" method="GET" name="scrape" target="data_frame">
+<label for="url">Enter a URL:</label> 
+<input type="url" name="url" value="http://" size="72" maxlength="200" "pattern"="https?://.*" required>
+<input type="submit" value="Hit It">
+</form>
+</p>
+<iframe 
+	id="data"
+	title="Scrape Results"
+	name="data_frame"
+	>
+</body>
+</html>

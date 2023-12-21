@@ -9,6 +9,7 @@ import (
 
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/store/internal/connection"
 )
 
 func TestOpen(t *testing.T) {
@@ -21,12 +22,13 @@ func TestOpen(t *testing.T) {
 		t.Errorf("Error opening database: %v", err)
 	}
 	defer db.Close()
-	realDb, ok := db.(*sqliteStore)
+	realStore, ok := db.(*sqliteStore)
+	dsn := realStore.dsn
 	if !ok {
 		t.Errorf("Database not of type sqliteStore")
 	}
-	_, ok = dbs[dsn(realDb.filename, realDb.options)]
-	if !ok {
+	sqlDB := connection.GetDB(dsn)
+	if sqlDB == nil {
 		t.Errorf("Database reference not stored in dbs map")
 	}
 }
