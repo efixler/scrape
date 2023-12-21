@@ -139,6 +139,49 @@ Usage:
   -notext
         Skip text content
 ```
-# Usage as a server
+## Usage as a server
+The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
+
+`scrape-server` is intended for use in closed environments at medium scale. There's no authentication, rate limiting or url sanitization beyond encoding checks. Don't deploy this on an open public network. Do deploy it as a sidecar, in a firewalled environment, or another environment that won't get unbounded quantities of hits.
+
+### Installation
+```
+go install github.com/efixler/scrape/cmd/scrape-server@latest
+```
+```
+Usage: 
+        scrape-server [-port nnnn] [-h]
+ 
+  -h
+        Show this help message
+  -log-level value
+        Set the log level [debug|error|info|warn] (info)
+  -port int
+        The port to run the server on (default 8080)
+```
+### API 
+#### extract
+Fetch the metadata and text content for the specified URL. 
+| Endpoint | Method | Description |
+| -------- | ------ | ----------- |
+| url | GET, POST | The url to fetch. Should be url encoded. |
+
+#### Global Params 
+These params work for any endpoint 
+| Param | Value | Description |
+| ----- | ----- | ----------- |
+| pp | 1 | Pretty print JSON output |
+
+
 
 # Roadmap
+## TODOs
+
+- Bulk fetch in the web server
+  - Test and benchmark concurrency options for bulk fetch
+- Enforce TTL eviction and/or DB capacity limits
+      - TTL currently only forces a re-fetch after TTL expiry 
+- Headless fallback for pages that require Javascript
+- Expose more configuration items as needed
+  - Database path
+  - Default TTL

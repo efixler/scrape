@@ -221,13 +221,22 @@ func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
 	return nil
 }
 
+// Fetch will return the stored data for requested URL, or nil if not found.
+// If the requested URL matches a canonical URL AND the requested URL has not been fetched
+// before, then we'll return the previously data for the canonical URL.
+// We don't get canonical on the first try, since the canonical is derived from the page's parse,
+// and it hasn't been parsed yet here. This has the side effect of letting the caller add arbitrary
+// parameters to force a page re-fetch.
 func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	requested_key := store.Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
 	case ErrMappingNotFound:
+		slog.Debug("sqlite: No mapped key for resource, trying direct key", "url", url.String(), "requested_key", requested_key, "canonical_key", key)
 		key = requested_key
-	case nil: // do nothing
+	case nil:
+		// we have a key
+		slog.Debug("sqlite: Found mapped key for resource", "url", url.String(), "requested_key", requested_key, "canonical_key", key)
 	default:
 		return nil, err
 	}
