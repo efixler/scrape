@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"sync"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 type DriverName string
@@ -58,8 +58,9 @@ func (s *sharedDB) release() bool {
 		s.db = nil
 		return true
 	} else if out < 0 {
-		// This can happen on a double close
-		slog.Warn("db handle count went negative", "dsn", s.dsn, "count", out)
+		// This can happen on a double close, not a big deal, but leave a log message
+		// here so we can debug
+		slog.Debug("db handle count went negative", "dsn", s.dsn, "count", out)
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
 		if s.count < 0 {

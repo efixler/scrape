@@ -7,15 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	nurl "net/url"
-	"os"
 	"time"
+
+	"log/slog"
 
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/store/internal/connection"
-	"golang.org/x/exp/slog"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -24,7 +23,9 @@ const (
 	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
 	DEFAULT_JOURNAL_MODE = "WAL"
 	DEFAULT_CACHE_SIZE   = 20000
-	DEFAULT_SYNC         = "OFF"
+	SQLITE_SYNC_OFF      = "OFF"
+	SQLITE_SYNC_NORMAL   = "NORMAL"
+	DEFAULT_SYNC         = SQLITE_SYNC_OFF
 	qStore               = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
 	qClear               = `DELETE FROM urls; DELETE FROM id_map`
 	qLookupId            = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
@@ -106,7 +107,7 @@ func (s *sqliteStore) Open(ctx context.Context) error {
 	// This should only get called the first time a dsn is opened, as all instances of a struct
 	// using the same dsn will share the same db.
 	if !connection.HasOpenedDB(s.dsn) {
-		if _, err := os.Stat(fqn); errors.Is(err, fs.ErrNotExist) {
+		if !exists(fqn) {
 			return errors.Join(
 				ErrNoDatabase,
 				fmt.Errorf("database file %s does not exist", fqn),
@@ -120,7 +121,7 @@ func (s *sqliteStore) Open(ctx context.Context) error {
 // Close will be called when the context passed to Open() is cancelled
 // TODO: When the last instance using this db is done, close the DB
 func (s *sqliteStore) Close() error {
-	slog.Info("Really Closing sqlite store", "dsn", s.dsn)
+	slog.Debug("Really Closing sqlite store", "dsn", s.dsn)
 	var errs []error
 	for _, stmt := range s.stmts {
 		if stmt != nil {

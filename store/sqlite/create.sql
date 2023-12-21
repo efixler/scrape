@@ -36,14 +36,5 @@ CREATE TABLE urls (
 WITHOUT ROWID,
 STRICT;
 
-
--- Index: url_id_index
-DROP INDEX IF EXISTS url_id_index;
-
-CREATE INDEX url_id_index ON id_map (
-    url_id
-);
-
-
 COMMIT TRANSACTION;
 PRAGMA foreign_keys = on;

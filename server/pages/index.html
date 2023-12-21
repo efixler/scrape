@@ -18,14 +18,20 @@
 <p>
 <form action="/extract" method="GET" name="scrape" target="data_frame">
 <label for="url">Enter a URL:</label> 
-<input type="url" name="url" value="http://" size="72" maxlength="200" "pattern"="https?://.*" required>
+<input type="url" name="url" value="https://" size="72" maxlength="200" "pattern"="https?://.*" required>
+<input type="hidden" name="pp" value="1">
 <input type="submit" value="Hit It">
 </form>
 </p>
+<div style="padding-top:20px">
 <iframe 
 	id="data"
 	title="Scrape Results"
 	name="data_frame"
+	width="1024"
+	height="1280"
 	>
+
+</div>
 </body>
 </html>

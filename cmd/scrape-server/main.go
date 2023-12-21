@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/efixler/scrape/server"
+	"github.com/efixler/scrape/store/sqlite"
 )
 
 var (
@@ -23,6 +25,8 @@ var (
 // TODO: Create the db on startup if it doesn't exist
 func main() {
 	slog.Info("scrape-server starting up", "port", port)
+	// Create the db if it doesn't exist
+	assertDBExists()
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
 	mux, err := server.InitMux(ctx)
@@ -79,6 +83,19 @@ func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
 	}
 	slog.Info("scrape-server stopped")
 	return wchan
+}
+
+func assertDBExists() {
+	err := sqlite.CreateDB(context.Background(), sqlite.DEFAULT_DB_FILENAME)
+	switch {
+	case err == nil:
+		slog.Info("scrape-server created database", "path", sqlite.DEFAULT_DB_FILENAME)
+	case errors.Is(err, sqlite.ErrDatabaseExists):
+		slog.Info("scrape-server found db", "path", sqlite.DEFAULT_DB_FILENAME)
+	default:
+		slog.Error("scrape-server error creating database", "error", err)
+		panic(err)
+	}
 }
 
 func init() {

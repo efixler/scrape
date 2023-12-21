@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -23,8 +24,12 @@ func InitMux(ctx context.Context) (*http.ServeMux, error) {
 	return mux, nil
 }
 
+//go:embed pages/index.html
+var home []byte
+
 func handleHome(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello, world!"))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(home)
 }
 
 func NewScrapeHandler(ctx context.Context) (*scrapeHandler, error) {
