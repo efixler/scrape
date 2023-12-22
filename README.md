@@ -4,10 +4,11 @@ Fast web scraping
 ## Table of Contents
 
 - [Description](#description)
+- [Output Format](#output-format)
 - [Status](#status)
-- [Installing](#installing)
 - [Usage as a CLI Application](#usage-as-a-cli-application)
-- [Usage as a server](#usage-as-a-server)
+- [Usage as a Server](#usage-as-a-server)
+- [Building and Developing](#building-and-developing)
 - [Roadmap](#roadmap)
 
 ## Description
@@ -22,7 +23,7 @@ Fast web scraping
   - Uses [sqlite](https://www.sqlite.org/index.html) - no external server needed
   - Adaptable to other storage backends
 
-### Output Format
+## Output Format
 JSON output is a superset of Trafilatura format. 
 
 | Field | Type | Description |
@@ -92,15 +93,10 @@ Here's an example, with long fields truncated:
 ```
 
 
-
-
 ## Status
 `scrape` and `scrape-server` are both functional as described here. Both should be buildable in any environment that has `cgo` and runnable wherever there are `sqlite` libs.
 
 On an M1 Mac and a middling internet connection, and with a test sample of about 2K urls, resources are downloaded, stored, and returned at a rate of about 2-3/sec. Repeating that same set with the items having been loaded loads and returns stored items at about 120-150 results/sec. 
-
-
-## Installing
 
 
 ## Usage as a CLI Application
@@ -110,7 +106,7 @@ go install github.com/efixler/scrape/cmd/scrape@latest
 ```
 The `scrape` command provides single and batch retrieval, using or bypassing the connected storage db. It also provide command to manage the backing store.
 
-#### Quickstart
+### Quickstart
 ```
 > scrape -create
 > scrape http://www.foo.com/some/url/path
@@ -137,7 +133,7 @@ Usage:
   -notext
         Skip text content
 ```
-## Usage as a server
+## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
 
 `scrape-server` is intended for use in closed environments at medium scale. There's no authentication, rate limiting or url sanitization beyond encoding checks. Don't deploy this on an open public network. Do deploy it as a sidecar, in a firewalled environment, or another environment that won't get unbounded quantities of hits.
@@ -173,10 +169,34 @@ These params work for any endpoint
 | ----- | ----- | ----------- |
 | pp | 1 | Pretty print JSON output |
 
+## Building and Developing
+
+### Building 
+
+Best to build with `make`. The Makefile has a help target, here is its output:
+
+```
+Usage:
+  make 
+  build            build the binaries, to the build/ folder (post vet)
+  clean            clean the build directory
+  docker-build     build the docker image
+  docker-run       run the docker image, binding to port 8080, or the env value of SCRAPE_PORT
+  vet              fmt, vet, and staticcheck
+  help             show this help message
+```
+
+### Using the Docker
+The Docker is mostly intended for distribution and testing, not development. The docker build
+pulls the source from the repo via `go install` and the `latest` tag, so, this build will
+not be up to date with local changes.
+
+The docker will mount a local folder called `docker/data` and bind that to the container
+for file storage.
 
 
-# Roadmap
-## TODOs
+## Roadmap
+### TODOs
 
 - Bulk fetch in the web server
   - Test and benchmark concurrency options for bulk fetch

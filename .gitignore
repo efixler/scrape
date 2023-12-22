@@ -24,6 +24,6 @@
 go.work
 samples/
 scrape_data/
-bin/
+build/
 docker/
 # cmd/scrape/test_data
