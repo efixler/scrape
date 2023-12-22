@@ -117,7 +117,6 @@ func init() {
 		return nil
 	})
 	flags.Parse(os.Args[1:])
-	fmt.Printf("Setting log level to %d\n", logLevel)
 	logger := slog.New(slog.NewTextHandler(
 		os.Stderr,
 		&slog.HandlerOptions{

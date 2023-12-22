@@ -95,11 +95,9 @@ Here's an example, with long fields truncated:
 
 
 ## Status
-`scrape` is functional as a CLI program, accepting urls on the command line or CSV.
+`scrape` and `scrape-server` are both functional as described here. Both should be buildable in any environment that has `cgo` and runnable wherever there are `sqlite` libs.
 
 On an M1 Mac and a middling internet connection, and with a test sample of about 2K urls, resources are downloaded, stored, and returned at a rate of about 2-3/sec. Repeating that same set with the items having been loaded loads and returns stored items at about 120-150 results/sec. 
-
-Both the code and the database could get optimized (it's basically single threaded right now, with miminal DB optimizations)
 
 
 ## Installing
@@ -162,6 +160,9 @@ Usage:
 ### API 
 #### extract
 Fetch the metadata and text content for the specified URL. 
+
+Returns JSON payload as decribed above.
+
 | Endpoint | Method | Description |
 | -------- | ------ | ----------- |
 | url | GET, POST | The url to fetch. Should be url encoded. |
@@ -185,3 +186,5 @@ These params work for any endpoint
 - Expose more configuration items as needed
   - Database path
   - Default TTL
+- Add an adaptor for MySQL
+- Maybe compress text content in the DB, if this can meaningfully reduce size

@@ -1,8 +1,8 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="utf-8" />
 	<title>scrape</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<style>
 		label {
 			display: block;
@@ -17,19 +17,18 @@
 <body>
 <p>
 <form action="/extract" method="GET" name="scrape" target="data_frame">
-<label for="url">Enter a URL:</label> 
-<input type="url" name="url" value="https://" size="72" maxlength="200" "pattern"="https?://.*" required>
+<label for="url">Enter a URL:</label><input type="submit" value="Hit It">
+<input type="url" name="url" id="url" value="https://" size="96" maxlength="200" pattern="https?://.*" required title="URL">
 <input type="hidden" name="pp" value="1">
-<input type="submit" value="Hit It">
 </form>
 </p>
-<div style="padding-top:20px">
+<div style="padding-top:16px;">
 <iframe 
 	id="data"
 	title="Scrape Results"
 	name="data_frame"
 	width="1024"
-	height="1280"
+	height="1024"
 	>
 
 </div>

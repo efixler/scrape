@@ -10,9 +10,9 @@ import (
 
 type WebPage struct {
 	trafilatura.Metadata
+	FetchTime    *time.Time `json:",omitempty"`
 	ContentText  string     `json:",omitempty"`
 	RequestedURL *nurl.URL  `json:"-"`
-	FetchTime    *time.Time `json:",omitempty"`
 	canonicalUrl *nurl.URL
 }
 

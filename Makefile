@@ -1,8 +1,9 @@
 MODULE_NAME := $(shell go list -m)
+DOCKER_IMAGE_NAME := ${shell basename ${MODULE_NAME}}-bookworm-slim
 
 .DEFAULT_GOAL := build
 
-.PHONY: fmt vet build
+.PHONY: fmt vet build linux clean
 
 fmt:
 	@echo "Running go fmt..."
@@ -24,6 +25,12 @@ build: vet
 	@go build -o bin/ ./cmd/scrape/... 
 	@go build -o bin/ ./cmd/scrape-server/... 
 
+docker: vet
+	@echo "Building $(DOCKER_IMAGE_NAME)..."
+	@docker build --no-cache -t $(DOCKER_IMAGE_NAME) .
+
+all: build linux
+
 clean:
 	@echo "Cleaning $(MODULE_NAME)..."
-	@rm -f bin/scrape*
+	@rm -rf bin/*
