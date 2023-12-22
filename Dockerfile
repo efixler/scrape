@@ -6,7 +6,6 @@ ENV CGO_ENABLED=1
 RUN go install github.com/efixler/scrape/cmd/scrape-server@latest
 RUN go install github.com/efixler/scrape/cmd/scrape@latest
 WORKDIR /go/bin
-EXPOSE 8080/tcp
 
 
 FROM debian:12-slim
