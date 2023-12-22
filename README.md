@@ -187,7 +187,7 @@ Usage:
 ```
 
 ### Using the Docker
-The Docker is mostly intended for distribution and testing, not development. The docker build
+The Docker is mostly intended for distribution and testing. The docker build
 pulls the source from the repo via `go install` and the `latest` tag, so, this build will
 not be up to date with local changes.
 
