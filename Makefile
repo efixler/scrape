@@ -25,7 +25,7 @@ build: vet
 	@go build -o bin/ ./cmd/scrape/... 
 	@go build -o bin/ ./cmd/scrape-server/... 
 
-docker: vet
+docker: 
 	@echo "Building $(DOCKER_IMAGE_NAME)..."
 	@docker build --no-cache -t $(DOCKER_IMAGE_NAME) .
 
