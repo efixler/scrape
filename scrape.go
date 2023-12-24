@@ -1,15 +1,20 @@
+/*
+Package scrape provides a simple interface for fetching and storing web pages
+metadata and text content. The `scrape` and `scrape-server` commands provide
+a command-line interface and a REST API, respectively.
+*/
 package scrape
 
 import (
 	"context"
 	"errors"
-	"log"
 	nurl "net/url"
 	"sync"
 
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
+	"golang.org/x/exp/slog"
 )
 
 var (
@@ -57,32 +62,34 @@ func (f StorageBackedFetcher) Open(ctx context.Context) error {
 }
 
 func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+	originalURL := url.String()
 	// check storage first
 	item, err := f.storage.Fetch(url)
-	if item != nil {
-		return &item.Data, nil
-	}
 	if err != nil && !errors.Is(err, store.ErrorResourceNotFound) {
 		return nil, err
 	}
-
-	// if we get here we're not cached
-	resource, err := f.fetcher.Fetch(url)
-	if err != nil {
-		return nil, err
+	var resource *resource.WebPage
+	if item != nil {
+		resource = &item.Data
 	}
-	// store
-	sd := &store.StoredUrlData{
-		Data: *resource,
-	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		_, err = f.storage.Store(sd)
+	if resource == nil {
+		resource, err = f.fetcher.Fetch(url)
 		if err != nil {
-			log.Printf("Error storing %s: %s\n", url, err)
+			return nil, err
 		}
-	}()
+		sd := &store.StoredUrlData{
+			Data: *resource,
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err = f.storage.Store(sd)
+			if err != nil {
+				slog.Error("Error storing %s: %s\n", "url", url, "error", err)
+			}
+		}()
+	}
+	resource.OriginalURL = originalURL
 	return resource, nil
 }
 

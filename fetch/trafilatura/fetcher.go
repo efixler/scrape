@@ -13,7 +13,9 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
-var trafilaturaFallback = &trafilatura.FallbackConfig{}
+var (
+	trafilaturaFallback = &trafilatura.FallbackConfig{}
+)
 
 type TrafilaturaFetcher struct {
 	httpClient *http.Client
@@ -43,6 +45,10 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return nil, fetch.ErrHTTPError{StatusCode: resp.StatusCode}
+	}
+
 	topts := trafilatura.Options{
 		FallbackCandidates: trafilaturaFallback,
 		OriginalURL:        url,

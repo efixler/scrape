@@ -10,17 +10,22 @@ import (
 
 type WebPage struct {
 	trafilatura.Metadata
-	FetchTime    *time.Time `json:",omitempty"`
-	ContentText  string     `json:",omitempty"`
-	RequestedURL *nurl.URL  `json:"-"`
-	canonicalUrl *nurl.URL
+	// The page that was requested by the caller
+	OriginalURL string `json:",omitempty"`
+	// When the returned source was fetched
+	FetchTime   *time.Time `json:",omitempty"`
+	ContentText string     `json:",omitempty"`
+	// The url that was requested by whatever locally was fetching: allows
+	// for something downstream from OriginalURL to filter query params
+	RequestedURL *nurl.URL `json:"-"`
+	canonicalURL *nurl.URL
 }
 
 func (r WebPage) URL() *nurl.URL {
-	if r.canonicalUrl == nil {
-		r.canonicalUrl, _ = nurl.Parse(r.Metadata.URL)
+	if r.canonicalURL == nil {
+		r.canonicalURL, _ = nurl.Parse(r.Metadata.URL)
 	}
-	return r.canonicalUrl
+	return r.canonicalURL
 }
 
 func (r WebPage) MarshalJSON() ([]byte, error) {
@@ -37,6 +42,5 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 	if r.RequestedURL != nil {
 		ar.RequestedUrlString = r.RequestedURL.String()
 	}
-
 	return json.Marshal(ar)
 }

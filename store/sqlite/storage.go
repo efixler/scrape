@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	nurl "net/url"
+	"sync"
 	"time"
 
 	"log/slog"
@@ -78,6 +79,7 @@ type sqliteStore struct {
 	dsn      string
 	options  sqliteOptions
 	stmts    map[stmtIndex]*sql.Stmt
+	closed   bool
 }
 
 func defaultOptions() sqliteOptions {
@@ -121,8 +123,15 @@ func (s *sqliteStore) Open(ctx context.Context) error {
 // Close will be called when the context passed to Open() is cancelled
 // TODO: When the last instance using this db is done, close the DB
 func (s *sqliteStore) Close() error {
-	slog.Debug("Really Closing sqlite store", "dsn", s.dsn)
+	defer func() { s.closed = true }()
+	if s.closed {
+		slog.Warn("sqlite store already closed, returning", "dsn", s.dsn)
+		return nil
+	}
 	var errs []error
+	var mutex sync.Mutex
+	defer mutex.Unlock()
+	mutex.Lock()
 	for _, stmt := range s.stmts {
 		if stmt != nil {
 			err := stmt.Close()
