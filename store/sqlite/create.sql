@@ -37,4 +37,4 @@ WITHOUT ROWID,
 STRICT;
 
 COMMIT TRANSACTION;
-PRAGMA foreign_keys = on;
+PRAGMA wal_checkpoint(restart);

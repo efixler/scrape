@@ -1,11 +1,10 @@
 package sqlite
 
 import (
-	"context"
-	"database/sql"
 	_ "embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -18,39 +17,53 @@ var (
 	ErrDatabaseExists = errors.New("database already exists")
 )
 
-//go:embed create.sql
-var createSQL string
+// dbPath returns the path to the database file. If filename is empty,
+// the path to the executable + the default path is returned.
+// If filename is not empty filename is returned and its
+// existence is checked.
+func dbPath(filename string) (string, error) {
+	switch filename {
+	case InMemoryDBName:
+		return InMemoryDBName, ErrIsInMemory
+	case "":
+		root, err := os.Executable()
+		if err != nil {
+			return "", err
+		}
+		root, err = filepath.Abs(root)
+		if err != nil {
+			return "", err
+		}
+		filename = filepath.Join(root, DEFAULT_DB_FILENAME)
+	}
+	return filepath.Abs(filename)
+}
 
-func CreateDB(ctx context.Context, filename string) error {
-	fqn, err := dbPath(filename)
-	if err != nil {
-		return err
+func exists(fqn string) bool {
+	if _, err := os.Stat(fqn); errors.Is(err, fs.ErrNotExist) {
+		return false
 	}
-	if exists(fqn) {
-		return errors.Join(
-			ErrDatabaseExists,
-			fmt.Errorf("database file %s already exists, or the path can't be created", fqn),
-		)
-	}
-	dir := filepath.Dir(fqn)
+	return true
+}
+
+func (s sqliteStore) createPathToDB() error {
+	dir := filepath.Dir(s.resolvedPath)
 	if dh, _ := os.Stat(dir); dh == nil {
-		err = os.MkdirAll(dir, 0775)
+		err := os.MkdirAll(dir, 0775)
 		if err != nil {
 			return err
 		}
 	} else if !dh.IsDir() {
 		return fmt.Errorf("path %s exists but is not a directory", dir)
 	}
-	options := DefaultOptions()
-	options.synchronous = SQLITE_SYNC_NORMAL
+	return nil
+}
 
-	cdsn := dsn(fqn, options)
-	// we will use a separate connection to create the db
-	db, err := sql.Open("sqlite3", cdsn)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-	_, err = db.ExecContext(ctx, createSQL)
+//go:embed create.sql
+var createSQL string
+
+// When this is called, the path to the database must already exist.
+func (s *sqliteStore) create() error {
+	_, err := s.DB.ExecContext(s.Ctx, createSQL)
 	return err
 }

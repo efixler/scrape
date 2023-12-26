@@ -19,7 +19,6 @@ import (
 var (
 	flags       flag.FlagSet
 	noContent   bool
-	createDB    bool
 	dbPath      string
 	csvPath     string
 	csvUrlIndex int
@@ -69,15 +68,6 @@ func getArgs() []string {
 }
 
 func main() {
-	if createDB {
-		err := sqlite.CreateDB(context.Background(), dbPath)
-		if err != nil {
-			log.Fatalf("Error creating database: %s", err)
-		}
-		log.Printf("Created database %s", dbPath)
-		return
-	}
-
 	fetcher, err := initFetcher()
 	if err != nil {
 		log.Fatalf("Error initializing fetcher: %s", err)
@@ -124,16 +114,12 @@ func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
 	flags.BoolVar(&noContent, "notext", false, "Skip text content")
-	flags.BoolVar(&createDB, "create", false, "Create the database and exit")
 	flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
 	flags.StringVar(&csvPath, "csv", "", "CSV file path")
 	flags.IntVar(&csvUrlIndex, "csv-column", 1, "The index of the column in the CSV that contains the URLs")
 	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
 	// flags automatically adds -h and --help
 	flags.Parse(os.Args[1:])
-	if createDB {
-		return
-	}
 }
 
 func usage() {

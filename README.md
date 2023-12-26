@@ -152,7 +152,8 @@ Usage:
   -h
         Show this help message
   -database string
-        Database path. If the database doesn't exist, it will be created. Use ':memory:' for an in-memory database (default "scrape_data/scrape.db")
+        Database path. If the database doesn't exist, it will be created. 
+        Use ':memory:' for an in-memory database (default "scrape_data/scrape.db")
   -log-level value
         Set the log level [debug|error|info|warn] (default info)
   -port int

@@ -11,10 +11,11 @@ import (
 	nurl "net/url"
 	"sync"
 
+	"log/slog"
+
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
-	"golang.org/x/exp/slog"
 )
 
 var (

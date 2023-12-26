@@ -17,8 +17,9 @@ const (
 )
 
 var (
-	ErrDatabaseNotOpen = errors.New("database not opened")
-	ErrDatabaseClosed  = errors.New("database closed")
+	ErrDatabaseNotOpen     = errors.New("database not opened")
+	ErrDatabaseAlreadyOpen = errors.New("database already opened")
+	ErrDatabaseClosed      = errors.New("database closed")
 )
 
 type DBHandle[T comparable] struct {

@@ -23,6 +23,7 @@ const (
 	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
 	DEFAULT_JOURNAL_MODE = "WAL"
 	DEFAULT_CACHE_SIZE   = 20000
+	SMALL_CACHE_SIZE     = 2000 // This is actually the sqlite default
 	SQLITE_SYNC_OFF      = "OFF"
 	SQLITE_SYNC_NORMAL   = "NORMAL"
 	DEFAULT_SYNC         = SQLITE_SYNC_OFF
@@ -54,10 +55,16 @@ var (
 	ErrNoDatabase      = errors.New("the database did not exist")
 )
 
+// Returns the factory function that will be used to instantiate the store.
+// The factory function will guarantee that the preconditions are in place for
+// the db and the instance is ready to use.
 func Factory(filename string) store.Factory {
+	options := DefaultOptions()
 	dsnF := func() string {
-		return dsn(filename, DefaultOptions())
+		return dsn(filename, options)
 	}
+	// If the factory function returns successfully, then we have a valid DSN
+	// and we've made any local directories needed to support it.
 	return func() (store.URLDataStore, error) {
 		s := &sqliteStore{
 			DBHandle: database.DBHandle[stmtIndex]{
@@ -67,36 +74,51 @@ func Factory(filename string) store.Factory {
 			filename: filename,
 			options:  DefaultOptions(),
 		}
+		var err error
+		s.resolvedPath, err = dbPath(filename)
+		if err != nil {
+			switch err {
+			case ErrIsInMemory:
+				options.createIfNotExists = true // always create an in-memory DB
+				// continue below if the caller wants an in-memory DB
+			default:
+				// if we couldn't resolve the path, we won't be able to open or create
+				return nil, err
+			}
+		}
+		if (err == nil) && !exists(s.resolvedPath) {
+			if err = s.createPathToDB(); err != nil {
+				return nil, errors.Join(ErrNoDatabase, err)
+			}
+		}
 		return s, nil
 	}
 }
 
 type sqliteStore struct {
 	database.DBHandle[stmtIndex]
-	filename string
-	options  SqliteOptions
+	filename     string
+	resolvedPath string
+	options      SqliteOptions
 }
 
 func (s *sqliteStore) Open(ctx context.Context) error {
-	fqn, err := dbPath(s.filename)
-	switch err {
-	case ErrIsInMemory:
-	case nil:
-		// SQLite will open even if the the DB file is not present, it will only fail later.
-		// So, if the db hasn't been opened, check for the file here.
-		if s.DB == nil {
-			if !exists(fqn) {
-				return errors.Join(
-					ErrNoDatabase,
-					fmt.Errorf("database file %s does not exist", fqn),
-				)
-			}
-		}
-	default:
+	if s.DB != nil {
+		return database.ErrDatabaseAlreadyOpen
+	}
+	err := s.DBHandle.Open(ctx)
+	if err != nil {
 		return err
 	}
-	err = s.DBHandle.Open(ctx)
-	return err
+	// SQLite will open even if the the DB file is not present, it will only fail later.
+	// So, if the db hasn't been opened, check for the file here.
+	// In Memory DBs must always be created
+	if (s.filename == InMemoryDBName) || !exists(s.resolvedPath) {
+		if err := s.create(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // The underlying DB handle's close will be called when the context

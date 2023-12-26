@@ -11,7 +11,7 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
-var dbFactory store.Factory = Factory(inMemoryDB)
+var dbFactory store.Factory = Factory(InMemoryDBName)
 
 func TestOpen(t *testing.T) {
 	db, err := dbFactory()
