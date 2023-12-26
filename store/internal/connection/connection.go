@@ -1,5 +1,23 @@
 package connection
 
+// TODO: This package is somewhat misconceived. And needs to be refactored or eliminated.
+// There is only meant to be one *DB instance per DB, which generally meand one per app.
+// This was written with the assumption that we'd parallelize fetches with multiple storage
+// adapters but that's not really the right approach. We should have a single storage adapter
+// per instance.
+// Materially there are two things we want to fix or get rid of:
+// 1. The open/close semantics and the locking they require, are brittle
+// 2. The fact that we're using a map of sharedDBs is a bit of a code smell. We should
+//    probably just have a single sharedDB instance per DB, and have the DB handle be
+//    a member of the storage adapter struct. That would also make it easier to get rid
+//    of the open/close semantics, which are not really necessary.
+// 3. Statement handles are kept at the adaptor layer and they should really be kept
+//	  wherever the DB handle is, since they pertain to the DB handle.
+//  This isn't necessarily super urgent right now since the app code is only making one
+//  storage adapter instance, but it's still a bit of a mess.
+// Possibly we want to refactor this so that the storage adaprot embeds it, or get rid of in
+// entirely and just have the storage adapter keep the DB handle and all the related stuff.
+
 import (
 	"database/sql"
 	"sync"
@@ -19,8 +37,9 @@ type sharedDB struct {
 	db     *sql.DB
 	driver DriverName
 	dsn    string
-	count  int
-	mutex  *sync.Mutex
+	// stmts  map[T]*sql.Stmt
+	count int
+	mutex *sync.Mutex
 }
 
 // To be called from Open() e.g. the first time we need a db handle

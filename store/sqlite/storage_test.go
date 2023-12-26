@@ -9,27 +9,32 @@ import (
 
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
-	"github.com/efixler/scrape/store/internal/connection"
 )
 
+var dbFactory store.Factory = Factory(inMemoryDB)
+
 func TestOpen(t *testing.T) {
-	db, err := Factory("test.db")()
+	db, err := dbFactory()
 	if err != nil {
 		t.Errorf("Error opening database factory: %v", err)
 	}
 	err = db.Open(context.TODO())
 	if err != nil {
-		t.Errorf("Error opening database: %v", err)
+		t.Fatalf("Error opening database: %v", err)
 	}
-	defer db.Close()
 	realStore, ok := db.(*sqliteStore)
-	dsn := realStore.dsn
+	// dsn := realStore.dsn
 	if !ok {
 		t.Errorf("Database not of type sqliteStore")
 	}
-	sqlDB := connection.GetDB(dsn)
-	if sqlDB == nil {
-		t.Errorf("Database reference not stored in dbs map")
+	// defer db.Close()
+	err = realStore.Ping()
+	if err != nil {
+		t.Errorf("Error pinging database: %v", err)
+	}
+	err = db.Close()
+	if err != nil {
+		t.Errorf("Error closing database: %v", err)
 	}
 }
 
@@ -146,13 +151,21 @@ func TestStore(t *testing.T) {
 	if stored.Data.PageType != fetched.Data.PageType {
 		t.Errorf("PageType changed from %q to %q", stored.Data.PageType, fetched.Data.PageType)
 	}
-	// TODO: run this again to test cache
-	// TODO: fix delete
-	// single, err := s.Delete(url)
-	// if !single {
-	// 	t.Errorf("Delete returned false, deleted an unexpected number of rows")
-	// }
-	// if err != nil {
-	// 	t.Errorf("Error deleting record: %v", err)
-	// }
+	// NB: Delete only works for canonical URLs
+	rs, _ := s.(*sqliteStore)
+	ok, err := rs.Delete(url)
+	if err != nil {
+		t.Errorf("Unexpected error deleting non-canonical record: %v", err)
+	}
+	if ok {
+		t.Errorf("Delete returned true, deleted non-canonical record (url: %s)", url)
+	}
+
+	ok, err = rs.Delete(stored.Data.URL())
+	if err != nil {
+		t.Errorf("Error deleting record: %v", err)
+	} else if !ok {
+		t.Errorf("Delete returned false, didn't delete record (url: %s)", url)
+	}
+
 }

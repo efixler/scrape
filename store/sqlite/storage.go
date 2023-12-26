@@ -8,14 +8,13 @@ import (
 	"errors"
 	"fmt"
 	nurl "net/url"
-	"sync"
 	"time"
 
 	"log/slog"
 
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
-	"github.com/efixler/scrape/store/internal/connection"
+	"github.com/efixler/scrape/store/internal/database"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -56,102 +55,58 @@ var (
 )
 
 func Factory(filename string) store.Factory {
+	dsnF := func() string {
+		return dsn(filename, DefaultOptions())
+	}
 	return func() (store.URLDataStore, error) {
 		s := &sqliteStore{
+			DBHandle: database.DBHandle[stmtIndex]{
+				Driver: database.SQLite,
+				DSN:    dsnF,
+			},
 			filename: filename,
-			options:  defaultOptions(),
-			stmts:    make(map[stmtIndex]*sql.Stmt, 8),
+			options:  DefaultOptions(),
 		}
 		return s, nil
 	}
 }
 
-type sqliteOptions struct {
-	busyTimeout time.Duration
-	journalMode string
-	cacheSize   int
-	synchronous string
-}
-
 type sqliteStore struct {
-	ctx      context.Context
+	database.DBHandle[stmtIndex]
 	filename string
-	dsn      string
-	options  sqliteOptions
-	stmts    map[stmtIndex]*sql.Stmt
-	closed   bool
-}
-
-func defaultOptions() sqliteOptions {
-	return sqliteOptions{
-		busyTimeout: DEFAULT_BUSY_TIMEOUT,
-		journalMode: DEFAULT_JOURNAL_MODE,
-		cacheSize:   DEFAULT_CACHE_SIZE,
-		synchronous: DEFAULT_SYNC,
-	}
+	options  SqliteOptions
 }
 
 func (s *sqliteStore) Open(ctx context.Context) error {
-
-	s.ctx = ctx
-	// close this handle when the context is done
-	context.AfterFunc(ctx, func() {
-		s.Close()
-	})
 	fqn, err := dbPath(s.filename)
-	if err != nil {
+	switch err {
+	case ErrIsInMemory:
+	case nil:
+		// SQLite will open even if the the DB file is not present, it will only fail later.
+		// So, if the db hasn't been opened, check for the file here.
+		if s.DB == nil {
+			if !exists(fqn) {
+				return errors.Join(
+					ErrNoDatabase,
+					fmt.Errorf("database file %s does not exist", fqn),
+				)
+			}
+		}
+	default:
 		return err
 	}
-	s.dsn = dsn(s.filename, s.options)
-	// SQLLite will open even if the the DB file is not present, it will only fail later.
-	// So, we grab the db directly from the DSN map here, while we have the filename,
-	// to make sure that we can print an informative error message if the file is missing.
-	// This should only get called the first time a dsn is opened, as all instances of a struct
-	// using the same dsn will share the same db.
-	if !connection.HasOpenedDB(s.dsn) {
-		if !exists(fqn) {
-			return errors.Join(
-				ErrNoDatabase,
-				fmt.Errorf("database file %s does not exist", fqn),
-			)
-		}
-	}
-	_, err = connection.OpenDB(connection.SQLite, s.dsn)
+	err = s.DBHandle.Open(ctx)
 	return err
 }
 
-// Close will be called when the context passed to Open() is cancelled
-// TODO: When the last instance using this db is done, close the DB
+// The underlying DB handle's close will be called when the context
+// passed to Open() is cancelled
 func (s *sqliteStore) Close() error {
-	defer func() { s.closed = true }()
-	if s.closed {
-		slog.Warn("sqlite store already closed, returning", "dsn", s.dsn)
-		return nil
+	err := s.DBHandle.Close()
+	if err != nil {
+		slog.Warn("error closing sqlite store", "dsn", s.DSN(), "error", err)
 	}
-	var errs []error
-	var mutex sync.Mutex
-	defer mutex.Unlock()
-	mutex.Lock()
-	for _, stmt := range s.stmts {
-		if stmt != nil {
-			err := stmt.Close()
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}
-	}
-	clear(s.stmts)
-	if len(errs) > 0 {
-		err := errors.Join(errs...)
-		slog.Error("error closing sqlite", "dsn", s.dsn, "error", err)
-		return err
-	}
-	if connection.CloseDB(s.dsn) {
-		slog.Info("Closed sqlite store", "dsn", s.dsn)
-	} else {
-		slog.Debug("Not closing sqlite store, probably a repeat call", "dsn", s.dsn)
-	}
-	return nil
+	return err
 }
 
 func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
@@ -183,19 +138,13 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 		string(metadata),
 		contentText,
 	}
-	// the expectation here is that the DB was already opened in Open()
-	// if not we will end up with a leak, so db will be null and we will
-	// get a panic here if that happens
-	db := connection.GetDB(s.dsn)
-	stmt, ok := s.stmts[Store]
-	if !ok {
-		stmt, err = db.PrepareContext(s.ctx, qStore)
-		if err != nil {
-			return 0, err
-		}
-		s.stmts[Store] = stmt
+	stmt, err := s.Statement(Store, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return db.PrepareContext(ctx, qStore)
+	})
+	if err != nil {
+		return 0, err
 	}
-	result, err := stmt.ExecContext(s.ctx, values...)
+	result, err := stmt.ExecContext(s.Ctx, values...)
 	if err != nil {
 		return 0, err
 	}
@@ -213,17 +162,13 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 }
 
 func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
-	db := connection.GetDB(s.dsn)
-	stmt, ok := s.stmts[StoreId]
-	if !ok {
-		var err error
-		stmt, err = db.PrepareContext(s.ctx, qStoreId)
-		if err != nil {
-			return err
-		}
-		s.stmts[StoreId] = stmt
+	stmt, err := s.Statement(StoreId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return db.PrepareContext(ctx, qStoreId)
+	})
+	if err != nil {
+		return err
 	}
-	_, err := stmt.ExecContext(s.ctx, store.Key(parsedUrl), canonicalId)
+	_, err = stmt.ExecContext(s.Ctx, store.Key(parsedUrl), canonicalId)
 	if err != nil {
 		return err
 	}
@@ -249,16 +194,13 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	default:
 		return nil, err
 	}
-	db := connection.GetDB(s.dsn)
-	stmt, ok := s.stmts[Fetch]
-	if !ok {
-		stmt, err = db.PrepareContext(s.ctx, qFetch)
-		if err != nil {
-			return nil, err
-		}
-		s.stmts[Fetch] = stmt
+	stmt, err := s.Statement(Fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return db.PrepareContext(ctx, qFetch)
+	})
+	if err != nil {
+		return nil, err
 	}
-	rows, err := stmt.QueryContext(s.ctx, key)
+	rows, err := stmt.QueryContext(s.Ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -306,19 +248,13 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 
 // Will search url_ids to see if there's a parent entry for this url.
 func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
-	// key := store.Key(parsedUrl)
-	db := connection.GetDB(s.dsn)
-	stmt, ok := s.stmts[LookupId]
-	if !ok {
-		var err error
-		stmt, err = db.PrepareContext(s.ctx, qLookupId)
-		if err != nil {
-			return 0, err
-		}
-		s.stmts[LookupId] = stmt
+	stmt, err := s.Statement(LookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return db.PrepareContext(ctx, qLookupId)
+	})
+	if err != nil {
+		return 0, err
 	}
-
-	rows, err := stmt.QueryContext(s.ctx, requested_id)
+	rows, err := stmt.QueryContext(s.Ctx, requested_id)
 	if err != nil {
 		return 0, err
 	}
@@ -335,28 +271,27 @@ func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
 }
 
 func (s *sqliteStore) Clear() error {
-	db := connection.GetDB(s.dsn)
-	if db == nil {
+	// TODO: This probably shoold be the same as CreateDB (espcially now that that query flushes the DB)
+	if s.DB == nil {
 		return ErrStoreNotOpen
 	}
-	if _, err := db.ExecContext(s.ctx, qClear); err != nil {
+	if _, err := s.DB.ExecContext(s.Ctx, qClear); err != nil {
 		return err
 	}
 	return nil
 }
 
+// Delete will only delete a url that matches the canonical URL.
+// TODO: Evaluate desired behavior here
 func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
-	db := connection.GetDB(s.dsn)
-	stmt, ok := s.stmts[Delete]
-	if !ok {
-		stmt, err := db.PrepareContext(s.ctx, qDelete)
-		if err != nil {
-			return false, err
-		}
-		s.stmts[Delete] = stmt
+	stmt, err := s.Statement(Delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return db.PrepareContext(ctx, qDelete)
+	})
+	if err != nil {
+		return false, err
 	}
-	result, err := stmt.ExecContext(s.ctx, key)
+	result, err := stmt.ExecContext(s.Ctx, key)
 	if err != nil {
 		return false, err
 	}

@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -42,7 +41,7 @@ func CreateDB(ctx context.Context, filename string) error {
 	} else if !dh.IsDir() {
 		return fmt.Errorf("path %s exists but is not a directory", dir)
 	}
-	options := defaultOptions()
+	options := DefaultOptions()
 	options.synchronous = SQLITE_SYNC_NORMAL
 
 	cdsn := dsn(fqn, options)
@@ -54,42 +53,4 @@ func CreateDB(ctx context.Context, filename string) error {
 	defer db.Close()
 	_, err = db.ExecContext(ctx, createSQL)
 	return err
-}
-
-func dsn(filename string, options sqliteOptions) string {
-	dsn := fmt.Sprintf(
-		"file:%s?_busy_timeout=%d&_journal_mode=%s&_cache_size=%d&_sync=%s",
-		filename,
-		options.busyTimeout,
-		options.journalMode,
-		options.cacheSize,
-		options.synchronous,
-	)
-	return dsn
-}
-
-// dbPath returns the path to the database file. If filename is empty,
-// the path to the executable + the default path is returned.
-// If filename is not empty filename is returned and its
-// existence is checked.
-func dbPath(filename string) (string, error) {
-	if filename == "" {
-		root, err := os.Executable()
-		if err != nil {
-			return "", err
-		}
-		root, err = filepath.Abs(root)
-		if err != nil {
-			return "", err
-		}
-		filename = filepath.Join(root, DEFAULT_DB_FILENAME)
-	}
-	return filepath.Abs(filename)
-}
-
-func exists(fqn string) bool {
-	if _, err := os.Stat(fqn); errors.Is(err, fs.ErrNotExist) {
-		return false
-	}
-	return true
 }
