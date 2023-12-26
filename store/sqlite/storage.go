@@ -20,39 +20,32 @@ import (
 )
 
 const (
-	DEFAULT_BUSY_TIMEOUT = 5 * time.Second
-	DEFAULT_JOURNAL_MODE = "WAL"
-	DEFAULT_CACHE_SIZE   = 20000
-	SMALL_CACHE_SIZE     = 2000 // This is actually the sqlite default
-	SQLITE_SYNC_OFF      = "OFF"
-	SQLITE_SYNC_NORMAL   = "NORMAL"
-	DEFAULT_SYNC         = SQLITE_SYNC_OFF
-	qStore               = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	qClear               = `DELETE FROM urls; DELETE FROM id_map`
-	qLookupId            = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
-	qStoreId             = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
-	qClearId             = `DELETE FROM id_map where canonical_id = ?`
-	qFetch               = `SELECT parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
-	qDelete              = `DELETE FROM urls WHERE id = ?`
+	qStore    = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
+	qClear    = `DELETE FROM urls; DELETE FROM id_map`
+	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
+	qStoreId  = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
+	qClearId  = `DELETE FROM id_map where canonical_id = ?`
+	qFetch    = `SELECT parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
+	qDelete   = `DELETE FROM urls WHERE id = ?`
 )
 
 type stmtIndex int
 
 const (
 	_ stmtIndex = iota
-	Store
-	Clear
-	LookupId
-	StoreId
-	ClearId
-	Fetch
-	Delete
+	save
+	clear
+	lookupId
+	saveId
+	flearId
+	fetch
+	delete
 )
 
 var (
-	ErrMappingNotFound = errors.New("id mapping not found")
-	ErrStoreNotOpen    = errors.New("store not opened for this dsn")
-	ErrNoDatabase      = errors.New("the database did not exist")
+	ErrMappingNotFound    = errors.New("id mapping not found")
+	ErrStoreNotOpen       = errors.New("store not opened for this dsn")
+	ErrCantCreateDatabase = errors.New("can't create the database")
 )
 
 // Returns the factory function that will be used to instantiate the store.
@@ -87,7 +80,7 @@ func Factory(filename string) store.Factory {
 		s.DBHandle.DSN = s.dsn
 		if (err == nil) && !exists(s.resolvedPath) {
 			if err = s.createPathToDB(); err != nil {
-				return nil, errors.Join(ErrNoDatabase, err)
+				return nil, errors.Join(ErrCantCreateDatabase, err)
 			}
 		}
 
@@ -99,7 +92,7 @@ type sqliteStore struct {
 	database.DBHandle[stmtIndex]
 	filename     string
 	resolvedPath string
-	options      SqliteOptions
+	options      sqliteOptions
 }
 
 func (s *sqliteStore) Open(ctx context.Context) error {
@@ -160,7 +153,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 		string(metadata),
 		contentText,
 	}
-	stmt, err := s.Statement(Store, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.Statement(save, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qStore)
 	})
 	if err != nil {
@@ -184,7 +177,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 }
 
 func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
-	stmt, err := s.Statement(StoreId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.Statement(saveId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qStoreId)
 	})
 	if err != nil {
@@ -216,7 +209,7 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	default:
 		return nil, err
 	}
-	stmt, err := s.Statement(Fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qFetch)
 	})
 	if err != nil {
@@ -270,7 +263,7 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 
 // Will search url_ids to see if there's a parent entry for this url.
 func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
-	stmt, err := s.Statement(LookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qLookupId)
 	})
 	if err != nil {
@@ -307,7 +300,7 @@ func (s *sqliteStore) Clear() error {
 // TODO: Evaluate desired behavior here
 func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
-	stmt, err := s.Statement(Delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)
 	})
 	if err != nil {
