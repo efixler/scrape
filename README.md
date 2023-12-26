@@ -28,8 +28,10 @@ JSON output is a superset of Trafilatura format.
 
 | Field | Type | Description |
 | ----  | ---- | ------------|
+| `OriginalURL` | String | Exactly the url that was in the inbound request |
+| `RequestedURL` | URL | The URL that was actually requested. (Some URL elements may be rewritten before the outgoing request) |
+| `Error` | String | Error message(s), if there were any, while processing this page |
 | `Hostname` | Domain name | The domain serving this resource |
-| `RequestedURL` | URL | The URL that was requested |
 | `URL` | URL | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |
 | `Date` | ISO8601 | The publish date of the page, in UTC time |
 | `FetchTime` | ISO8601 | The time that URL was retrieved |
@@ -51,6 +53,7 @@ Parsed field content is largely dependent on metadata included in the page. GIGO
 Here's an example, with long fields truncated:
 ```json
 {
+  "OriginalURL": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
   "RequestedURL": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
   "Title": "NASA’s Webb Stuns With New High-Definition Look at Exploded Star - NASA",
   "Author": "Steve Sabia",
@@ -148,20 +151,45 @@ Usage:
  
   -h
         Show this help message
+  -database string
+        Database path. If the database doesn't exist, it will be created. Use ':memory:' for an in-memory database (default "scrape_data/scrape.db")
   -log-level value
-        Set the log level [debug|error|info|warn] (info)
+        Set the log level [debug|error|info|warn] (default info)
   -port int
         The port to run the server on (default 8080)
 ```
+
+Use caution when using the in-memory database: There are currently no constraints on database size.
+
 ### API 
-#### extract
-Fetch the metadata and text content for the specified URL. 
+
+#### batch 
+Returns the metadata for the supplied list of URLs. Returned metadatas are not guaranteed to be
+in the same order as the request. 
+
+Errors behave differently in single (`extract`) vs `batch` mode. In `batch` mode, an error that prevents
+the entire request from executing will result in a 4xx or 5xx error code with error message in the result
+body (like `extract`), but errors for individual pages will result in an error message getting included in
+the metadata object for that URL; most of the remaining metadata will likely be empty. 
+
+The `Error` key will be absent for pages that have no errors.  Testing for the presence of the `Error` 
+key in a page metadata object is sufficient to indicate that there was an error extracting data from 
+that page. 
+
+| Param | Description | Required | 
+| -------- | ------ | ----------- |
+| urls | A JSON array of the urls to fetch | Y |
+
+#### extract [GET, POST]
+Fetch the metadata and text content for the specified URL. Errors will be reported using HTTP error codes.
+The `Error` key should be absent (behavior subject to change).
 
 Returns JSON payload as decribed above.
 
-| Endpoint | Method | Description |
+| Param | Description | Required | 
 | -------- | ------ | ----------- |
-| url | GET, POST | The url to fetch. Should be url encoded. |
+| url | The url to fetch. Should be url encoded. | Y |
+
 
 #### Global Params 
 These params work for any endpoint 

@@ -16,6 +16,10 @@ func (e ErrHTTPError) Error() string {
 	return fmt.Sprintf("HTTP fetch error, code: %d", e.StatusCode)
 }
 
+func (e ErrHTTPError) String() string {
+	return e.Error()
+}
+
 type Factory func() (URLData, error)
 
 type URLData interface {

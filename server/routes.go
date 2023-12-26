@@ -96,15 +96,10 @@ type BatchRequest struct {
 	Urls []string `json:"urls"`
 }
 
-type urlError struct {
-	URL   string `json:"URL"`
-	Error string `json:"Error"`
-}
-
-type batchResponse struct {
-	Pages  []*resource.WebPage `json:"Pages"`
-	Errors []urlError          `json:"Errors"`
-}
+// type urlError struct {
+// 	URL   string `json:"URL"`
+// 	Error string `json:"Error"`
+// }
 
 func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -125,31 +120,32 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No URLs provided", http.StatusUnprocessableEntity)
 		return
 	}
-
-	//var errors []error = make([]error, 0, len(req.Urls)/20)
-	batchResponse := &batchResponse{
-		Pages:  make([]*resource.WebPage, 0, len(req.Urls)),
-		Errors: make([]urlError, 0, len(req.Urls)/20),
-	}
+	pages := make([]*resource.WebPage, 0, len(req.Urls))
+	var page *resource.WebPage
 	for _, url := range req.Urls {
 		parsedUrl, err := nurl.Parse(url)
 		if err != nil {
-			batchResponse.Errors = append(batchResponse.Errors, urlError{URL: url, Error: err.Error()})
-			continue
+			page = &resource.WebPage{
+				OriginalURL: url,
+				Error:       err,
+			}
 		}
-		page, err := h.fetcher.Fetch(parsedUrl)
+		page, err = h.fetcher.Fetch(parsedUrl)
 		if err != nil {
-			batchResponse.Errors = append(batchResponse.Errors, urlError{URL: url, Error: err.Error()})
-			continue
+			page = &resource.WebPage{
+				OriginalURL:  url,
+				RequestedURL: parsedUrl,
+				Error:        err,
+			}
 		}
-		batchResponse.Pages = append(batchResponse.Pages, page)
+		pages = append(pages, page)
 	}
 	encoder := json.NewEncoder(w)
 	pp := r.FormValue("pp") != ""
 	if pp {
 		encoder.SetIndent("", "  ")
 	}
-	err = encoder.Encode(batchResponse)
+	err = encoder.Encode(pages)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error encoding response: %s", err), http.StatusInternalServerError)
 		return

@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	flags flag.FlagSet
-	port  int
+	flags  flag.FlagSet
+	port   int
+	dbPath string
 )
 
 // TODO: Create the db on startup if it doesn't exist
@@ -86,12 +87,12 @@ func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
 }
 
 func assertDBExists() {
-	err := sqlite.CreateDB(context.Background(), sqlite.DEFAULT_DB_FILENAME)
+	err := sqlite.CreateDB(context.Background(), dbPath)
 	switch {
 	case err == nil:
-		slog.Info("scrape-server created database", "path", sqlite.DEFAULT_DB_FILENAME)
+		slog.Info("scrape-server created database", "path", dbPath)
 	case errors.Is(err, sqlite.ErrDatabaseExists):
-		slog.Info("scrape-server found db", "path", sqlite.DEFAULT_DB_FILENAME)
+		slog.Info("scrape-server found db", "path", dbPath)
 	default:
 		slog.Error("scrape-server error creating database", "error", err)
 		panic(err)
@@ -101,21 +102,27 @@ func assertDBExists() {
 func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
-	// flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
+	flags.StringVar(&dbPath,
+		"database",
+		sqlite.DEFAULT_DB_FILENAME,
+		"Database path. If the database doesn't exist, it will be created. \nUse ':memory:' for an in-memory database",
+	)
 	flags.IntVar(&port, "port", 8080, "The port to run the server on")
 	var logLevel slog.Level
-
-	flags.Func("log-level", "Set the log level [debug|error|info|warn] (info)", func(s string) error {
-		switch strings.ToLower(s) {
-		case "debug":
-			logLevel = slog.LevelDebug
-		case "warn":
-			logLevel = slog.LevelWarn
-		case "error":
-			logLevel = slog.LevelError
-		}
-		return nil
-	})
+	flags.Func(
+		"log-level",
+		"Set the log level [debug|error|info|warn] (default info)",
+		func(s string) error {
+			switch strings.ToLower(s) {
+			case "debug":
+				logLevel = slog.LevelDebug
+			case "warn":
+				logLevel = slog.LevelWarn
+			case "error":
+				logLevel = slog.LevelError
+			}
+			return nil
+		})
 	flags.Parse(os.Args[1:])
 	logger := slog.New(slog.NewTextHandler(
 		os.Stderr,
