@@ -22,10 +22,10 @@ func TestOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)
 	}
-	realStore, ok := db.(*sqliteStore)
+	realStore, ok := db.(*SqliteStore)
 	// dsn := realStore.dsn
 	if !ok {
-		t.Errorf("Database not of type sqliteStore")
+		t.Errorf("Database not of type SqliteStore")
 	}
 	// defer db.Close()
 	err = realStore.Ping()
@@ -152,8 +152,8 @@ func TestStore(t *testing.T) {
 		t.Errorf("PageType changed from %q to %q", stored.Data.PageType, fetched.Data.PageType)
 	}
 	// NB: Delete only works for canonical URLs
-	rs, _ := s.(*sqliteStore)
-	ok, err := rs.Delete(url)
+	rs, _ := s.(*SqliteStore)
+	ok, err := rs.delete(url)
 	if err != nil {
 		t.Errorf("Unexpected error deleting non-canonical record: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestStore(t *testing.T) {
 		t.Errorf("Delete returned true, deleted non-canonical record (url: %s)", url)
 	}
 
-	ok, err = rs.Delete(stored.Data.URL())
+	ok, err = rs.delete(stored.Data.URL())
 	if err != nil {
 		t.Errorf("Error deleting record: %v", err)
 	} else if !ok {

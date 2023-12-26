@@ -48,7 +48,7 @@ func exists(fqn string) bool {
 	return true
 }
 
-func (s sqliteStore) createPathToDB() error {
+func (s SqliteStore) createPathToDB() error {
 	dir := filepath.Dir(s.resolvedPath)
 	if dh, _ := os.Stat(dir); dh == nil {
 		err := os.MkdirAll(dir, 0775)
@@ -65,7 +65,17 @@ func (s sqliteStore) createPathToDB() error {
 var createSQL string
 
 // When this is called, the path to the database must already exist.
-func (s *sqliteStore) create() error {
+func (s *SqliteStore) create() error {
 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
 	return err
 }
+
+// func (s *SqliteStore) clear() error {
+// 	if s.DB == nil {
+// 		return ErrStoreNotOpen
+// 	}
+// 	if _, err := s.DB.ExecContext(s.Ctx, qClear); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }

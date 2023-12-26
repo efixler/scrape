@@ -1,3 +1,13 @@
+/*
+This is the implementation of the store.URLDataStore interface for sqlite.
+
+Use Factory() to make a new sqlite storage instance.
+  - You *must* call Open()
+  - The DB will be closed when the context passed to Open() is cancelled.
+  - Concurrent usage OK
+  - In-Memory DBs are supported
+  - The DB will be created if it doesn't exist
+*/
 package sqlite
 
 import (
@@ -57,7 +67,7 @@ func Factory(filename string) store.Factory {
 	// If the factory function returns successfully, then we have a valid DSN
 	// and we've made any local directories needed to support it.
 	return func() (store.URLDataStore, error) {
-		s := &sqliteStore{
+		s := &SqliteStore{
 			DBHandle: database.DBHandle[stmtIndex]{
 				Driver: database.SQLite,
 			},
@@ -88,14 +98,17 @@ func Factory(filename string) store.Factory {
 	}
 }
 
-type sqliteStore struct {
+type SqliteStore struct {
 	database.DBHandle[stmtIndex]
 	filename     string
 	resolvedPath string
 	options      sqliteOptions
 }
 
-func (s *sqliteStore) Open(ctx context.Context) error {
+// Opens the database, creating it if it doesn't exist.
+// The passed contexts will be used for query preparation, and to
+// close the database when the context is cancelled.
+func (s *SqliteStore) Open(ctx context.Context) error {
 	if s.DB != nil {
 		return database.ErrDatabaseAlreadyOpen
 	}
@@ -116,7 +129,7 @@ func (s *sqliteStore) Open(ctx context.Context) error {
 
 // The underlying DB handle's close will be called when the context
 // passed to Open() is cancelled
-func (s *sqliteStore) Close() error {
+func (s *SqliteStore) Close() error {
 	err := s.DBHandle.Close()
 	if err != nil {
 		slog.Warn("error closing sqlite store", "dsn", s.DSN(), "error", err)
@@ -124,7 +137,9 @@ func (s *sqliteStore) Close() error {
 	return err
 }
 
-func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
+// Save the data for a URL. Returns a key for the stored URL (which you actually can't
+// use for anything, so this interface may change)
+func (s *SqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 	uptr.AssertTimes()             // modify the original with times if needed
 	u := *uptr                     // copy this so we don't modify the original below
 	key := store.Key(u.Data.URL()) // key is for the canonical URL
@@ -176,7 +191,7 @@ func (s *sqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 	return key, nil
 }
 
-func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
+func (s SqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
 	stmt, err := s.Statement(saveId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qStoreId)
 	})
@@ -191,12 +206,13 @@ func (s sqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
 }
 
 // Fetch will return the stored data for requested URL, or nil if not found.
-// If the requested URL matches a canonical URL AND the requested URL has not been fetched
-// before, then we'll return the previously data for the canonical URL.
-// We don't get canonical on the first try, since the canonical is derived from the page's parse,
-// and it hasn't been parsed yet here. This has the side effect of letting the caller add arbitrary
-// parameters to force a page re-fetch.
-func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
+//
+// The returned result _may_ come from a different URL than the requested URL, if
+// we've seen the passed URL before AND the page reported it's canonical url as
+// being different than the requested URL.
+//
+// In that case, the canonical version of the content will be returned, if we have it.
+func (s SqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 	requested_key := store.Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
@@ -262,7 +278,7 @@ func (s sqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 }
 
 // Will search url_ids to see if there's a parent entry for this url.
-func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
+func (s SqliteStore) lookupId(requested_id uint64) (uint64, error) {
 	stmt, err := s.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qLookupId)
 	})
@@ -285,20 +301,9 @@ func (s sqliteStore) lookupId(requested_id uint64) (uint64, error) {
 	return lookupId, nil
 }
 
-func (s *sqliteStore) Clear() error {
-	// TODO: This probably shoold be the same as CreateDB (espcially now that that query flushes the DB)
-	if s.DB == nil {
-		return ErrStoreNotOpen
-	}
-	if _, err := s.DB.ExecContext(s.Ctx, qClear); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Delete will only delete a url that matches the canonical URL.
 // TODO: Evaluate desired behavior here
-func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
+func (s *SqliteStore) delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
 	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)
@@ -324,7 +329,7 @@ func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	}
 }
 
-func (s sqliteStore) dsn() string {
+func (s SqliteStore) dsn() string {
 	dsn := fmt.Sprintf(
 		"file:%s?%s",
 		s.filename,
