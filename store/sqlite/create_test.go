@@ -6,6 +6,13 @@ import (
 	"testing"
 )
 
+func TestInMemoryDSN(t *testing.T) {
+	_, err := dbPath(InMemoryDBName)
+	if err != ErrIsInMemory {
+		t.Errorf("expected ErrIsInMemory, got %v", err)
+	}
+}
+
 func TestCreate(t *testing.T) {
 	fname := "_test_create.db"
 	store, err := Factory(fname)()

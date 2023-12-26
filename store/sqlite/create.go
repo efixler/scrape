@@ -10,11 +10,13 @@ import (
 )
 
 const (
-	DEFAULT_DB_FILENAME = "scrape_data/scrape.db"
+	DefaultDatabase = "scrape_data/scrape.db"
+	InMemoryDBName  = ":memory:"
 )
 
 var (
 	ErrDatabaseExists = errors.New("database already exists")
+	ErrIsInMemory     = errors.New("file path is in-memory DB (':memory:')")
 )
 
 // dbPath returns the path to the database file. If filename is empty,
@@ -34,7 +36,7 @@ func dbPath(filename string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		filename = filepath.Join(root, DEFAULT_DB_FILENAME)
+		filename = filepath.Join(root, DefaultDatabase)
 	}
 	return filepath.Abs(filename)
 }

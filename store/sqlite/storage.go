@@ -60,37 +60,37 @@ var (
 // the db and the instance is ready to use.
 func Factory(filename string) store.Factory {
 	options := DefaultOptions()
-	dsnF := func() string {
-		return dsn(filename, options)
-	}
+
 	// If the factory function returns successfully, then we have a valid DSN
 	// and we've made any local directories needed to support it.
 	return func() (store.URLDataStore, error) {
 		s := &sqliteStore{
 			DBHandle: database.DBHandle[stmtIndex]{
 				Driver: database.SQLite,
-				DSN:    dsnF,
 			},
 			filename: filename,
-			options:  DefaultOptions(),
+			options:  options,
 		}
 		var err error
 		s.resolvedPath, err = dbPath(filename)
 		if err != nil {
 			switch err {
 			case ErrIsInMemory:
-				options.createIfNotExists = true // always create an in-memory DB
+				// considering making options an input parameter
+				s.options = InMemoryOptions()
 				// continue below if the caller wants an in-memory DB
 			default:
 				// if we couldn't resolve the path, we won't be able to open or create
 				return nil, err
 			}
 		}
+		s.DBHandle.DSN = s.dsn
 		if (err == nil) && !exists(s.resolvedPath) {
 			if err = s.createPathToDB(); err != nil {
 				return nil, errors.Join(ErrNoDatabase, err)
 			}
 		}
+
 		return s, nil
 	}
 }
@@ -329,4 +329,13 @@ func (s *sqliteStore) Delete(url *nurl.URL) (bool, error) {
 	default:
 		return false, fmt.Errorf("expected 0 or 1 row affected, got %d", rows)
 	}
+}
+
+func (s sqliteStore) dsn() string {
+	dsn := fmt.Sprintf(
+		"file:%s?%s",
+		s.filename,
+		s.options,
+	)
+	return dsn
 }

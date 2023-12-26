@@ -114,7 +114,7 @@ func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
 	flags.BoolVar(&noContent, "notext", false, "Skip text content")
-	flags.StringVar(&dbPath, "database", sqlite.DEFAULT_DB_FILENAME, "Database file path")
+	flags.StringVar(&dbPath, "database", sqlite.DefaultDatabase, "Database file path")
 	flags.StringVar(&csvPath, "csv", "", "CSV file path")
 	flags.IntVar(&csvUrlIndex, "csv-column", 1, "The index of the column in the CSV that contains the URLs")
 	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")

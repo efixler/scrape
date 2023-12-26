@@ -88,7 +88,7 @@ func init() {
 	flags.Usage = usage
 	flags.StringVar(&dbPath,
 		"database",
-		sqlite.DEFAULT_DB_FILENAME,
+		sqlite.DefaultDatabase,
 		"Database path. If the database doesn't exist, it will be created. \nUse ':memory:' for an in-memory database",
 	)
 	flags.IntVar(&port, "port", 8080, "The port to run the server on")
