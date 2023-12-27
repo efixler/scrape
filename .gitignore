@@ -26,4 +26,5 @@ samples/
 scrape_data/
 build/
 docker/
+internal/testdata/data/
 # cmd/scrape/test_data
