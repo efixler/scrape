@@ -37,4 +37,4 @@ WITHOUT ROWID,
 STRICT;
 
 COMMIT TRANSACTION;
-PRAGMA wal_checkpoint(restart);
+PRAGMA wal_checkpoint(RESTART);
