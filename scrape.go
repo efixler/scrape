@@ -46,7 +46,9 @@ func NewStorageBackedFetcher(
 	}, nil
 }
 
-// We will need the ctx here at some point (and will need to change to a reference pointer)
+// The context passed to Open() will be passed on to child components
+// so that they can hook into the context directly, specifically to
+// close and release resources on cancellation.
 func (f StorageBackedFetcher) Open(ctx context.Context) error {
 	err := f.fetcher.Open(ctx)
 	if err != nil {
@@ -56,6 +58,8 @@ func (f StorageBackedFetcher) Open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// We actually shouldn't need this, since the child components will hook into the context
+	// directly.
 	context.AfterFunc(ctx, func() {
 		f.Close()
 	})
@@ -96,7 +100,7 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 
 // Close() will be invoked when the context sent to Open() is done
 // If that context doesn't get cancelled, Close() must be called to
-// release resources
+// release resources.
 func (f *StorageBackedFetcher) Close() error {
 	if f.closed {
 		return nil
@@ -106,6 +110,5 @@ func (f *StorageBackedFetcher) Close() error {
 	}()
 	f.fetcher.Close()
 	f.storage.Close()
-
 	return nil
 }
