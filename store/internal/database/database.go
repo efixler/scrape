@@ -96,14 +96,12 @@ func (s *DBHandle[T]) Statement(key T, generator StatementGenerator) (*sql.Stmt,
 func (s *DBHandle[T]) Close() error {
 	var m sync.Mutex
 	m.Lock() // Aggressively lock this function
-	defer func() {
-		s.closed = true
-		m.Unlock()
-	}()
+	defer m.Unlock()
 	if s.DB == nil || s.closed {
-		slog.Warn("db already closed, returning", "dsn", s.DSN())
+		slog.Debug("db already closed, returning", "dsn", s.DSN())
 		return nil
 	}
+	s.closed = true
 	slog.Info("closing db", "dsn", s.DSN())
 	var errs []error
 	for _, stmt := range s.stmts {

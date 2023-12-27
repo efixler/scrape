@@ -13,6 +13,10 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
+const (
+	DefaultUserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0"
+)
+
 var (
 	trafilaturaFallback = &trafilatura.FallbackConfig{}
 )
@@ -20,17 +24,24 @@ var (
 type TrafilaturaFetcher struct {
 	httpClient *http.Client
 	ctx        context.Context
+	userAgent  string
 }
 
 func Factory() func() (fetch.URLData, error) {
 	return func() (fetch.URLData, error) {
-		return NewTrafilaturaFetcher(), nil
+		// todo: make this configurable
+		return NewTrafilaturaFetcher(DefaultUserAgent, nil), nil
 	}
 }
 
-func NewTrafilaturaFetcher() *TrafilaturaFetcher {
+func NewTrafilaturaFetcher(userAgent string, transport http.RoundTripper) *TrafilaturaFetcher {
+	client := &http.Client{Timeout: 30 * time.Second}
+	if transport != nil {
+		client.Transport = transport
+	}
 	return &TrafilaturaFetcher{
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		httpClient: client,
+		userAgent:  userAgent,
 	}
 }
 
@@ -39,8 +50,21 @@ func (f *TrafilaturaFetcher) Open(ctx context.Context) error {
 	return nil
 }
 
+func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", f.userAgent)
+	resp, err := f.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
-	resp, err := f.httpClient.Get(url.String())
+	resp, err := f.doRequest(url.String())
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +96,7 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	return resource, nil
 }
+
 func (f *TrafilaturaFetcher) Close() error {
 	return nil
 }
