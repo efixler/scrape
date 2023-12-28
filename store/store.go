@@ -43,6 +43,12 @@ type URLDataStore interface {
 	Close() error
 }
 
+type Maintainable interface {
+	Create() error
+	Clear() error
+	Maintain() error
+}
+
 func (u *StoredUrlData) AssertTimes() {
 	if u.Data.FetchTime == nil || u.Data.FetchTime.IsZero() {
 		now := nowf().UTC().Truncate(time.Second)

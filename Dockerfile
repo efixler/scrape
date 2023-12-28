@@ -1,6 +1,6 @@
 FROM golang:latest AS builder
 
-RUN apt update && apt upgrade
+RUN apt -y update && apt -y upgrade
 RUN apt-get -y install sqlite3
 ENV CGO_ENABLED=1
 RUN go install github.com/efixler/scrape/cmd/scrape-server@latest
@@ -18,4 +18,4 @@ RUN mkdir -p /scrape_data
 VOLUME [ "/scrape_data" ]
 EXPOSE 8080/tcp
 CMD ["cd", "/"]
-ENTRYPOINT ["/scrape/bin/scrape-server"]
+ENTRYPOINT ["/scrape/bin/scrape-server", "-database", ":memory:"]

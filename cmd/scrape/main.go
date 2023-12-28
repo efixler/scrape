@@ -14,6 +14,7 @@ import (
 
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/store/sqlite"
 )
 
@@ -79,13 +80,23 @@ func main() {
 	}
 	defer fetcher.Close()
 	if clear {
-		slog.Error("Clearing database, not yet available here")
-		os.Exit(1)
+		db, ok := fetcher.Storage.(store.Maintainable)
+		if !ok {
+			slog.Error("Clearing database not available for this storage backend")
+			os.Exit(1)
+		}
+		err := db.Clear()
+		if err != nil {
+			slog.Error("Error clearing database", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("Database cleared")
+		return
 	}
 	if maintain {
-		db, ok := fetcher.Storage.(*sqlite.SqliteStore)
+		db, ok := fetcher.Storage.(store.Maintainable)
 		if !ok {
-			log.Fatal("Maintaining database only available for sqlite")
+			log.Fatal("Maintaining database not available for this storage backend")
 		}
 		err := db.Maintain()
 		if err != nil {

@@ -69,7 +69,7 @@ func (s SqliteStore) createPathToDB() error {
 var createSQL string
 
 // When this is called, the path to the database must already exist.
-func (s *SqliteStore) create() error {
+func (s *SqliteStore) Create() error {
 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
 	return err
 }
@@ -90,12 +90,10 @@ func (s *SqliteStore) Maintain() error {
 	return err
 }
 
-// func (s *SqliteStore) clear() error {
-// 	if s.DB == nil {
-// 		return ErrStoreNotOpen
-// 	}
-// 	if _, err := s.DB.ExecContext(s.Ctx, qClear); err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
+// Clear() will drop all tables and recreate them.
+// This is a destructive operation.
+// Clear uses the same query as Create(), so it will also re-create the database
+func (s *SqliteStore) Clear() error {
+	_, err := s.DB.ExecContext(s.Ctx, createSQL)
+	return err
+}

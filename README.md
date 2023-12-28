@@ -130,14 +130,14 @@ Usage:
         Show this help message
   -clear
         Clear the database and exit
-  -create
-        Create the database and exit
   -csv string
         CSV file path
   -csv-column int
         The index of the column in the CSV that contains the URLs (default 1)
   -database string
         Database file path (default "scrape_data/scrape.db")
+  -maintain
+        Execute database maintenance and exit
   -notext
         Skip text content
 ```
