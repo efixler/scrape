@@ -58,7 +58,7 @@ var mdata = `{
   }`
 
 func TestStore(t *testing.T) {
-	s, err := Factory(":memory:")()
+	s, err := Factory(InMemoryDBName)()
 	if err != nil {
 		t.Errorf("Error opening database factory: %v", err)
 	}

@@ -71,6 +71,9 @@ var createSQL string
 // When this is called, the path to the database must already exist.
 func (s *SqliteStore) Create() error {
 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
+	if err != nil {
+		slog.Error("sqlite: error creating database", "error", err)
+	}
 	return err
 }
 

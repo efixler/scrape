@@ -123,6 +123,8 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 		if err := s.Create(); err != nil {
 			return err
 		}
+		// Unfortunately, SQLite in-memory DBs are bound to a single connection.
+		s.DB.SetMaxOpenConns(1)
 	}
 	s.Maintenance(24*time.Hour, maintain)
 	return nil

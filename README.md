@@ -116,10 +116,9 @@ The `scrape` command provides single and batch retrieval, using or bypassing the
 
 ### Quickstart
 ```
-> scrape -create
 > scrape http://www.foo.com/some/url/path
 ```
-
+That's actually it. The database will be created if it doesn't exist already.
 
 ```
 scrape % ./scrape -h
