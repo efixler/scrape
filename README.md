@@ -237,10 +237,12 @@ The `docker-run` make target docker will mount a local folder called `docker/dat
 ### TODOs
 
 - ~~Bulk fetch in the web server~~
-  - Test and benchmark concurrency options for bulk fetch
+  - Test and benchmark concurrency options for bulk fetch (partially done)
 - ~~Optimize SQLite for both file-based and in-memry storage~~
 - Enforce TTL eviction and/or DB capacity limits
       - TTL currently only forces a re-fetch after TTL expiry 
+- Better (more defensive, most structed/easier for callers to understand) error handling
+- Improve test coverage
 - Headless fallback for pages that require Javascript
 - RSS Feed parsing and retrieval of URLs referenced in RSS feeds
 - Expose more configuration items as needed
