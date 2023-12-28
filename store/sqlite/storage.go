@@ -119,10 +119,14 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 	// SQLite will open even if the the DB file is not present, it will only fail later.
 	// So, if the db hasn't been opened, check for the file here.
 	// In Memory DBs must always be created
-	if (s.filename == InMemoryDBName) || !exists(s.resolvedPath) {
+	inMemory := s.filename == InMemoryDBName
+	needsCreate := inMemory || !exists(s.resolvedPath)
+	if needsCreate {
 		if err := s.Create(); err != nil {
 			return err
 		}
+	}
+	if inMemory {
 		// Unfortunately, SQLite in-memory DBs are bound to a single connection.
 		s.DB.SetMaxOpenConns(1)
 	}
