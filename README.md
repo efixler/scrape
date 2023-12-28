@@ -8,7 +8,10 @@ Fast web scraping
 - [Status](#status)
 - [Usage as a CLI Application](#usage-as-a-cli-application)
 - [Usage as a Server](#usage-as-a-server)
+  - [API](#api)
 - [Building and Developing](#building-and-developing)
+  - [Building](#building)
+  - [Using the Docker](#using-the-docker)
 - [Roadmap](#roadmap)
 
 ## Description
@@ -101,6 +104,8 @@ Here's an example, with long fields truncated:
 
 On an M1 Mac and a middling internet connection, and with a test sample of about 2K urls, resources are downloaded, stored, and returned at a rate of about 2-3/sec. Repeating that same set with the items having been loaded loads and returns stored items at about 120-150 results/sec. 
 
+Since the above was written the SQLite database has been performance-tuned quite a bit. I'll update the above when I have a systematic benchmark to apply.
+
 
 ## Usage as a CLI Application
 ### Installing for shell usage
@@ -162,6 +167,10 @@ Usage:
 
 Use caution when using the in-memory database: There are currently no constraints on database size.
 
+### Web Interface
+
+The root path of the server (`/`) is browsable and provides a simple url to test URLs and results.
+
 ### API 
 
 #### batch 
@@ -220,20 +229,23 @@ The Docker is mostly intended for distribution and testing. The docker build
 pulls the source from the repo via `go install` and the `latest` tag, so, this build will
 not be up to date with local changes.
 
-The docker will mount a local folder called `docker/data` and bind that to the container
-for file storage.
+By default, the Docker will run using an in-memory database. This can be changed by modifying the arguments passed to `scrape-server` in the Dockerfile `ENTRYPOINT`.
+
+The `docker-run` make target docker will mount a local folder called `docker/data` and bind that to the container for file storage. If you want to use a file-based db you can use this directory, or update the `Makefile` to mount the desired local directory. 
 
 
 ## Roadmap
 ### TODOs
 
-- Bulk fetch in the web server
+- ~~Bulk fetch in the web server~~
   - Test and benchmark concurrency options for bulk fetch
+- ~~Optimize SQLite for both file-based and in-memry storage~~
 - Enforce TTL eviction and/or DB capacity limits
       - TTL currently only forces a re-fetch after TTL expiry 
 - Headless fallback for pages that require Javascript
+- RSS Feed parsing and retrieval of URLs referenced in RSS feeds
 - Expose more configuration items as needed
   - Database path
   - Default TTL
 - Add an adaptor for MySQL
-- Maybe compress text content in the DB, if this can meaningfully reduce size
+- Compress text content in the DB, probably using zstd if this can meaningfully reduce database size -- text content entries can be relatively large.

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	nurl "net/url"
 	"os"
 
@@ -23,6 +24,7 @@ var (
 	csvPath     string
 	csvUrlIndex int
 	clear       bool
+	maintain    bool
 )
 
 func initFetcher() (*scrape.StorageBackedFetcher, error) {
@@ -44,7 +46,8 @@ func getArgs() []string {
 	if csvPath != "" {
 		csvFile, err := os.Open(csvPath)
 		if err != nil {
-			log.Fatalf("Error opening CSV file %s: %s", csvPath, err)
+			slog.Error("Error opening CSV file", "csv", csvPath, "error", err)
+			os.Exit(1)
 		}
 		defer csvFile.Close()
 		reader := csv.NewReader(csvFile)
@@ -58,7 +61,8 @@ func getArgs() []string {
 				break
 			}
 			if err != nil {
-				log.Fatalf("error reading CSV file %s: %s", csvPath, err)
+				slog.Error("error reading CSV file", "csv", csvPath, "error", err)
+				os.Exit(1)
 			}
 			rval = append(rval, record[csvUrlIndex])
 		}
@@ -70,11 +74,26 @@ func getArgs() []string {
 func main() {
 	fetcher, err := initFetcher()
 	if err != nil {
-		log.Fatalf("Error initializing fetcher: %s", err)
+		slog.Error("Error initializing fetcher", "err", err)
+		os.Exit(1)
 	}
 	defer fetcher.Close()
 	if clear {
-		log.Fatal("Clearing database, not yet available here")
+		slog.Error("Clearing database, not yet available here")
+		os.Exit(1)
+	}
+	if maintain {
+		db, ok := fetcher.Storage.(*sqlite.SqliteStore)
+		if !ok {
+			log.Fatal("Maintaining database only available for sqlite")
+		}
+		err := db.Maintain()
+		if err != nil {
+			slog.Error("Error maintaining database", "err", err)
+			os.Exit(1)
+		}
+		slog.Info("Database maintenance complete")
+		return
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
@@ -118,6 +137,7 @@ func init() {
 	flags.StringVar(&csvPath, "csv", "", "CSV file path")
 	flags.IntVar(&csvUrlIndex, "csv-column", 1, "The index of the column in the CSV that contains the URLs")
 	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
+	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
 	// flags automatically adds -h and --help
 	flags.Parse(os.Args[1:])
 }

@@ -23,8 +23,8 @@ var (
 )
 
 type StorageBackedFetcher struct {
-	fetcher fetch.URLData
-	storage store.URLDataStore
+	Fetcher fetch.URLData
+	Storage store.URLDataStore
 	closed  bool
 }
 
@@ -41,8 +41,8 @@ func NewStorageBackedFetcher(
 		return nil, err
 	}
 	return &StorageBackedFetcher{
-		fetcher: fetcher,
-		storage: storage,
+		Fetcher: fetcher,
+		Storage: storage,
 	}, nil
 }
 
@@ -50,11 +50,11 @@ func NewStorageBackedFetcher(
 // so that they can hook into the context directly, specifically to
 // close and release resources on cancellation.
 func (f StorageBackedFetcher) Open(ctx context.Context) error {
-	err := f.fetcher.Open(ctx)
+	err := f.Fetcher.Open(ctx)
 	if err != nil {
 		return err
 	}
-	err = f.storage.Open(ctx)
+	err = f.Storage.Open(ctx)
 	if err != nil {
 		return err
 	}
@@ -69,7 +69,7 @@ func (f StorageBackedFetcher) Open(ctx context.Context) error {
 func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	originalURL := url.String()
 	// check storage first
-	item, err := f.storage.Fetch(url)
+	item, err := f.Storage.Fetch(url)
 	if err != nil && !errors.Is(err, store.ErrorResourceNotFound) {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		resource = &item.Data
 	}
 	if resource == nil {
-		resource, err = f.fetcher.Fetch(url)
+		resource, err = f.Fetcher.Fetch(url)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +88,7 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err = f.storage.Store(sd)
+			_, err = f.Storage.Store(sd)
 			if err != nil {
 				slog.Error("Error storing %s: %s\n", "url", url, "error", err)
 			}
@@ -108,7 +108,7 @@ func (f *StorageBackedFetcher) Close() error {
 	defer func() {
 		f.closed = true
 	}()
-	f.fetcher.Close()
-	f.storage.Close()
+	f.Fetcher.Close()
+	f.Storage.Close()
 	return nil
 }

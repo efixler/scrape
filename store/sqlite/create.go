@@ -1,12 +1,16 @@
 package sqlite
 
 import (
+	"context"
+	"database/sql"
 	_ "embed"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 const (
@@ -67,6 +71,22 @@ var createSQL string
 // When this is called, the path to the database must already exist.
 func (s *SqliteStore) create() error {
 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
+	return err
+}
+
+// Private version of the maintenance function that doesn't log, for running
+// on the timer provided by DBHandle.
+func maintain(ctx context.Context, db *sql.DB, tm time.Time) error {
+	slog.Debug("sqlite: maintenance ran", "time", tm)
+	_, err := db.ExecContext(ctx, maintenanceSQL)
+	return err
+}
+
+//go:embed maintenance.sql
+var maintenanceSQL string
+
+func (s *SqliteStore) Maintain() error {
+	_, err := s.DB.ExecContext(s.Ctx, maintenanceSQL)
 	return err
 }
 

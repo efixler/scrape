@@ -47,8 +47,8 @@ const (
 	clear
 	lookupId
 	saveId
-	flearId
 	fetch
+	clearId
 	delete
 )
 
@@ -124,13 +124,15 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 			return err
 		}
 	}
+	s.Maintenance(24*time.Hour, maintain)
 	return nil
 }
 
 // The underlying DB handle's close will be called when the context
 // passed to Open() is cancelled
 func (s *SqliteStore) Close() error {
-	err := s.DBHandle.Close()
+	err := s.DBHandle.Close() // this might be bad bc the DBHandle is embedded and will
+	// also close when the context is cancelled
 	if err != nil {
 		slog.Warn("error closing sqlite store", "dsn", s.DSN(), "error", err)
 	}
