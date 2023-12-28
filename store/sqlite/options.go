@@ -7,19 +7,19 @@ import (
 
 type JournalMode string
 type SyncMode string
-type SQLiteAccessMode string
+type AccessMode string
 
 const (
-	FiveSecondDuration                  = 5 * time.Second
-	JournalModeWAL     JournalMode      = "WAL"
-	JournalModeMemory  JournalMode      = "MEMORY"
-	JournalModeOff     JournalMode      = "OFF"
-	BigCacheSize                        = 20000
-	NormalCacheSize                     = 2000 // This is actually the sqlite default
-	SyncOff            SyncMode         = "OFF"
-	SyncNormal         SyncMode         = "NORMAL"
-	AccessModeRWC      SQLiteAccessMode = "rwc"
-	AccessModeMemory   SQLiteAccessMode = "memory"
+	FiveSecondDuration             = 5 * time.Second
+	JournalModeWAL     JournalMode = "WAL"
+	JournalModeMemory  JournalMode = "MEMORY"
+	JournalModeOff     JournalMode = "OFF"
+	BigCacheSize                   = 20000
+	NormalCacheSize                = 2000 // This is actually the sqlite default
+	SyncOff            SyncMode    = "OFF"
+	SyncNormal         SyncMode    = "NORMAL"
+	AccessModeRWC      AccessMode  = "rwc"
+	AccessModeMemory   AccessMode  = "memory"
 )
 
 type sqliteOptions struct {
@@ -27,7 +27,7 @@ type sqliteOptions struct {
 	journalMode JournalMode
 	cacheSize   int
 	synchronous SyncMode
-	accessMode  SQLiteAccessMode
+	accessMode  AccessMode
 }
 
 func (o sqliteOptions) String() string {
