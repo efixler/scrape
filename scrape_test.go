@@ -2,11 +2,11 @@ package scrape
 
 import (
 	"context"
-	"encoding/csv"
-	"io"
-	"math/rand"
+	"fmt"
+	"net/http"
 	nurl "net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/efixler/scrape/fetch/trafilatura"
@@ -15,44 +15,45 @@ import (
 )
 
 const (
+	HTMLDir = "./internal/testdata/scraped/html"
+	DBFile  = "./internal/testdata/scrape.db"
 	CsvFile = "./internal/testdata/global_urls.csv"
-	MaxURLs = 100
+	MaxURLs = 1000
 )
 
-var urls = make([]*nurl.URL, 0, MaxURLs)
-
-func init() {
-	csvFile, err := os.Open(CsvFile)
+func loadUrls() ([]*nurl.URL, error) {
+	files, err := os.ReadDir(HTMLDir)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	defer csvFile.Close()
-	reader := csv.NewReader(csvFile)
-	reader.FieldsPerRecord = -1 // allow variable number of fields, we only care about the first
-	reader.TrimLeadingSpace = true
-	reader.ReuseRecord = true
-	allURLs := make([]*nurl.URL, 0, 2000)
-	for {
-		record, err := reader.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			panic(err)
-		}
-		url, err := nurl.Parse(record[1])
-		if err != nil {
+	var urls = make([]*nurl.URL, 0, MaxURLs)
+	for _, file := range files {
+		if file.IsDir() {
 			continue
 		}
-		allURLs = append(allURLs, url)
+		fname := file.Name()
+		if !strings.HasSuffix(fname, ".html") {
+			continue
+		}
+		url, err := nurl.Parse("file://html/" + fname)
+		if err != nil {
+			return nil, err
+		}
+		urls = append(urls, url)
+		if len(urls) >= MaxURLs {
+			break
+		}
 	}
-	segment := rand.Intn(len(allURLs) / MaxURLs)
-	urls = allURLs[segment*MaxURLs : (segment+1)*MaxURLs]
+	fmt.Printf("Loaded %d URLs\n", len(urls))
+	return urls, nil
 }
 
 func makeFetcher(dbPath string, ctx context.Context) (*StorageBackedFetcher, error) {
+	t := &http.Transport{}
+	t.RegisterProtocol("file", http.NewFileTransport(http.Dir(HTMLDir)))
+
 	fetcher, err := NewStorageBackedFetcher(
-		trafilatura.Factory(),
+		trafilatura.Factory(t),
 		sqlite.Factory(dbPath),
 	)
 	if err != nil {
@@ -65,49 +66,120 @@ func makeFetcher(dbPath string, ctx context.Context) (*StorageBackedFetcher, err
 	return fetcher, nil
 }
 
-func warmup(fetcher *StorageBackedFetcher, urls []*nurl.URL, b *testing.B) {
+func BenchmarkWarmupSqliteFileDB(b *testing.B) {
+	b.Skip()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fetcher, err := makeFetcher(DBFile, ctx)
+	if err != nil {
+		b.Fatal(err)
+	}
+	urls, err := loadUrls()
+	if err != nil {
+		b.Fatal(err)
+	}
+	dbm, _ := fetcher.Storage.(store.Maintainable)
+	for i := 0; i < b.N; i++ {
+		for _, url := range urls {
+			_, err := fetcher.Fetch(url)
+			if err != nil {
+				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
+			}
+		}
+		err = dbm.Clear()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkWarmupSqliteMemoryDB(b *testing.B) {
+	b.Skip()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fetcher, err := makeFetcher(":memory:", ctx)
+	if err != nil {
+		b.Fatal(err)
+	}
+	urls, err := loadUrls()
+	if err != nil {
+		b.Fatal(err)
+	}
+	dbm, _ := fetcher.Storage.(store.Maintainable)
+	for i := 0; i < b.N; i++ {
+		for _, url := range urls {
+			_, err := fetcher.Fetch(url)
+			if err != nil {
+				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
+			}
+		}
+		err = dbm.Clear()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkWarmedSqliteMemoryDB(b *testing.B) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	fetcher, err := makeFetcher(":memory:", ctx)
+	if err != nil {
+		b.Fatal(err)
+	}
+	urls, err := loadUrls()
+	if err != nil {
+		b.Fatal(err)
+	}
 	for _, url := range urls {
 		_, err := fetcher.Fetch(url)
 		if err != nil {
 			b.Logf("Error fetching %s: %s, continuing", url.String(), err)
 		}
 	}
-}
-
-func BenchmarkSqliteFileDBWarmedUp(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	fetcher, err := makeFetcher(sqlite.DefaultDatabase, ctx)
 	dbm, _ := fetcher.Storage.(store.Maintainable)
-	defer dbm.Clear()
-	if err != nil {
-		panic(err)
-	}
-	warmup(fetcher, urls, b)
 	for i := 0; i < b.N; i++ {
 		for _, url := range urls {
 			_, err := fetcher.Fetch(url)
 			if err != nil {
-				b.Logf("Error fetching %s: %s, continuing", urls[i], err)
+				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
 			}
+		}
+		err = dbm.Clear()
+		if err != nil {
+			b.Fatal(err)
 		}
 	}
 }
 
-func BenchmarkSqliteMemoryDBWarmedUp(b *testing.B) {
+func BenchmarkWarmedSqliteFileDB(b *testing.B) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	fetcher, err := makeFetcher(sqlite.InMemoryDBName, ctx)
+	fetcher, err := makeFetcher(":memory:", ctx)
 	if err != nil {
-		panic(err)
+		b.Fatal(err)
 	}
-	warmup(fetcher, urls, b)
+	urls, err := loadUrls()
+	if err != nil {
+		b.Fatal(err)
+	}
+	for _, url := range urls {
+		_, err := fetcher.Fetch(url)
+		if err != nil {
+			b.Logf("Error fetching %s: %s, continuing", url.String(), err)
+		}
+	}
+	dbm, _ := fetcher.Storage.(store.Maintainable)
 	for i := 0; i < b.N; i++ {
 		for _, url := range urls {
 			_, err := fetcher.Fetch(url)
 			if err != nil {
-				b.Logf("Error fetching %s: %s, continuing", url, err)
+				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
 			}
+		}
+		err = dbm.Clear()
+		if err != nil {
+			b.Fatal(err)
 		}
 	}
 }

@@ -26,5 +26,7 @@ samples/
 scrape_data/
 build/
 docker/
-internal/testdata/data/
+internal/testdata/bad_files
+internal/testdata/data
+internal/testdata/scraped
 # cmd/scrape/test_data

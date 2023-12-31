@@ -27,10 +27,12 @@ type TrafilaturaFetcher struct {
 	userAgent  string
 }
 
-func Factory() func() (fetch.URLData, error) {
+func Factory(transport http.RoundTripper) func() (fetch.URLData, error) {
 	return func() (fetch.URLData, error) {
 		// todo: make this configurable
-		return NewTrafilaturaFetcher(DefaultUserAgent, nil), nil
+		// todo: we might not actually need this factory function
+		// when transport is nil, the default transport is used
+		return NewTrafilaturaFetcher(DefaultUserAgent, transport), nil
 	}
 }
 
