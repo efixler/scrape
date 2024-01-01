@@ -30,7 +30,7 @@ var (
 
 func initFetcher() (*scrape.StorageBackedFetcher, error) {
 	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(),
+		trafilatura.Factory(*trafilatura.DefaultOptions),
 		sqlite.Factory(dbPath),
 	)
 	if err != nil {

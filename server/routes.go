@@ -40,7 +40,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
 	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(),
+		trafilatura.Factory(*trafilatura.DefaultOptions),
 		sqlite.Factory(sqlite.DefaultDatabase),
 	)
 	if err != nil {

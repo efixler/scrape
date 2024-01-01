@@ -51,9 +51,11 @@ func loadUrls() ([]*nurl.URL, error) {
 func makeFetcher(dbPath string, ctx context.Context) (*StorageBackedFetcher, error) {
 	t := &http.Transport{}
 	t.RegisterProtocol("file", http.NewFileTransport(http.Dir(HTMLDir)))
+	topts := *trafilatura.DefaultOptions
+	topts.Transport = t
 
 	fetcher, err := NewStorageBackedFetcher(
-		trafilatura.Factory(t),
+		trafilatura.Factory(topts),
 		sqlite.Factory(dbPath),
 	)
 	if err != nil {

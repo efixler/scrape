@@ -19,7 +19,24 @@ const (
 
 var (
 	trafilaturaFallback = &trafilatura.FallbackConfig{}
+	DefaultOptions      = &Options{
+		FallbackConfig: trafilaturaFallback,
+		HttpClient:     &http.Client{Timeout: 30 * time.Second},
+		UserAgent:      DefaultUserAgent,
+		Transport:      nil,
+	}
 )
+
+type Options struct {
+	FallbackConfig *trafilatura.FallbackConfig
+	HttpClient     *http.Client
+	UserAgent      string
+	Transport      http.RoundTripper
+}
+
+// func Defaults() Options {
+// 	return *defaultOptions
+// }
 
 type TrafilaturaFetcher struct {
 	httpClient *http.Client
@@ -27,24 +44,34 @@ type TrafilaturaFetcher struct {
 	userAgent  string
 }
 
-func Factory(transport http.RoundTripper) func() (fetch.URLData, error) {
+// Factory function for new fetcher.
+func Factory(options Options) func() (fetch.URLData, error) {
+	// Implemented as a factory for some concurrency possbilities but
+	// we might not need this now (or at all)
 	return func() (fetch.URLData, error) {
-		// todo: make this configurable
-		// todo: we might not actually need this factory function
-		// when transport is nil, the default transport is used
-		return NewTrafilaturaFetcher(DefaultUserAgent, transport), nil
+		return NewTrafilaturaFetcher(options), nil
 	}
 }
 
-func NewTrafilaturaFetcher(userAgent string, transport http.RoundTripper) *TrafilaturaFetcher {
-	client := &http.Client{Timeout: 30 * time.Second}
-	if transport != nil {
-		client.Transport = transport
+func NewTrafilaturaFetcher(options Options) *TrafilaturaFetcher {
+
+	if options.FallbackConfig == nil {
+		options.FallbackConfig = DefaultOptions.FallbackConfig
 	}
-	return &TrafilaturaFetcher{
-		httpClient: client,
-		userAgent:  userAgent,
+	if options.HttpClient == nil {
+		options.HttpClient = DefaultOptions.HttpClient
 	}
+	if options.UserAgent == "" {
+		options.UserAgent = DefaultOptions.UserAgent
+	}
+	fetcher := &TrafilaturaFetcher{
+		httpClient: options.HttpClient,
+		userAgent:  options.UserAgent,
+	}
+	if options.Transport != nil {
+		fetcher.httpClient.Transport = options.Transport
+	}
+	return fetcher
 }
 
 func (f *TrafilaturaFetcher) Open(ctx context.Context) error {
@@ -72,7 +99,7 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return nil, fetch.ErrHTTPError{StatusCode: resp.StatusCode}
+		return nil, fetch.NewErrHTTPError(resp.StatusCode, resp.Body)
 	}
 
 	topts := trafilatura.Options{
