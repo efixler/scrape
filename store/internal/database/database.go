@@ -80,8 +80,9 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 // The maintenance function will be called with the context and the database handle.
 // If the function returns an error, the ticker will be stopped.
 // If the duration is 0 or less than a second, an error will be returned.
-// If the ticker is already running, an error will be returned.
-// The Maintenance ticker will be stopped when the context is cancelled.
+// It is possible to set up multiple maintenance functions.
+// The Maintenance ticker will be stopped when the done channel receives a message or is closed.
+// The done channel will be closed when this DBHandle is closed.
 func (s *DBHandle[T]) Maintenance(d time.Duration, f MaintenanceFunction) error {
 	if (d == 0) || (d < MinMaintenanceInterval) {
 		return ErrInvalidDuration
@@ -98,8 +99,7 @@ func (s *DBHandle[T]) Maintenance(d time.Duration, f MaintenanceFunction) error 
 				slog.Debug("DBHandle: maintenance ticker fired", "dsn", s.DSN(), "time", t)
 				err := f(s.Ctx, s.DB, t)
 				if err != nil {
-					slog.Error("DBHandle: maintenance error", "dsn", s.DSN(), "error", err)
-					ticker.Stop()
+					slog.Error("DBHandle: maintenance error, cancelling job", "dsn", s.DSN(), "error", err)
 					return
 				}
 			}
@@ -142,7 +142,9 @@ func (s *DBHandle[T]) Statement(key T, generator StatementGenerator) (*sql.Stmt,
 	return stmt, nil
 }
 
-// Close will be called when the context passed to Open() is cancelled
+// Close will be called when the context passed to Open() is cancelled. It can
+// also be called manually to release resources.
+// It will close the database handle and any prepared statements, and stop any maintenance jobs.
 func (s *DBHandle[T]) Close() error {
 	var m sync.Mutex
 	m.Lock() // Aggressively lock this function
