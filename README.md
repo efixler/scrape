@@ -163,6 +163,8 @@ Usage:
         Set the log level [debug|error|info|warn] (default info)
   -port int
         The port to run the server on (default 8080)
+  -profile
+        Enable profiling at /debug/pprof (default off)
 ```
 
 Use caution when using the in-memory database: There are currently no constraints on database size.
@@ -173,28 +175,28 @@ The root path of the server (`/`) is browsable and provides a simple url to test
 
 ### API 
 
-#### batch 
+#### batch [POST]
 Returns the metadata for the supplied list of URLs. Returned metadatas are not guaranteed to be
 in the same order as the request. 
 
-Errors behave differently in single (`extract`) vs `batch` mode. In `batch` mode, an error that prevents
-the entire request from executing will result in a 4xx or 5xx error code with error message in the result
-body (like `extract`), but errors for individual pages will result in an error message getting included in
-the metadata object for that URL; most of the remaining metadata will likely be empty. 
-
-The `Error` key will be absent for pages that have no errors.  Testing for the presence of the `Error` 
-key in a page metadata object is sufficient to indicate that there was an error extracting data from 
-that page. 
+The `batch` endpoint behaves indentically to the `extract` endpoint in all ways except two:
+1. The endpoint returns an array of the JSON payload described above
+1. When individual items have errors, the request will still return with a 200 status code. Inspect the 
+payload for individual items to determine the status of an individual item request.
 
 | Param | Description | Required | 
 | -------- | ------ | ----------- |
 | urls | A JSON array of the urls to fetch | Y |
 
 #### extract [GET, POST]
-Fetch the metadata and text content for the specified URL. Errors will be reported using HTTP error codes.
-The `Error` key should be absent (behavior subject to change).
+Fetch the metadata and text content for the specified URL. Returns JSON payload as decribed above.
 
-Returns JSON payload as decribed above.
+If the server encounters an error fetching a requested URL, the status code for the request will be set to 422 (Unprocessable Entity). This may change.
+
+The returned JSON payload will include a `StatusCode` field in all cases, along with an `Error` field when
+there's an error fetching or parsing the requested content.
+
+
 
 | Param | Description | Required | 
 | -------- | ------ | ----------- |

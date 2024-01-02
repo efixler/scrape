@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/pprof"
 	nurl "net/url"
 
 	"github.com/efixler/scrape"
@@ -14,7 +15,7 @@ import (
 	"github.com/efixler/scrape/store/sqlite"
 )
 
-func InitMux(ctx context.Context) (http.Handler, error) {
+func InitMux(ctx context.Context, withProfiling bool) (http.Handler, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleHome)
 	scrapeServer, err := NewScrapeServer(ctx)
@@ -23,6 +24,9 @@ func InitMux(ctx context.Context) (http.Handler, error) {
 	}
 	mux.HandleFunc("/extract", scrapeServer.singleHandler)
 	mux.HandleFunc("/batch", scrapeServer.batchHandler)
+	if withProfiling {
+		initPProf(mux)
+	}
 	return mux, nil
 }
 
@@ -143,4 +147,13 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Error encoding response: %s", err), http.StatusInternalServerError)
 		return
 	}
+}
+
+func initPProf(mux *http.ServeMux) {
+	// pprof
+	mux.HandleFunc("/debug/pprof/", http.HandlerFunc(pprof.Index))
+	mux.HandleFunc("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	mux.HandleFunc("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	mux.HandleFunc("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	mux.HandleFunc("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 }

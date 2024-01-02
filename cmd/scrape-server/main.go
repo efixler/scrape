@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	flags  flag.FlagSet
-	port   int
-	dbPath string
+	flags   flag.FlagSet
+	port    int
+	dbPath  string
+	profile bool
 )
 
 // TODO: Create the db on startup if it doesn't exist
@@ -27,7 +28,7 @@ func main() {
 	slog.Info("scrape-server starting up", "port", port)
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
-	mux, err := server.InitMux(ctx)
+	mux, err := server.InitMux(ctx, profile)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
@@ -92,6 +93,7 @@ func init() {
 		"Database path. If the database doesn't exist, it will be created. \nUse ':memory:' for an in-memory database",
 	)
 	flags.IntVar(&port, "port", 8080, "The port to run the server on")
+	flags.BoolVar(&profile, "profile", false, "Enable profiling at /debug/pprof (default off)")
 	var logLevel slog.Level
 	flags.Func(
 		"log-level",
