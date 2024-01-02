@@ -82,8 +82,6 @@ func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
 	page, err := h.fetcher.Fetch(netUrl)
 	if err != nil {
 		w.WriteHeader(http.StatusUnprocessableEntity)
-		w.Write([]byte(fmt.Sprintf("Error fetching %s: %s", url, err)))
-		return
 	}
 	encoder := json.NewEncoder(w)
 	pp := r.FormValue("pp") != ""
