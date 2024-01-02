@@ -35,6 +35,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
 	w.Write(home)
 }
 
@@ -130,14 +131,8 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 				Error:       err,
 			}
 		}
-		page, err = h.fetcher.Fetch(parsedUrl)
-		if err != nil {
-			page = &resource.WebPage{
-				OriginalURL:  url,
-				RequestedURL: parsedUrl,
-				Error:        err,
-			}
-		}
+		// In this case we ignore the error, since it'll be included in the page
+		page, _ = h.fetcher.Fetch(parsedUrl)
 		pages = append(pages, page)
 	}
 	encoder := json.NewEncoder(w)

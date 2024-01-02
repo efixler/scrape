@@ -92,14 +92,31 @@ func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
 	return resp, nil
 }
 
+// Fetch a URL and return a WebPage resource.
+// The web page will be fetched and parsed using the Trafilatura library.
+// The returned resource will contain the metadata and content text.
+// The request's StatusCode will be set to the HTTP status code returned.
+// If there's an error fetching the page, in addition to the returned error,
+// the *resource.WebPage will contain partial data pertaining to the request.
 func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+	fetchTime := time.Now().UTC().Truncate(time.Second)
+	rval := &resource.WebPage{
+		RequestedURL: url,
+		FetchTime:    &fetchTime,
+	}
+
 	resp, err := f.doRequest(url.String())
 	if err != nil {
-		return nil, err
+		return rval, err
 	}
 	defer resp.Body.Close()
+	rval.StatusCode = resp.StatusCode
 	if resp.StatusCode >= 400 {
-		return nil, fetch.NewErrHTTPError(resp.StatusCode, resp.Body)
+		// include the error in the resource, and return it.
+		// TODO: StatusCode in the resource _and_ in the error is redundant
+		err = fetch.NewErrHTTPError(resp.StatusCode, resp.Body)
+		rval.Error = err
+		return rval, err
 	}
 
 	topts := trafilatura.Options{
@@ -114,16 +131,11 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		// true in all of these cases)
 		// It's a plain error with the message:
 		// "text and comments are not long enough: 0 0"
-		return nil, err
+		return rval, err
 	}
-	fetchTime := time.Now().UTC().Truncate(time.Second)
-	resource := &resource.WebPage{
-		Metadata:     result.Metadata,
-		ContentText:  result.ContentText,
-		RequestedURL: url,
-		FetchTime:    &fetchTime,
-	}
-	return resource, nil
+	rval.Metadata = result.Metadata
+	rval.ContentText = result.ContentText
+	return rval, nil
 }
 
 func (f *TrafilaturaFetcher) Close() error {

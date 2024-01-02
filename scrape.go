@@ -77,10 +77,11 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	if item != nil {
 		resource = &item.Data
 	}
+	defer func() { resource.OriginalURL = originalURL }()
 	if resource == nil {
 		resource, err = f.Fetcher.Fetch(url)
 		if err != nil {
-			return nil, err
+			return resource, err
 		}
 		sd := &store.StoredUrlData{
 			Data: *resource,
@@ -94,7 +95,6 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 			}
 		}()
 	}
-	resource.OriginalURL = originalURL
 	return resource, nil
 }
 

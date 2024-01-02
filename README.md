@@ -27,12 +27,13 @@ Fast web scraping
   - Adaptable to other storage backends
 
 ## Output Format
-JSON output is a superset of Trafilatura format. 
+JSON output is a superset of Trafilatura format. Empty fields may be omitted in responses.
 
 | Field | Type | Description |
 | ----  | ---- | ------------|
 | `OriginalURL` | String | Exactly the url that was in the inbound request |
 | `RequestedURL` | URL | The URL that was actually requested. (Some URL elements may be rewritten before the outgoing request) |
+| `StatusCode` | Int | The status code returned by the target server when fetching this page |
 | `Error` | String | Error message(s), if there were any, while processing this page |
 | `Hostname` | Domain name | The domain serving this resource |
 | `URL` | URL | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |

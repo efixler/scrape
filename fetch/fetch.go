@@ -29,6 +29,10 @@ func NewErrHTTPError(statusCode int, body io.Reader) ErrHTTPError {
 	return rval
 }
 
+func (e ErrHTTPError) Body(target error) string {
+	return e.Message
+}
+
 func (e ErrHTTPError) Error() string {
 	return fmt.Sprintf("HTTP fetch error [%d:%s]", e.StatusCode, e.Message)
 }
