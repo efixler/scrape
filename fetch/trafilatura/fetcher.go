@@ -86,10 +86,7 @@ func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
 	}
 	req.Header.Set("User-Agent", f.userAgent)
 	resp, err := f.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	return resp, nil
+	return resp, err
 }
 
 // Fetch a URL and return a WebPage resource.
@@ -107,6 +104,10 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 
 	resp, err := f.doRequest(url.String())
 	if err != nil {
+		if resp != nil {
+			rval.StatusCode = resp.StatusCode
+		}
+		rval.Error = err
 		return rval, err
 	}
 	defer resp.Body.Close()
