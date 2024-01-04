@@ -2,6 +2,8 @@ package trafilatura
 
 import (
 	"context"
+	"log/slog"
+	"mime"
 	"net/http"
 	nurl "net/url"
 	"time"
@@ -86,6 +88,9 @@ func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
 	}
 	req.Header.Set("User-Agent", f.userAgent)
 	resp, err := f.httpClient.Do(req)
+	if err != nil {
+		return resp, err
+	}
 	return resp, err
 }
 
@@ -110,6 +115,7 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		rval.Error = err
 		return rval, err
 	}
+
 	defer resp.Body.Close()
 	rval.StatusCode = resp.StatusCode
 	if resp.StatusCode >= 400 {
@@ -119,7 +125,22 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		rval.Error = err
 		return rval, err
 	}
-
+	if ctype, _, err := mime.ParseMediaType(resp.Header.Get("Content-Type")); err != nil {
+		slog.Warn("Error parsing Content-Type", "err", err, "url", url)
+	} else {
+		switch ctype {
+		case "text/html":
+		case "application/xhtml+xml": //todo: verify this
+		case "text/plain":
+		default: // trafilatura does grab some basic info from other content types,
+			// but we don't want to try to parse them; the metadata can be wrong
+			// and the data can be huge
+			slog.Info("Unsupported Content-Type", "url", url, "ctype", ctype)
+			err = fetch.NewUnsupportedContentTypeError(ctype)
+			rval.Error = err
+			return rval, err
+		}
+	}
 	topts := trafilatura.Options{
 		FallbackCandidates: trafilaturaFallback,
 		OriginalURL:        url,

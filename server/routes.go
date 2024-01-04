@@ -4,12 +4,14 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/pprof"
 	nurl "net/url"
 
 	"github.com/efixler/scrape"
+	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store/sqlite"
@@ -85,7 +87,11 @@ func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	page, err := h.fetcher.Fetch(netUrl)
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
+		if errors.Is(err, fetch.ErrUnsupportedContentType) {
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+		}
 	}
 	encoder := json.NewEncoder(w)
 	pp := r.FormValue("pp") != ""

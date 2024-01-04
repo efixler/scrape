@@ -176,3 +176,75 @@ func TestMetadataPopulatedSmokeTest(t *testing.T) {
 		t.Errorf("Expected '%s' for %s, got '%s'", smokerContent, url, resource.ContentText)
 	}
 }
+
+func TestAcceptContentTypes(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/html":
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("<html><body>OK</body></html>"))
+		case "/xml":
+			w.Header().Set("Content-Type", "application/xml")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("<xml>OK</xml>"))
+		case "/xhtml":
+			w.Header().Set("Content-Type", "application/xhtml+xml")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Strict//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd\">"))
+			w.Write([]byte("<html xmlns=\"http://www.w3.org/1999/xhtml\">"))
+			w.Write([]byte("<head><title>OK</title></head>"))
+			w.Write([]byte("<body></body></html>"))
+		case "/json":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"ok": true}`))
+		case "/text":
+			w.Header().Set("Content-Type", "text/plain")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		case "/unsupported":
+			w.Header().Set("Content-Type", "application/unsupported")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer ts.Close()
+	client := ts.Client()
+	topts := *DefaultOptions
+	topts.HttpClient = client
+	fetcher := NewTrafilaturaFetcher(topts)
+	type data struct {
+		url         string
+		expectedErr error
+	}
+	tests := []data{
+		{"/html", nil},
+		{"/xhtml", nil},
+		{"/text", nil},
+		{"/xml", fetch.NewUnsupportedContentTypeError("application/sml")},
+		{"/json", fetch.NewUnsupportedContentTypeError("application/json")},
+		{"/unsupported", fetch.NewUnsupportedContentTypeError("application/unsupported")},
+	}
+	for _, test := range tests {
+		url := ts.URL + test.url
+		netURL, _ := nurl.Parse(url)
+		resource, err := fetcher.Fetch(netURL)
+		if !errors.Is(err, test.expectedErr) {
+			t.Errorf("Expected error %s for %s, got %s", test.expectedErr, url, err)
+		} else if err != nil {
+			receivedErr, _ := err.(*fetch.UnsupportedContentTypeError)
+			expectedErr, _ := test.expectedErr.(*fetch.UnsupportedContentTypeError)
+			if receivedErr.ContentType != expectedErr.ContentType {
+				t.Errorf("Expected content type %s for %s, got %s", expectedErr.ContentType, url, receivedErr.ContentType)
+			}
+		}
+
+		if err == nil && resource.ContentText != "OK" {
+			t.Errorf("Expected 'OK' for %s, got %s", url, resource.ContentText)
+		}
+	}
+
+}

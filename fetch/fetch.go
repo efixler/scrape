@@ -11,6 +11,21 @@ import (
 	"github.com/efixler/scrape/resource"
 )
 
+var (
+	ErrUnsupportedContentType = &UnsupportedContentTypeError{
+		ErrHTTPError{http.StatusUnsupportedMediaType, "Unsupported content type"},
+		"",
+	}
+)
+
+type Factory func() (URLData, error)
+
+type URLData interface {
+	Open(context.Context) error
+	// Store(*StoredUrlData) (uint64, error)
+	Fetch(*nurl.URL) (*resource.WebPage, error)
+	Close() error
+}
 type ErrHTTPError struct {
 	StatusCode int
 	Message    string
@@ -29,23 +44,28 @@ func NewErrHTTPError(statusCode int, body io.Reader) ErrHTTPError {
 	return rval
 }
 
-func (e ErrHTTPError) Body(target error) string {
-	return e.Message
-}
-
 func (e ErrHTTPError) Error() string {
-	return fmt.Sprintf("HTTP fetch error [%d:%s]", e.StatusCode, e.Message)
+	return fmt.Sprintf("HTTP fetch error: %s", e.Message)
 }
 
 func (e ErrHTTPError) String() string {
 	return e.Error()
 }
 
-type Factory func() (URLData, error)
+type UnsupportedContentTypeError struct {
+	ErrHTTPError
+	ContentType string
+}
 
-type URLData interface {
-	Open(context.Context) error
-	// Store(*StoredUrlData) (uint64, error)
-	Fetch(*nurl.URL) (*resource.WebPage, error)
-	Close() error
+// Makes Is(err, ErrUnsupportedContentType) return true for any instance of UnsupportedContentTypeError
+func (e UnsupportedContentTypeError) Is(target error) bool {
+	_, ok := target.(*UnsupportedContentTypeError)
+	return ok
+}
+
+func NewUnsupportedContentTypeError(contentType string) *UnsupportedContentTypeError {
+	rval := *ErrUnsupportedContentType
+	rval.ContentType = contentType
+	rval.Message = fmt.Sprintf("%s %s", rval.Message, contentType)
+	return &rval
 }

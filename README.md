@@ -196,12 +196,21 @@ If the server encounters an error fetching a requested URL, the status code for 
 The returned JSON payload will include a `StatusCode` field in all cases, along with an `Error` field when
 there's an error fetching or parsing the requested content.
 
-
+##### Params
 
 | Param | Description | Required | 
 | -------- | ------ | ----------- |
 | url | The url to fetch. Should be url encoded. | Y |
 
+##### Errors
+
+| StatusCode | Description | 
+| ---------- | ----------- |
+| 415 | The requested resource was for a content type not supported by this service |
+| 422 | The request could not be completed |
+
+In all other cases, requests should return a 200 status code, and any errors received when fetching a resource
+will be included in the returned JSON payload.
 
 #### Global Params 
 These params work for any endpoint 
