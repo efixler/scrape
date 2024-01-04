@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"os"
@@ -17,10 +18,11 @@ import (
 )
 
 var (
-	flags   flag.FlagSet
-	port    int
-	dbPath  string
-	profile bool
+	flags     flag.FlagSet
+	port      int
+	dbPath    string
+	profile   bool
+	logWriter io.Writer
 )
 
 // TODO: Create the db on startup if it doesn't exist
@@ -53,6 +55,10 @@ func main() {
 	wchan := shutdownServer(s, cancel)
 	<-wchan
 	slog.Info("scrape-server bye!")
+	logFile, ok := (logWriter).(*os.File)
+	if ok {
+		logFile.Sync()
+	}
 }
 
 // Shutdown the server and then progate the shutdown to the mux
@@ -68,12 +74,9 @@ func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	context.AfterFunc(ctx, func() {
 		cf()
-		// if main() exits before the cancelfunc is done, logs don't get flushed
-		// so we wait a bit here. There isn't really a good way to find out when
-		// cancel _finishes_ so we wait instead. This would logically be a little
-		// better as an AfterFunc to the mux context, but that doesn't work any
-		// better than this.
-		time.Sleep(2 * time.Second)
+		// without a little bit of sleep here sometimes final log messages
+		// don't get flushed, even with the file sync above
+		time.Sleep(100 * time.Millisecond)
 		close(wchan)
 	})
 	defer cancel()
@@ -85,6 +88,7 @@ func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
 }
 
 func init() {
+	logWriter = os.Stderr
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
 	flags.StringVar(&dbPath,
@@ -111,7 +115,7 @@ func init() {
 		})
 	flags.Parse(os.Args[1:])
 	logger := slog.New(slog.NewTextHandler(
-		os.Stderr,
+		logWriter,
 		&slog.HandlerOptions{
 			Level: logLevel,
 		},
