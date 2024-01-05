@@ -16,12 +16,24 @@
 </head>
 <body>
 <p>
-<form action="/extract" method="GET" name="scrape" target="data_frame">
-<label for="url">Enter a URL:</label><input type="submit" value="Hit It">
+<form id="urlForm" action="/extract" method="GET" name="scrape" target="data_frame">
+<label for="url">Enter a URL:</label>
+<input type="submit" value="Hit It">
 <input type="url" name="url" id="url" value="https://" size="96" maxlength="200" pattern="https?://.*" required title="URL">
+<select title="URL Type" id="actionSelect" onchange="updateFormAction()">
+	<option value="/extract">Page</option>
+	<option value="/feed">Feed</option>
+</select>
+	
 <input type="hidden" name="pp" value="1">
 </form>
 </p>
+<script>
+function updateFormAction() {
+    var selected = document.getElementById("actionSelect").value;
+    document.getElementById("urlForm").action = selected;
+}
+</script>
 <div style="padding-top:16px;">
 <iframe 
 	id="data"
