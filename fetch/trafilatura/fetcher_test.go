@@ -224,7 +224,7 @@ func TestAcceptContentTypes(t *testing.T) {
 		{"/html", nil},
 		{"/xhtml", nil},
 		{"/text", nil},
-		{"/xml", fetch.NewUnsupportedContentTypeError("application/sml")},
+		{"/xml", fetch.NewUnsupportedContentTypeError("application/xml")},
 		{"/json", fetch.NewUnsupportedContentTypeError("application/json")},
 		{"/unsupported", fetch.NewUnsupportedContentTypeError("application/unsupported")},
 	}
@@ -237,8 +237,8 @@ func TestAcceptContentTypes(t *testing.T) {
 		} else if err != nil {
 			receivedErr, _ := err.(*fetch.UnsupportedContentTypeError)
 			expectedErr, _ := test.expectedErr.(*fetch.UnsupportedContentTypeError)
-			if receivedErr.ContentType != expectedErr.ContentType {
-				t.Errorf("Expected content type %s for %s, got %s", expectedErr.ContentType, url, receivedErr.ContentType)
+			if receivedErr.Message != expectedErr.Message {
+				t.Errorf("Expected content type %s for %s, got %s", expectedErr.Message, url, receivedErr.Message)
 			}
 		}
 

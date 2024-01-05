@@ -24,7 +24,7 @@ var (
 	DefaultOptions      = &Options{
 		FallbackConfig: trafilaturaFallback,
 		HttpClient:     &http.Client{Timeout: 30 * time.Second},
-		UserAgent:      DefaultUserAgent,
+		UserAgent:      fetch.DefaultUserAgent,
 		Transport:      nil,
 	}
 )
@@ -118,10 +118,10 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 
 	defer resp.Body.Close()
 	rval.StatusCode = resp.StatusCode
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= 400 || resp.StatusCode < 200 {
 		// include the error in the resource, and return it.
 		// TODO: StatusCode in the resource _and_ in the error is redundant
-		err = fetch.NewErrHTTPError(resp.StatusCode, resp.Body)
+		err = fetch.NewHTTPError(resp)
 		rval.Error = err
 		return rval, err
 	}

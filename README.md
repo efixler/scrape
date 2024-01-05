@@ -5,7 +5,6 @@ Fast web scraping
 
 - [Description](#description)
 - [Output Format](#output-format)
-- [Status](#status)
 - [Usage as a CLI Application](#usage-as-a-cli-application)
 - [Usage as a Server](#usage-as-a-server)
   - [API](#api)
@@ -15,16 +14,21 @@ Fast web scraping
 - [Roadmap](#roadmap)
 
 ## Description
-`scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages at medium scale.
+`scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages at medium scale. 
 
- Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or a server with a REST API.
+ Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or a server with a REST API. The default SQLite storage backend is performance-optimized and can store to disk or in memory. Scraped resources are stored on a 30-day TTL, but you can clear the database at any time (in-memory DBs are wiped whenever the server process dies).
 
-### Features:
-- Reliable, accurate and fast parsing of web content using [go-trafilatura](https://github.com/markusmobius/go-trafilatura)
-- Scraped content backed by a database to minimize outbound requests and optimize performance
-  - Resources stored with a TTL (30 days by default) to limit storage size and prevent staleness
-  - Uses [sqlite](https://www.sqlite.org/index.html) - no external server needed
-  - Adaptable to other storage backends
+ RSS and Atom feeds are supported via an endpoint in `scrape-server`. Loading a feed returns the parsed results for all item links in the feed. 
+
+ The `scrape` and `scrape-server` binaries should be buildable and runnable in any `cgo`-enabled environment where `SQLite3` is present. A docker build is also included.
+
+### Acknowledgements
+
+`scrape` is powered by:
+-  [go-trafilatura](https://github.com/markusmobius/go-trafilatura) HTML parsing
+-  [gofeed](https://github.com/mmcdole/gofeed) Atom and RSS parsing
+-  [sqlite](https://www.sqlite.org/index.html) data storage
+
 
 ## Output Format
 JSON output is a superset of Trafilatura format. Empty fields may be omitted in responses.
@@ -98,15 +102,6 @@ Here's an example, with long fields truncated:
   "FetchTime": "2023-12-18T03:37:14Z"
 }
 ```
-
-
-## Status
-`scrape` and `scrape-server` are both functional as described here. Both should be buildable in any environment that has `cgo` and runnable wherever there are `sqlite` libs.
-
-On an M1 Mac and a middling internet connection, and with a test sample of about 2K urls, resources are downloaded, stored, and returned at a rate of about 2-3/sec. Repeating that same set with the items having been loaded loads and returns stored items at about 120-150 results/sec. 
-
-Since the above was written the SQLite database has been performance-tuned quite a bit. I'll update the above when I have a systematic benchmark to apply.
-
 
 ## Usage as a CLI Application
 ### Installing for shell usage
@@ -212,6 +207,22 @@ there's an error fetching or parsing the requested content.
 In all other cases, requests should return a 200 status code, and any errors received when fetching a resource
 will be included in the returned JSON payload.
 
+#### feed [GET]
+
+Feed parses an RSS or Atom feed and returns the parsed results for each of the item links in the feed.
+
+##### Params
+
+| Param | Description | Required | 
+| -------- | ------ | ----------- |
+| url | The feed url to fetch. Should be url encoded. | Y |
+
+##### Errors
+
+| StatusCode | Description | 
+| ---------- | ----------- |
+| 422 | The url was not a valid feed |
+
 #### Global Params 
 These params work for any endpoint 
 | Param | Value | Description |
@@ -246,19 +257,15 @@ The `docker-run` make target docker will mount a local folder called `docker/dat
 
 
 ## Roadmap
-### TODOs
-
-- ~~Bulk fetch in the web server~~
-  - Test and benchmark concurrency options for bulk fetch (partially done)
-- ~~Optimize SQLite for both file-based and in-memry storage~~
-- Enforce TTL eviction and/or DB capacity limits
-      - TTL currently only forces a re-fetch after TTL expiry 
-- Better (more defensive, most structed/easier for callers to understand) error handling
 - Improve test coverage
+- Enforce TTLs and DB capacity limits for record eviction (TTLs are enforced, but not proactively flushed)
+- Expose TTL configuration
+- Expose User Agent configuration
+- Outbound request pacing
 - Headless fallback for pages that require Javascript
-- RSS Feed parsing and retrieval of URLs referenced in RSS feeds
-- Expose more configuration items as needed
-  - Database path
-  - Default TTL
-- Add an adaptor for MySQL
-- Compress text content in the DB, probably using zstd if this can meaningfully reduce database size -- text content entries can be relatively large.
+- Improve test coverage
+- Explore performance optimizations if needed, e.g.
+  - Batch request parallelization
+  - zstd compression for stored resources
+
+Feature request or bug? Post issues [here](https://github.com/efixler/scrape/issues).

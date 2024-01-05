@@ -14,6 +14,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 )
 
@@ -62,7 +63,7 @@ func getHtml(url string) (string, error) {
 		slog.Error("Error creating request", "err", err, "url", url)
 		return "", err
 	}
-	req.Header.Set("User-Agent", trafilatura.DefaultUserAgent)
+	req.Header.Set("User-Agent", fetch.DefaultUserAgent)
 	basename := basenameForUrl(url)
 	slog.Info("Fetching", "url", url, "basename", basename)
 	resp, err := client.Get(url)
@@ -128,7 +129,10 @@ func init() {
 	}
 	t := &http.Transport{}
 	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("./data")))
-	fetcher = trafilatura.NewTrafilaturaFetcher(trafilatura.DefaultUserAgent, t)
+	options := *trafilatura.DefaultOptions
+	options.HttpClient = client
+	options.Transport = t
+	fetcher = trafilatura.NewTrafilaturaFetcher(options)
 }
 
 func usage() {
