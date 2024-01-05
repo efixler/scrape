@@ -67,8 +67,14 @@ func (f StorageBackedFetcher) Open(ctx context.Context) error {
 }
 
 func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+	// Treat this as the entry point for the url and apply cleaning here.
+	// Re-evaluate this -- right now this is the entry point for all URLs,
+	// but it might not always be. We also might want storage to use the cleaned URLs,
+	// but always fetch the url precisely as requested.
 	originalURL := url.String()
-	// check storage first
+	// Now clean the URL
+	url = resource.CleanURL(url)
+	// Now fetch the item from storage
 	item, err := f.Storage.Fetch(url)
 	if err != nil && !errors.Is(err, store.ErrorResourceNotFound) {
 		return nil, err
@@ -77,6 +83,7 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	if item != nil {
 		resource = &item.Data
 	}
+	// TODO: Check that we don't store OriginalURL with the resource
 	defer func() { resource.OriginalURL = originalURL }()
 	if resource == nil {
 		resource, err = f.Fetcher.Fetch(url)
@@ -89,9 +96,9 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, err = f.Storage.Store(sd)
+			key, err := f.Storage.Store(sd)
 			if err != nil {
-				slog.Error("Error storing %s: %s\n", "url", url, "error", err)
+				slog.Error("Error storing %s: %s\n", "url", url, "key", key, "error", err)
 			}
 		}()
 	}

@@ -76,9 +76,6 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 	if r.RequestedURL != nil {
 		ar.RequestedUrlString = r.RequestedURL.String()
 	}
-	// else if r.OriginalURL != "" {
-	// 	ar.RequestedUrlString = r.OriginalURL
-	// }
 	if r.Error != nil {
 		ar.ErrorString = r.Error.Error()
 	}

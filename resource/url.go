@@ -1,6 +1,10 @@
 package resource
 
-import nurl "net/url"
+import (
+	nurl "net/url"
+)
+
+// var StripParamsMatch = regexp.MustCompile(`^(utm_\w+)`)
 
 var illegalParams = []string{
 	"utm_source",
