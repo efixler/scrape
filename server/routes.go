@@ -95,6 +95,8 @@ func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Invalid URL provided: %q, %s", url, err)))
 		return
 	}
+	// if we made it here we are going to return JSON
+	w.Header().Set("Content-Type", "application/json")
 	page, err := h.fetcher.Fetch(netUrl)
 	if err != nil {
 		if errors.Is(err, fetch.ErrUnsupportedContentType) {
@@ -134,6 +136,8 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "No URLs provided", http.StatusUnprocessableEntity)
 		return
 	}
+	// if we made it here we are going to return JSON
+	w.Header().Set("Content-Type", "application/json")
 	pages := make([]*resource.WebPage, 0, len(req.Urls))
 	var page *resource.WebPage
 	for _, url := range req.Urls {
