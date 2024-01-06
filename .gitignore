@@ -22,6 +22,7 @@
 
 # Go workspace file
 go.work
+coverage.out
 samples/
 scrape_data/
 build/

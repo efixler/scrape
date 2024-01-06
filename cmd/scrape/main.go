@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	nurl "net/url"
 	"os"
@@ -72,6 +71,34 @@ func getArgs() []string {
 	return flags.Args()
 }
 
+func clearDatabase(fetcher *scrape.StorageBackedFetcher) {
+	db, ok := fetcher.Storage.(store.Maintainable)
+	if !ok {
+		slog.Error("Clearing database not available for this storage backend")
+		os.Exit(1)
+	}
+	err := db.Clear()
+	if err != nil {
+		slog.Error("Error clearing database", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("Database cleared")
+}
+
+func maintainDatabase(fetcher *scrape.StorageBackedFetcher) {
+	db, ok := fetcher.Storage.(store.Maintainable)
+	if !ok {
+		slog.Error("Maintaining database not available for this storage backend")
+		os.Exit(1)
+	}
+	err := db.Maintain()
+	if err != nil {
+		slog.Error("Error maintaining database", "err", err)
+		os.Exit(1)
+	}
+	slog.Info("Database maintenance complete")
+}
+
 func main() {
 	fetcher, err := initFetcher()
 	if err != nil {
@@ -80,52 +107,32 @@ func main() {
 	}
 	defer fetcher.Close()
 	if clear {
-		db, ok := fetcher.Storage.(store.Maintainable)
-		if !ok {
-			slog.Error("Clearing database not available for this storage backend")
-			os.Exit(1)
-		}
-		err := db.Clear()
-		if err != nil {
-			slog.Error("Error clearing database", "err", err)
-			os.Exit(1)
-		}
-		slog.Info("Database cleared")
+		clearDatabase(fetcher)
 		return
 	}
 	if maintain {
-		db, ok := fetcher.Storage.(store.Maintainable)
-		if !ok {
-			log.Fatal("Maintaining database not available for this storage backend")
-		}
-		err := db.Maintain()
-		if err != nil {
-			slog.Error("Error maintaining database", "err", err)
-			os.Exit(1)
-		}
-		slog.Info("Database maintenance complete")
+		maintainDatabase(fetcher)
 		return
+	}
+
+	args := getArgs()
+	if len(args) == 0 {
+		slog.Error("Error: At least one URL is required\n\n")
+		flags.Usage()
+		os.Exit(1)
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	args := getArgs()
-	if len(args) == 0 {
-		log.Print("Error: At least one URL is required\n\n")
-		flags.Usage()
-		os.Exit(1)
-	}
-	for i := 0; i < len(args); i++ {
-		// fmt.Println(args[i])
-		url := args[i]
+	for _, url := range args {
 		parsedUrl, err := nurl.Parse(url)
 		if err != nil {
-			log.Printf("Error: invalue url %s, %s\n", url, err)
-			usage()
+			slog.Error("invalid url, skipping", "url", url, "err", err)
+			continue
 		}
 		page, err := fetcher.Fetch(parsedUrl)
 		if err != nil {
-			log.Printf("Error fetching %s, skipping: %v", parsedUrl.String(), err)
+			slog.Error("fetching url, skipping", "url", parsedUrl.String(), "err", err)
 			continue
 		}
 		if noContent {
@@ -133,7 +140,7 @@ func main() {
 		}
 		err = encoder.Encode(page)
 		if err != nil {
-			log.Fatalf("failed to marshal for url %s, skipping: %v", url, err)
+			slog.Error("failed to marshal, skipping: %v", "url", url, "err", err)
 			continue
 		}
 		os.Stdout.Write([]byte(",\n"))

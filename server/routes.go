@@ -49,6 +49,8 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	w.Write(home)
 }
 
+// When the context passed here is cancelled, the associated fetcher will
+// close and release any resources they have open.
 func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(*trafilatura.DefaultOptions),
@@ -73,10 +75,13 @@ func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
 	return handler, nil
 }
 
-// still working out the right way structure this. We probably will want to do
-// concurrency by channelizing fetchers. We also don't want to allocate/open
-// a new fetcher at every request. For now, we're going to persist one fetcher
-// and use the background comtext to ensure it's closed when the server is done
+// The server struct is stateless but uses the same fetcher pair, across all
+// requests. These both have some initializaton with and they are also both
+// concurrency safe, so if we want to paralellize batch requests we can still
+// use this same singelton struct across all requests.
+// TODO: The two fetchers should share the same httpClient for their outbound
+// requests. Since httpClients pool and resuse connections this would make them
+// a little more efficient.
 type scrapeServer struct {
 	fetcher     *scrape.StorageBackedFetcher
 	feedFetcher *feed.FeedFetcher

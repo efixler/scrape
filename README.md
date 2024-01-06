@@ -36,7 +36,7 @@ JSON output is a superset of Trafilatura format. Empty fields may be omitted in 
 | Field | Type | Description |
 | ----  | ---- | ------------|
 | `OriginalURL` | String | Exactly the url that was in the inbound request |
-| `RequestedURL` | URL | The URL that was actually requested. (Some URL elements may be rewritten before the outgoing request) |
+| `RequestedURL` | URL | The URL that was actually requested. (Some URL params (e.g. utm_*) may be stripped before the outbound request) |
 | `StatusCode` | Int | The status code returned by the target server when fetching this page |
 | `Error` | String | Error message(s), if there were any, while processing this page |
 | `Hostname` | Domain name | The domain serving this resource |

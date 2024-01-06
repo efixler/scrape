@@ -58,6 +58,18 @@ func NewHTTPError(resp *http.Response) ErrHTTPError {
 	return rval
 }
 
+// We consider the Is test true if the target is an ErrHTTPError and the status codes match.
+func (e ErrHTTPError) Is(target error) bool {
+	switch v := target.(type) {
+	case *ErrHTTPError:
+		return v.StatusCode == e.StatusCode
+	case ErrHTTPError:
+		return v.StatusCode == e.StatusCode
+	default:
+		return false
+	}
+}
+
 func (e ErrHTTPError) Error() string {
 	return fmt.Sprintf("HTTP fetch error (%d): %s - %s", e.StatusCode, e.Status, e.Message)
 }
@@ -72,8 +84,14 @@ type UnsupportedContentTypeError struct {
 
 // Makes errors.Is(err, ErrUnsupportedContentType) return true for any instance of UnsupportedContentTypeError
 func (e UnsupportedContentTypeError) Is(target error) bool {
-	_, ok := target.(*UnsupportedContentTypeError)
-	return ok
+	switch target.(type) {
+	case *UnsupportedContentTypeError:
+		return true
+	case UnsupportedContentTypeError:
+		return true
+	default:
+		return false
+	}
 }
 
 func NewUnsupportedContentTypeError(contentType string) *UnsupportedContentTypeError {

@@ -82,6 +82,5 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 	if !r.Date.IsZero() {
 		ar.Date = &r.Date
 	}
-
 	return json.Marshal(ar)
 }

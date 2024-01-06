@@ -2,186 +2,132 @@ package scrape
 
 import (
 	"context"
-	"fmt"
+	_ "embed"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	nurl "net/url"
-	"os"
-	"strings"
 	"testing"
+	"time"
 
 	"github.com/efixler/scrape/fetch/trafilatura"
-	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store/sqlite"
 )
 
-const (
-	HTMLDir = "./internal/testdata/scraped/html"
-	DBFile  = "./internal/testdata/scrape.db"
-	CsvFile = "./internal/testdata/global_urls.csv"
-	MaxURLs = 1000
-)
+//go:embed samples/arstechnica-1993804.html
+var testPage []byte
 
-func loadUrls() ([]*nurl.URL, error) {
-	files, err := os.ReadDir(HTMLDir)
+//go:embed samples/arstechnica-1993804.json
+var testJson []byte
+
+func TestFetchStoresAndRetrieves(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(testPage)
+	}))
+	defer ts.Close()
+	client := ts.Client()
+	fOptions := *trafilatura.DefaultOptions
+	fOptions.HttpClient = client
+	fFactory := trafilatura.Factory(fOptions)
+	sFactory := sqlite.Factory(sqlite.InMemoryDBName)
+
+	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
-	var urls = make([]*nurl.URL, 0, MaxURLs)
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		fname := file.Name()
-		if !strings.HasSuffix(fname, ".html") {
-			continue
-		}
-		url, err := nurl.Parse("file://html/" + fname)
-		if err != nil {
-			return nil, err
-		}
-		urls = append(urls, url)
-		if len(urls) >= MaxURLs {
-			break
-		}
-	}
-	fmt.Printf("Loaded %d URLs\n", len(urls))
-	return urls, nil
-}
-
-func makeFetcher(dbPath string, ctx context.Context) (*StorageBackedFetcher, error) {
-	t := &http.Transport{}
-	t.RegisterProtocol("file", http.NewFileTransport(http.Dir(HTMLDir)))
-	topts := *trafilatura.DefaultOptions
-	topts.Transport = t
-
-	fetcher, err := NewStorageBackedFetcher(
-		trafilatura.Factory(topts),
-		sqlite.Factory(dbPath),
-	)
-	if err != nil {
-		return nil, err
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	err = fetcher.Open(ctx)
 	if err != nil {
-		return nil, err
+		t.Fatal(err)
 	}
-	return fetcher, nil
-}
+	baseUrl := ts.URL + "/arstechnica-1993804.html?keep_param=1"
+	url := baseUrl + "&utm_source=feedburner"
+	netURL, _ := nurl.Parse(url)
+	fetched, err := fetcher.Fetch(netURL)
+	if err != nil {
+		t.Errorf("Expected no error for %s, got %s", url, err)
+	}
+	if fetched.OriginalURL != url {
+		t.Errorf("Expected URL %s for fetched resource, got %s", url, fetched.OriginalURL)
+	}
+	if fetched.RequestedURL.String() != baseUrl {
+		t.Errorf("Expected URL %s for fetched resource, got %s", baseUrl, fetched.RequestedURL.String())
+	}
+	if fetched.StatusCode != http.StatusOK {
+		t.Errorf("Expected status code %d for fetched resource, got %d", http.StatusOK, fetched.StatusCode)
+	}
+	reference := &resource.WebPage{}
+	err = json.Unmarshal(testJson, reference)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(1 * time.Second) // make sure wallclock has advanced so we can check the fetch time
+	stored, err := fetcher.Fetch(netURL)
+	if err != nil {
+		t.Errorf("Expected no error for %s, got %s", url, err)
+	}
 
-func BenchmarkWarmupSqliteFileDB(b *testing.B) {
-	b.Skip()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	fetcher, err := makeFetcher(DBFile, ctx)
-	if err != nil {
-		b.Fatal(err)
-	}
-	urls, err := loadUrls()
-	if err != nil {
-		b.Fatal(err)
-	}
-	dbm, _ := fetcher.Storage.(store.Maintainable)
-	for i := 0; i < b.N; i++ {
-		for _, url := range urls {
-			_, err := fetcher.Fetch(url)
-			if err != nil {
-				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
-			}
+	for i, test := range []*resource.WebPage{fetched, stored} {
+		var label string
+		if i == 0 {
+			label = "fetched"
+		} else {
+			label = "stored"
 		}
-		err = dbm.Clear()
-		if err != nil {
-			b.Fatal(err)
+		if test.StatusCode != reference.StatusCode {
+			t.Errorf(
+				"Expected status code %d for %s resource, got %d",
+				reference.StatusCode,
+				label,
+				test.StatusCode)
 		}
-	}
-}
-
-func BenchmarkWarmupSqliteMemoryDB(b *testing.B) {
-	b.Skip()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	fetcher, err := makeFetcher(":memory:", ctx)
-	if err != nil {
-		b.Fatal(err)
-	}
-	urls, err := loadUrls()
-	if err != nil {
-		b.Fatal(err)
-	}
-	dbm, _ := fetcher.Storage.(store.Maintainable)
-	for i := 0; i < b.N; i++ {
-		for _, url := range urls {
-			_, err := fetcher.Fetch(url)
-			if err != nil {
-				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
-			}
+		if test.Title != reference.Title {
+			t.Errorf("Expected title %s for %s resource, got %s", reference.Title, label, test.Title)
 		}
-		err = dbm.Clear()
-		if err != nil {
-			b.Fatal(err)
+		if test.Description != reference.Description {
+			t.Errorf(
+				"Expected description %s for %s resource, got %s",
+				reference.Description,
+				label,
+				test.Description,
+			)
 		}
-	}
-}
-
-func BenchmarkWarmedSqliteMemoryDB(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	fetcher, err := makeFetcher(":memory:", ctx)
-	if err != nil {
-		b.Fatal(err)
-	}
-	urls, err := loadUrls()
-	if err != nil {
-		b.Fatal(err)
-	}
-	for _, url := range urls {
-		_, err := fetcher.Fetch(url)
-		if err != nil {
-			b.Logf("Error fetching %s: %s, continuing", url.String(), err)
+		if test.Author != reference.Author {
+			t.Errorf("Expected author %s for %s resource, got %s", reference.Author, label, test.Author)
+		}
+		if test.Sitename != reference.Sitename {
+			t.Errorf("Expected sitename %s for %s resource, got %s", reference.Sitename, label, test.Sitename)
+		}
+		if test.Date != reference.Date {
+			t.Errorf("Expected date %s for %s resource, got %s", reference.Date, label, test.Date)
+		}
+		if test.Language != reference.Language {
+			t.Errorf("Expected language %s for %s resource, got %s", reference.Language, label, test.Language)
+		}
+		if test.Image != reference.Image {
+			t.Errorf("Expected image %s for %s resource, got %s", reference.Image, label, test.Image)
+		}
+		if test.PageType != reference.PageType {
+			t.Errorf("Expected page type %s for %s resource, got %s", reference.PageType, label, test.PageType)
+		}
+		if test.PageType != reference.PageType {
+			t.Errorf("Expected page type %s for %s resource, got %s", reference.PageType, label, test.PageType)
+		}
+		if test.URL().String() != reference.URL().String() {
+			t.Errorf("Expected URL %s for %s resource, got %s", reference.URL().String(), label, test.URL().String())
+		}
+		if test.Hostname != reference.Hostname {
+			t.Errorf("Expected hostname %s for %s resource, got %s", reference.Hostname, label, test.Hostname)
+		}
+		if test.ContentText != reference.ContentText {
+			t.Errorf("Expected content text %s for %s resource, got %s", reference.ContentText, label, test.ContentText)
 		}
 	}
-	dbm, _ := fetcher.Storage.(store.Maintainable)
-	for i := 0; i < b.N; i++ {
-		for _, url := range urls {
-			_, err := fetcher.Fetch(url)
-			if err != nil {
-				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
-			}
-		}
-		err = dbm.Clear()
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkWarmedSqliteFileDB(b *testing.B) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	fetcher, err := makeFetcher(":memory:", ctx)
-	if err != nil {
-		b.Fatal(err)
-	}
-	urls, err := loadUrls()
-	if err != nil {
-		b.Fatal(err)
-	}
-	for _, url := range urls {
-		_, err := fetcher.Fetch(url)
-		if err != nil {
-			b.Logf("Error fetching %s: %s, continuing", url.String(), err)
-		}
-	}
-	dbm, _ := fetcher.Storage.(store.Maintainable)
-	for i := 0; i < b.N; i++ {
-		for _, url := range urls {
-			_, err := fetcher.Fetch(url)
-			if err != nil {
-				b.Logf("Error fetching %s: %s, continuing", url.String(), err)
-			}
-		}
-		err = dbm.Clear()
-		if err != nil {
-			b.Fatal(err)
-		}
+	if !fetched.FetchTime.Equal(*stored.FetchTime) {
+		t.Errorf("Expected fetch time %s for stored resource, got %s", fetched.FetchTime, stored.FetchTime)
 	}
 }

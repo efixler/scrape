@@ -9,11 +9,11 @@ SCRAPE_PORT ?= 8080
 .PHONY: fmt vet build clean
 
 
-build: vet ## build the binaries, to the build/ folder (post vet)
+build: vet ## build the binaries, to the build/ folder (default target)
 	@echo "Building $(MODULE_NAME)..."
-	@go build -o $(BUILD_DIR)/ ./cmd/scrape/... 
-	@go build -o $(BUILD_DIR)/ ./cmd/scrape-feed/... 
-	@go build -o $(BUILD_DIR)/ ./cmd/scrape-server/... 
+	@go build -o $(BUILD_DIR)/ -tags "$(TAGS)" ./cmd/scrape/... 
+	@go build -o $(BUILD_DIR)/ -tags "$(TAGS)" ./cmd/scrape-feed/... 
+	@go build -o $(BUILD_DIR)/ -tags "$(TAGS)" ./cmd/scrape-server/... 
 
 clean: ## clean the build directory
 	@echo "Cleaning $(MODULE_NAME)..."
@@ -22,7 +22,7 @@ clean: ## clean the build directory
 # Docker images pull code from the repo via `go install` so
 # we skip the local checks here.
 # So - changes to the source base won't show up these dockers
-# until the hit the `latest` tag.
+# until they hit the `latest` tag.
 # TODO: Add a `docker-build-dev` target that builds a docker 
 # image with the local source code.
 docker-build: ## build the docker image
@@ -40,6 +40,10 @@ fmt:
 	@go fmt ./cmd/scrape-feed/...
 	@go fmt ./cmd/scrape-server/...
 
+test: ## run the tests
+	@echo "Running tests..."
+	@go test -coverprofile=coverage.out ./... 
+
 vet: fmt ## fmt, vet, and staticcheck
 	@echo "Running go vet and staticcheck..."
 	@go vet ./...
@@ -51,6 +55,11 @@ vet: fmt ## fmt, vet, and staticcheck
 	@staticcheck ./cmd/scrape-feed/...
 	@staticcheck ./cmd/scrape-server/...
 
+cognitive: ## run the cognitive complexity checker
+	@echo "Running gocognit..."
+	@gocognit  -ignore "_test|testdata" -top 5 .
+
 help: ## show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% 0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+
 
