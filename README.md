@@ -238,11 +238,13 @@ Best to build with `make`. The Makefile has a help target, here is its output:
 ```
 Usage:
   make 
-  build            build the binaries, to the build/ folder (post vet)
+  build            build the binaries, to the build/ folder (default target)
   clean            clean the build directory
   docker-build     build the docker image
   docker-run       run the docker image, binding to port 8080, or the env value of SCRAPE_PORT
+  test             run the tests
   vet              fmt, vet, and staticcheck
+  cognitive        run the cognitive complexity checker
   help             show this help message
 ```
 

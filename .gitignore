@@ -23,11 +23,11 @@
 # Go workspace file
 go.work
 coverage.out
-samples/
 scrape_data/
 build/
 docker/
 internal/testdata/bad_files
 internal/testdata/data
+internal/testdata/samples
 internal/testdata/scraped
 # cmd/scrape/test_data
