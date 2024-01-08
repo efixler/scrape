@@ -12,18 +12,18 @@ func TestHttpErrorIs(t *testing.T) {
 		expected bool
 	}
 	tests := []data{
-		{ErrHTTPError{StatusCode: 404}, true},
-		{ErrHTTPError{StatusCode: 500}, true},
-		// {ErrHTTPError{StatusCode: 200}, false},
-		// {ErrHTTPError{StatusCode: 0}, false},
-		{&ErrHTTPError{StatusCode: 404}, true},
-		{&ErrHTTPError{StatusCode: 500}, true},
-		// {&ErrHTTPError{StatusCode: 200}, false},
-		// {&ErrHTTPError{StatusCode: 0}, false},
+		{HttpError{StatusCode: 404}, true},
+		{HttpError{StatusCode: 500}, true},
+		// {HttpError{StatusCode: 200}, false},
+		// {HttpError{StatusCode: 0}, false},
+		{&HttpError{StatusCode: 404}, true},
+		{&HttpError{StatusCode: 500}, true},
+		// {&HttpError{StatusCode: 200}, false},
+		// {&HttpError{StatusCode: 0}, false},
 		{fmt.Errorf("error"), false},
-		{errors.Join(fmt.Errorf("error"), &ErrHTTPError{StatusCode: 500}), true},
+		{errors.Join(fmt.Errorf("error"), &HttpError{StatusCode: 500}), true},
 	}
-	referenceError := ErrHTTPError{StatusCode: 404, Status: "404 Not Found"}
+	referenceError := HttpError{StatusCode: 404, Status: "404 Not Found"}
 	for _, test := range tests {
 		if errors.Is(test.err, referenceError) != test.expected {
 			t.Errorf("Expected %t for %v, got %t", test.expected, test.err, !test.expected)
@@ -37,14 +37,14 @@ func TestUnsupportedContentTypeErrorIs(t *testing.T) {
 		expected bool
 	}
 	tests := []data{
-		{ErrHTTPError{StatusCode: 415}, true},
-		{ErrHTTPError{StatusCode: 500}, false},
+		{HttpError{StatusCode: 415}, true},
+		{HttpError{StatusCode: 500}, false},
 		{&ErrUnsupportedContentType, true},
 		{ErrUnsupportedContentType, true},
-		{&ErrHTTPError{StatusCode: 415}, true},
-		{&ErrHTTPError{StatusCode: 500}, false},
+		{&HttpError{StatusCode: 415}, true},
+		{&HttpError{StatusCode: 500}, false},
 		{fmt.Errorf("error"), false},
-		{errors.Join(fmt.Errorf("error"), &ErrHTTPError{StatusCode: 415}), true},
+		{errors.Join(fmt.Errorf("error"), &HttpError{StatusCode: 415}), true},
 	}
 	referenceError := ErrUnsupportedContentType
 	for _, test := range tests {

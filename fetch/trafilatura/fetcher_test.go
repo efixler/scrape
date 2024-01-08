@@ -32,13 +32,13 @@ func TestTargetURLErrors(t *testing.T) {
 		expectedErr error
 	}
 	tests := []data{
-		{"/400", fetch.ErrHTTPError{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("Err: %d", http.StatusBadRequest)}},
-		{"/401", fetch.ErrHTTPError{StatusCode: http.StatusUnauthorized, Message: fmt.Sprintf("Err: %d", http.StatusUnauthorized)}},
-		{"/403", fetch.ErrHTTPError{StatusCode: http.StatusForbidden, Message: fmt.Sprintf("Err: %d", http.StatusForbidden)}},
-		{"/404", fetch.ErrHTTPError{StatusCode: http.StatusNotFound, Message: fmt.Sprintf("Err: %d", http.StatusNotFound)}},
-		{"/429", fetch.ErrHTTPError{StatusCode: http.StatusTooManyRequests, Message: fmt.Sprintf("Err: %d", http.StatusTooManyRequests)}},
-		{"/500", fetch.ErrHTTPError{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("Err: %d", http.StatusInternalServerError)}},
-		{"/503", fetch.ErrHTTPError{StatusCode: http.StatusServiceUnavailable, Message: fmt.Sprintf("Err: %d", http.StatusServiceUnavailable)}},
+		{"/400", fetch.HttpError{StatusCode: http.StatusBadRequest, Message: fmt.Sprintf("Err: %d", http.StatusBadRequest)}},
+		{"/401", fetch.HttpError{StatusCode: http.StatusUnauthorized, Message: fmt.Sprintf("Err: %d", http.StatusUnauthorized)}},
+		{"/403", fetch.HttpError{StatusCode: http.StatusForbidden, Message: fmt.Sprintf("Err: %d", http.StatusForbidden)}},
+		{"/404", fetch.HttpError{StatusCode: http.StatusNotFound, Message: fmt.Sprintf("Err: %d", http.StatusNotFound)}},
+		{"/429", fetch.HttpError{StatusCode: http.StatusTooManyRequests, Message: fmt.Sprintf("Err: %d", http.StatusTooManyRequests)}},
+		{"/500", fetch.HttpError{StatusCode: http.StatusInternalServerError, Message: fmt.Sprintf("Err: %d", http.StatusInternalServerError)}},
+		{"/503", fetch.HttpError{StatusCode: http.StatusServiceUnavailable, Message: fmt.Sprintf("Err: %d", http.StatusServiceUnavailable)}},
 	}
 	for _, test := range tests {
 		url := ts.URL + test.url
@@ -50,8 +50,8 @@ func TestTargetURLErrors(t *testing.T) {
 		if !errors.Is(err, test.expectedErr) {
 			t.Errorf("Expected error %s for %s, got %s", test.expectedErr, test.url, err)
 		} else {
-			receivedErr, _ := err.(fetch.ErrHTTPError)
-			expectedErr, _ := test.expectedErr.(fetch.ErrHTTPError)
+			receivedErr, _ := err.(fetch.HttpError)
+			expectedErr, _ := test.expectedErr.(fetch.HttpError)
 			if receivedErr.StatusCode != expectedErr.StatusCode {
 				t.Errorf("Expected status code %q for %s, got %d", expectedErr.StatusCode, test.url, receivedErr.StatusCode)
 			}

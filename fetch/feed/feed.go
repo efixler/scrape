@@ -2,6 +2,8 @@ package feed
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	nurl "net/url"
 	"time"
@@ -64,6 +66,13 @@ func (f *FeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
 	defer cancel()
 	feed, err := f.parser.ParseURLWithContext(url.String(), ctx)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, fetch.HttpError{
+				StatusCode: http.StatusGatewayTimeout,
+				Status:     http.StatusText(http.StatusGatewayTimeout),
+				Message:    fmt.Sprintf("%s did not reply within %v seconds", url.String(), f.timeout.Seconds()),
+			}
+		}
 		return nil, err
 	}
 	return &resource.Feed{

@@ -17,7 +17,7 @@ const (
 
 var (
 	ErrUnsupportedContentType = UnsupportedContentTypeError{
-		ErrHTTPError{
+		HttpError{
 			StatusCode: http.StatusUnsupportedMediaType,
 			Status:     http.StatusText(http.StatusUnsupportedMediaType),
 			Message:    "Unsupported content type",
@@ -39,15 +39,15 @@ type FeedData interface {
 	Close() error
 }
 
-type ErrHTTPError struct {
+type HttpError struct {
 	StatusCode int
 	Status     string
 	Message    string
 }
 
 // TODO: Resolve/make consistent the pointer/value semantics of this and other errors here.
-func NewHTTPError(resp *http.Response) ErrHTTPError {
-	rval := ErrHTTPError{
+func NewHTTPError(resp *http.Response) HttpError {
+	rval := HttpError{
 		StatusCode: resp.StatusCode,
 		Status:     resp.Status,
 	}
@@ -58,16 +58,16 @@ func NewHTTPError(resp *http.Response) ErrHTTPError {
 	return rval
 }
 
-// We consider the Is test true if the target is an ErrHTTPError. For further resolution,
+// We consider the Is test true if the target is an HttpError. For further resolution,
 // check the StatusCode field of the error.
 // TODO: The idea of providing generic and specific HTTPErors is well-intentioned, but the
 // Is checks are a bit baroque (because to make sense these need to work bidrectionally).
 // Consider simplifying.
-func (e ErrHTTPError) Is(target error) bool {
+func (e HttpError) Is(target error) bool {
 	switch target.(type) {
-	case *ErrHTTPError:
+	case *HttpError:
 		return true
-	case ErrHTTPError:
+	case HttpError:
 		return true
 	case *UnsupportedContentTypeError:
 		return e.StatusCode == http.StatusUnsupportedMediaType
@@ -78,32 +78,32 @@ func (e ErrHTTPError) Is(target error) bool {
 	}
 }
 
-func (e ErrHTTPError) Error() string {
+func (e HttpError) Error() string {
 	if e.Status == "" {
 		e.Status = http.StatusText(e.StatusCode)
 	}
 	return fmt.Sprintf("HTTP fetch error (%d): %s - %s", e.StatusCode, e.Status, e.Message)
 }
 
-func (e ErrHTTPError) String() string {
+func (e HttpError) String() string {
 	return e.Error()
 }
 
 type UnsupportedContentTypeError struct {
-	ErrHTTPError
+	HttpError
 }
 
 // Makes errors.Is(err, ErrUnsupportedContentType) return true for any instance of UnsupportedContentTypeError
-// or for an ErrHttpError with a 415 status code.
+// or for an HttpError with a 415 status code.
 func (e UnsupportedContentTypeError) Is(target error) bool {
 	switch v := target.(type) {
 	case *UnsupportedContentTypeError:
 		return true
 	case UnsupportedContentTypeError:
 		return true
-	case *ErrHTTPError:
+	case *HttpError:
 		return v.StatusCode == http.StatusUnsupportedMediaType
-	case ErrHTTPError:
+	case HttpError:
 		return v.StatusCode == http.StatusUnsupportedMediaType
 	default:
 		return false
