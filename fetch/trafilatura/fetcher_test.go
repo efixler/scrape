@@ -49,6 +49,12 @@ func TestTargetURLErrors(t *testing.T) {
 		}
 		if !errors.Is(err, test.expectedErr) {
 			t.Errorf("Expected error %s for %s, got %s", test.expectedErr, test.url, err)
+		} else {
+			receivedErr, _ := err.(fetch.ErrHTTPError)
+			expectedErr, _ := test.expectedErr.(fetch.ErrHTTPError)
+			if receivedErr.StatusCode != expectedErr.StatusCode {
+				t.Errorf("Expected status code %q for %s, got %d", expectedErr.StatusCode, test.url, receivedErr.StatusCode)
+			}
 		}
 		if resource == nil {
 			t.Fatal("Expected resource, got nil")

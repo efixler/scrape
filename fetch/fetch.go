@@ -58,13 +58,14 @@ func NewHTTPError(resp *http.Response) ErrHTTPError {
 	return rval
 }
 
-// We consider the Is test true if the target is an ErrHTTPError and the status codes match.
+// We consider the Is test true if the target is an ErrHTTPError. For further resolution,
+// check the StatusCode field of the error.
 func (e ErrHTTPError) Is(target error) bool {
-	switch v := target.(type) {
+	switch target.(type) {
 	case *ErrHTTPError:
-		return v.StatusCode == e.StatusCode
+		return true
 	case ErrHTTPError:
-		return v.StatusCode == e.StatusCode
+		return true
 	default:
 		return false
 	}
