@@ -23,6 +23,7 @@
 # Go workspace file
 go.work
 coverage.out
+coverage.html
 scrape_data/
 build/
 docker/
