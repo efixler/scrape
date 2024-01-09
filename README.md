@@ -263,11 +263,10 @@ The `docker-run` make target docker will mount a local folder called `docker/dat
 ## Roadmap
 - Improve test coverage
 - Enforce TTLs and DB capacity limits for record eviction (TTLs are enforced, but not proactively flushed)
-- Expose TTL configuration
-- Expose User Agent configuration
+- Expose TTL, Request Timeout, and User Agent configuration
 - Outbound request pacing
 - Headless fallback for pages that require Javascript
-- Improve test coverage
+- Add test coverage to cmd/.../main.go files
 - Explore performance optimizations if needed, e.g.
   - Batch request parallelization
   - zstd compression for stored resources
