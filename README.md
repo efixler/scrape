@@ -203,6 +203,7 @@ there's an error fetching or parsing the requested content.
 | ---------- | ----------- |
 | 415 | The requested resource was for a content type not supported by this service |
 | 422 | The request could not be completed |
+| 504 | The request for the target url timed out |
 
 In all other cases, requests should return a 200 status code, and any errors received when fetching a resource
 will be included in the returned JSON payload.
@@ -222,6 +223,7 @@ Feed parses an RSS or Atom feed and returns the parsed results for each of the i
 | StatusCode | Description | 
 | ---------- | ----------- |
 | 422 | The url was not a valid feed |
+| 504 | Request for the feed timed out |
 
 #### Global Params 
 These params work for any endpoint 

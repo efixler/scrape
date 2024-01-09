@@ -104,8 +104,13 @@ func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	page, err := h.urlFetcher.Fetch(netUrl)
 	if err != nil {
-		if errors.Is(err, fetch.ErrUnsupportedContentType) {
-			w.WriteHeader(http.StatusUnsupportedMediaType)
+		if errors.Is(err, fetch.HttpError{}) {
+			switch err.(fetch.HttpError).StatusCode {
+			case http.StatusUnsupportedMediaType:
+				fallthrough
+			case http.StatusGatewayTimeout:
+				w.WriteHeader(err.(fetch.HttpError).StatusCode)
+			}
 		} else {
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		}

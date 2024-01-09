@@ -2,8 +2,11 @@ package trafilatura
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"mime"
+	"net"
 	"net/http"
 	nurl "net/url"
 	"time"
@@ -15,17 +18,18 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
-const (
-	DefaultUserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0"
-)
+const ()
 
 var (
+	DefaultUserAgent    = "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0"
+	DefaultTimeout      = 30 * time.Second
 	trafilaturaFallback = &trafilatura.FallbackConfig{}
 	DefaultOptions      = &Options{
 		FallbackConfig: trafilaturaFallback,
-		HttpClient:     &http.Client{Timeout: 30 * time.Second},
-		UserAgent:      fetch.DefaultUserAgent,
+		HttpClient:     &http.Client{},
+		Timeout:        DefaultTimeout,
 		Transport:      nil,
+		UserAgent:      fetch.DefaultUserAgent,
 	}
 )
 
@@ -34,6 +38,7 @@ type Options struct {
 	HttpClient     *http.Client
 	UserAgent      string
 	Transport      http.RoundTripper
+	Timeout        time.Duration
 }
 
 // func Defaults() Options {
@@ -70,6 +75,14 @@ func NewTrafilaturaFetcher(options Options) *TrafilaturaFetcher {
 		httpClient: options.HttpClient,
 		userAgent:  options.UserAgent,
 	}
+	// if the httpClient has a timeout set, assume it's intentional and use it
+	// but make sure we never use a timeout of 0
+	if fetcher.httpClient.Timeout == 0 {
+		fetcher.httpClient.Timeout = options.Timeout
+	}
+	if fetcher.httpClient.Timeout == 0 {
+		fetcher.httpClient.Timeout = DefaultTimeout
+	}
 	if options.Transport != nil {
 		fetcher.httpClient.Transport = options.Transport
 	}
@@ -89,6 +102,17 @@ func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
 	req.Header.Set("User-Agent", f.userAgent)
 	resp, err := f.httpClient.Do(req)
 	if err != nil {
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			return nil, fetch.HttpError{
+				StatusCode: http.StatusGatewayTimeout,
+				Status:     http.StatusText(http.StatusGatewayTimeout),
+				Message: fmt.Sprintf(
+					"%s did not reply within %v seconds",
+					url,
+					f.httpClient.Timeout.Seconds(),
+				),
+			}
+		}
 		return resp, err
 	}
 	return resp, err
@@ -102,14 +126,17 @@ func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
 // the *resource.WebPage will contain partial data pertaining to the request.
 func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	fetchTime := time.Now().UTC().Truncate(time.Second)
+	var httpErr fetch.HttpError
 	rval := &resource.WebPage{
 		RequestedURL: url,
 		FetchTime:    &fetchTime,
 	}
-
 	resp, err := f.doRequest(url.String())
 	if err != nil {
-		if resp != nil {
+		// if we get an httpError back from doRequest, trust it
+		if errors.As(err, &httpErr) {
+			rval.StatusCode = httpErr.StatusCode
+		} else if resp != nil {
 			rval.StatusCode = resp.StatusCode
 		}
 		rval.Error = err
@@ -120,7 +147,6 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	rval.StatusCode = resp.StatusCode
 	if resp.StatusCode >= 400 || resp.StatusCode < 200 {
 		// include the error in the resource, and return it.
-		// TODO: StatusCode in the resource _and_ in the error is redundant
 		err = fetch.NewHTTPError(resp)
 		rval.Error = err
 		return rval, err

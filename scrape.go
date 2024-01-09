@@ -87,6 +87,7 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	defer func() { resource.OriginalURL = originalURL }()
 	if resource == nil {
 		resource, err = f.Fetcher.Fetch(url)
+		// never store a resource with an error, but do return a partial resource
 		if err != nil {
 			return resource, err
 		}

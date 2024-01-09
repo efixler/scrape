@@ -254,3 +254,32 @@ func TestAcceptContentTypes(t *testing.T) {
 	}
 
 }
+
+func TestFetchCancelsOnTimeout(t *testing.T) {
+	timeout := 50 * time.Millisecond
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * timeout)
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("<html><body>OK</body></html>"))
+	}))
+	defer ts.Close()
+	client := ts.Client()
+	options := *DefaultOptions
+	options.Timeout = timeout
+	options.HttpClient = client
+	fetcher := NewTrafilaturaFetcher(options)
+	url, _ := nurl.Parse(ts.URL)
+	_, err := fetcher.Fetch(url)
+	if err == nil {
+		t.Errorf("Expected error for %s, got nil", url)
+	} else if !errors.Is(err, fetch.HttpError{}) {
+		t.Errorf("Expected fetch.HttpError for %s, got %s", url, err)
+	} else {
+		var httpErr fetch.HttpError
+		errors.As(err, &httpErr)
+		if httpErr.StatusCode != http.StatusGatewayTimeout {
+			t.Errorf("Expected http.StatusGatewayTimeout for %s, got %d", url, httpErr.StatusCode)
+		}
+	}
+}
