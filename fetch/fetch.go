@@ -25,15 +25,15 @@ var (
 	}
 )
 
-type Factory func() (URLData, error)
+type Factory func() (URLFetcher, error)
 
-type URLData interface {
+type URLFetcher interface {
 	Open(context.Context) error
 	Fetch(*nurl.URL) (*resource.WebPage, error)
 	Close() error
 }
 
-type FeedData interface {
+type FeedFetcher interface {
 	Open(context.Context) error
 	Fetch(*nurl.URL) (*resource.Feed, error)
 	Close() error

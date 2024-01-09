@@ -47,10 +47,10 @@ type TrafilaturaFetcher struct {
 }
 
 // Factory function for new fetcher.
-func Factory(options Options) func() (fetch.URLData, error) {
+func Factory(options Options) func() (fetch.URLFetcher, error) {
 	// Implemented as a factory for some concurrency possbilities but
 	// we might not need this now (or at all)
-	return func() (fetch.URLData, error) {
+	return func() (fetch.URLFetcher, error) {
 		return NewTrafilaturaFetcher(options), nil
 	}
 }

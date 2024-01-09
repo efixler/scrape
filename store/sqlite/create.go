@@ -14,11 +14,11 @@ import (
 )
 
 const (
-	DefaultDatabase = "scrape_data/scrape.db"
-	InMemoryDBName  = ":memory:"
+	InMemoryDBName = ":memory:"
 )
 
 var (
+	DefaultDatabase   = "scrape_data/scrape.db"
 	ErrDatabaseExists = errors.New("database already exists")
 	ErrIsInMemory     = errors.New("file path is in-memory DB (':memory:')")
 )

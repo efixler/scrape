@@ -52,7 +52,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 // When the context passed here is cancelled, the associated fetcher will
 // close and release any resources they have open.
 func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
-	fetcher, err := scrape.NewStorageBackedFetcher(
+	urlFetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(*trafilatura.DefaultOptions),
 		sqlite.Factory(sqlite.DefaultDatabase),
 	)
@@ -61,10 +61,10 @@ func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
 	}
 	feedFetcher := feed.NewFeedFetcher(feed.DefaultOptions)
 	handler := &scrapeServer{
-		fetcher:     fetcher,
+		urlFetcher:  urlFetcher,
 		feedFetcher: feedFetcher,
 	}
-	err = fetcher.Open(ctx)
+	err = urlFetcher.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +83,8 @@ func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
 // requests. Since httpClients pool and resuse connections this would make them
 // a little more efficient.
 type scrapeServer struct {
-	fetcher     *scrape.StorageBackedFetcher
-	feedFetcher *feed.FeedFetcher
+	urlFetcher  fetch.URLFetcher
+	feedFetcher fetch.FeedFetcher
 }
 
 func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +102,7 @@ func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// if we made it here we are going to return JSON
 	w.Header().Set("Content-Type", "application/json")
-	page, err := h.fetcher.Fetch(netUrl)
+	page, err := h.urlFetcher.Fetch(netUrl)
 	if err != nil {
 		if errors.Is(err, fetch.ErrUnsupportedContentType) {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
@@ -154,7 +154,7 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		// In this case we ignore the error, since it'll be included in the page
-		page, _ = h.fetcher.Fetch(parsedUrl)
+		page, _ = h.urlFetcher.Fetch(parsedUrl)
 		pages = append(pages, page)
 	}
 	encoder := json.NewEncoder(w)
@@ -183,10 +183,17 @@ func (h *scrapeServer) feedHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("Invalid URL provided: %q, %s", url, err)))
 		return
 	}
+
 	resource, err := h.feedFetcher.Fetch(netUrl)
 	if err != nil {
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		w.Write([]byte(fmt.Sprintf("Error fetching %s: %s", url, err)))
+		var httpErr fetch.HttpError
+		if errors.As(err, &httpErr) {
+			w.WriteHeader(httpErr.StatusCode)
+			w.Write([]byte(httpErr.Message))
+		} else {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			w.Write([]byte(fmt.Sprintf("Error fetching %s: %s", url, err)))
+		}
 		return
 	}
 	links := resource.ItemLinks()

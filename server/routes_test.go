@@ -1,11 +1,19 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http/httptest"
+	nurl "net/url"
 	"slices"
+	"strconv"
+	"strings"
 	"testing"
+
+	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/resource"
+	"github.com/efixler/scrape/store/sqlite"
 )
 
 func TestMutateFeedRequestForBatch(t *testing.T) {
@@ -56,5 +64,53 @@ func TestMutateFeedRequestForBatch(t *testing.T) {
 			}
 		}
 	}
+}
 
+type mockFeedFetcher struct{}
+
+func (m *mockFeedFetcher) Open(ctx context.Context) error { return nil }
+func (m *mockFeedFetcher) Close() error                   { return nil }
+func (m *mockFeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
+	errCode, atoiErr := strconv.Atoi(strings.TrimPrefix(url.Path, "/"))
+	if errCode != 0 {
+		return nil, fetch.HttpError{StatusCode: errCode}
+	}
+	return nil, fmt.Errorf("Error converting %s to int: %s", url.Path, atoiErr)
+}
+
+func TestFeedSourceErrors(t *testing.T) {
+	type data struct {
+		urlPath  string
+		expected int
+	}
+	tests := []data{
+		{urlPath: "/", expected: 400},
+		{urlPath: "?url=", expected: 400},
+		{urlPath: "?url=foo_scheme:invalidurl", expected: 400},
+		{urlPath: "?url=http://[::1", expected: 400},
+		{urlPath: "/?url=http://passthru.com/400", expected: 400},
+		{urlPath: "/?url=http://passthru.com/415", expected: 415},
+		{urlPath: "/?url=http://passthru.com/422", expected: 422},
+		{urlPath: "/?url=http://passthru.com/508", expected: 508},
+	}
+	mockFeedFetcher := &mockFeedFetcher{}
+	scrapeServer := &scrapeServer{feedFetcher: mockFeedFetcher}
+
+	urlBase := "http://foo.bar" // just make the initial URL valid
+
+	for _, test := range tests {
+		url := urlBase + test.urlPath
+		request := httptest.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		scrapeServer.feedHandler(w, request)
+		response := w.Result()
+		if response.StatusCode != test.expected {
+			t.Errorf("Expected status code %d for %s, got %d", test.expected, url, response.StatusCode)
+		}
+	}
+}
+
+func init() {
+	// this ensures that any sqlite dbs referenced here are in memory
+	sqlite.DefaultDatabase = sqlite.InMemoryDBName
 }

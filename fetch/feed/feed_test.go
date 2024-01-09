@@ -34,6 +34,7 @@ func TestFetchCancelsOnTimeout(t *testing.T) {
 	options.Client = client
 	fetcher := NewFeedFetcher(options)
 	fetcher.Open(context.Background())
+	defer fetcher.Close()
 	url, _ := nurl.Parse(ts.URL)
 	_, err := fetcher.Fetch(url)
 	if err == nil {
@@ -41,7 +42,8 @@ func TestFetchCancelsOnTimeout(t *testing.T) {
 	} else if !errors.Is(err, fetch.HttpError{}) {
 		t.Errorf("Expected fetch.HttpError for %s, got %s", url, err)
 	} else {
-		httpErr := err.(fetch.HttpError)
+		var httpErr fetch.HttpError
+		errors.As(err, &httpErr)
 		if httpErr.StatusCode != http.StatusGatewayTimeout {
 			t.Errorf("Expected http.StatusGatewayTimeout for %s, got %d", url, httpErr.StatusCode)
 		}

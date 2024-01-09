@@ -23,7 +23,7 @@ var (
 )
 
 type StorageBackedFetcher struct {
-	Fetcher fetch.URLData
+	Fetcher fetch.URLFetcher
 	Storage store.URLDataStore
 	closed  bool
 }
