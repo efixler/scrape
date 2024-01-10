@@ -7,6 +7,7 @@ Fast web scraping
 - [Output Format](#output-format)
 - [Usage as a CLI Application](#usage-as-a-cli-application)
 - [Usage as a Server](#usage-as-a-server)
+  - [Web Interface](#web-interface)
   - [API](#api)
 - [Building and Developing](#building-and-developing)
   - [Building](#building)
@@ -167,6 +168,10 @@ Use caution when using the in-memory database: There are currently no constraint
 ### Web Interface
 
 The root path of the server (`/`) is browsable and provides a simple url to test URLs and results.
+
+![Alt text](samples/webui-control.png)
+
+The pulldown on the right lets you select between loading results for a page url or for a feed.
 
 ### API 
 

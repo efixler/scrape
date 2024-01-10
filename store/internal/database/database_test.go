@@ -84,9 +84,64 @@ func TestDBClosedOnContextCancel(t *testing.T) {
 		t.Fatalf("Error opening database: %s", err)
 	}
 	cancelF()
-	time.Sleep(1 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 	err = dbh.Ping()
 	if err == nil {
 		t.Errorf("Expected error pinging closed database")
+	}
+}
+
+type mockDBHandleForCloseTest struct {
+	DBHandle[string]
+	maintCount int
+}
+
+func TestDBCloseExpectations(t *testing.T) {
+	t.Parallel()
+
+	mdbh := &mockDBHandleForCloseTest{
+		DBHandle[string]{
+			Driver: SQLite,
+			DSN:    func() string { return ":memory:" },
+			stmts:  make(map[string]*sql.Stmt, 8),
+		},
+		0,
+	}
+	// we don't want to cancel the context for this test
+	err := mdbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	mf := func(ctx context.Context, db *sql.DB, tm time.Time) error {
+		mdbh.maintCount++
+		return nil
+	}
+	err = mdbh.Maintenance(1*time.Minute, mf)
+	if err != nil {
+		t.Errorf("Error starting maintenance: %s", err)
+	}
+	err = mdbh.Close()
+	if err != nil {
+		t.Errorf("Error closing database: %s", err)
+	}
+
+	if !mdbh.DBHandle.closed {
+		t.Errorf("Expected DBHandle to be closed")
+	}
+
+	if mdbh.DBHandle.DB != nil {
+		t.Errorf("Expected DBHandle.DB to be nil")
+	}
+
+	select {
+	case _, ok := <-mdbh.DBHandle.done:
+		if ok {
+			t.Errorf("done hannel is open, expected it to be closed")
+		}
+	default:
+		t.Logf("No data received from the channel")
+	}
+	if len(mdbh.DBHandle.stmts) != 0 {
+		t.Errorf("Expected stmts map to be empty, got %v", mdbh.DBHandle.stmts)
 	}
 }

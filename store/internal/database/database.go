@@ -45,6 +45,8 @@ type DBHandle[T comparable] struct {
 	stmts  map[T]*sql.Stmt
 	done   chan bool
 	closed bool
+	closeM sync.Mutex
+	stmtM  sync.Mutex
 }
 
 type MaterialDB struct {
@@ -81,8 +83,8 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 // If the function returns an error, the ticker will be stopped.
 // If the duration is 0 or less than a second, an error will be returned.
 // It is possible to set up multiple maintenance functions.
-// The Maintenance ticker will be stopped when the done channel receives a message or is closed.
-// The done channel will be closed when this DBHandle is closed.
+// The Maintenance ticker will be stopped when this DBHandle is closed,
+// or with a StopMaintenance() call.
 func (s *DBHandle[T]) Maintenance(d time.Duration, f MaintenanceFunction) error {
 	if (d == 0) || (d < MinMaintenanceInterval) {
 		return ErrInvalidDuration
@@ -108,7 +110,11 @@ func (s *DBHandle[T]) Maintenance(d time.Duration, f MaintenanceFunction) error 
 	return nil
 }
 
-func (s DBHandle[T]) Ping() error {
+func (s *DBHandle[T]) StopMaintenance() {
+	close(s.done)
+}
+
+func (s *DBHandle[T]) Ping() error {
 	if s.closed {
 		return ErrDatabaseClosed
 	}
@@ -123,9 +129,8 @@ func (s *DBHandle[T]) Statement(key T, generator StatementGenerator) (*sql.Stmt,
 	if ok {
 		return stmt, nil
 	}
-	var m sync.Mutex
-	defer m.Unlock()
-	m.Lock()
+	s.stmtM.Lock()
+	defer s.stmtM.Unlock()
 	if s.stmts == nil {
 		s.stmts = make(map[T]*sql.Stmt, 8)
 	} else {
@@ -146,17 +151,15 @@ func (s *DBHandle[T]) Statement(key T, generator StatementGenerator) (*sql.Stmt,
 // also be called manually to release resources.
 // It will close the database handle and any prepared statements, and stop any maintenance jobs.
 func (s *DBHandle[T]) Close() error {
-	var m sync.Mutex
-	m.Lock() // Aggressively lock this function
-	defer m.Unlock()
+	s.closeM.Lock() // Aggressively lock this function
+	defer s.closeM.Unlock()
 	if s.DB == nil || s.closed {
-		slog.Debug("db already closed, returning", "dsn", s.DSN())
+		slog.Info("db already closed, returning", "dsn", s.DSN())
 		return nil
 	}
 	s.closed = true
 	slog.Info("closing db", "dsn", s.DSN())
-	// Possible problem here: if the context is not cancelled, we won't stop the ticker.
-	close(s.done) // stop any maintenance tickers
+	s.StopMaintenance()
 	var errs []error
 	for _, stmt := range s.stmts {
 		if stmt != nil {
