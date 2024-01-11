@@ -25,7 +25,7 @@ func TestAssertTimes(t *testing.T) {
 		wantTTL       time.Duration
 	}
 	tests := []data{
-		{"nils -> defaults", nil, nil, nowf(), DEFAULT_TTL},
+		{"nils -> defaults", nil, nil, nowf(), resource.DefaultTTL},
 		{
 			"Zeroes",
 			&time.Time{},

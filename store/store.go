@@ -12,10 +12,6 @@ import (
 
 type DatabaseOptions fmt.Stringer
 
-const (
-	DEFAULT_TTL = 24 * time.Hour * 30
-)
-
 var (
 	ErrorDatabaseNotFound = errors.New("database not found")
 	ErrorResourceNotFound = errors.New("resource not found in data store")
@@ -55,7 +51,7 @@ func (u *StoredUrlData) AssertTimes() {
 		u.Data.FetchTime = &now
 	}
 	if u.TTL == nil {
-		ttl := DEFAULT_TTL
+		ttl := resource.DefaultTTL
 		u.TTL = &ttl
 	}
 }

@@ -9,19 +9,27 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/server"
 	"github.com/efixler/scrape/store/sqlite"
 )
 
+const (
+	DefaultPort = 8080
+)
+
 var (
 	flags     flag.FlagSet
-	port      int
+	port      int = DefaultPort
 	dbPath    string
 	profile   bool
+	logLevel  slog.Level
 	logWriter io.Writer
 )
 
@@ -91,17 +99,50 @@ func init() {
 	logWriter = os.Stderr
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
+
+	if os.Getenv("SCRAPE_DB") != "" {
+		sqlite.DefaultDatabase = os.Getenv("SCRAPE_DB")
+	}
 	flags.StringVar(&dbPath,
 		"database",
 		sqlite.DefaultDatabase,
-		"Database path. If the database doesn't exist, it will be created. \nUse ':memory:' for an in-memory database",
+		`Database path. If the database doesn't exist, it will be created.
+Use ':memory:' for an in-memory database
+Environment variable equivalent: SCRAPE_DB
+`,
 	)
-	flags.IntVar(&port, "port", 8080, "The port to run the server on")
-	flags.BoolVar(&profile, "profile", false, "Enable profiling at /debug/pprof (default off)")
-	var logLevel slog.Level
+	if envPort, err := strconv.Atoi(os.Getenv("SCRAPE_PORT")); err == nil {
+		port = envPort
+	}
+	flags.IntVar(&port, "port", port, "Port to run the server on\nEnvironment variable equivalent: SCRAPE_PORT\n")
+
+	if ttl, err := time.ParseDuration(os.Getenv("SCRAPE_TTL")); err == nil {
+		resource.DefaultTTL = ttl
+	} else if os.Getenv("SCRAPE_TTL") != "" {
+		slog.Error("scrape-server error parsing ttl from environment, ignoring",
+			"SCRAPE_TTL", os.Getenv("SCRAPE_TTL"),
+			"error", err,
+			"default", resource.DefaultTTL,
+		)
+	}
+	flags.DurationVar(
+		&resource.DefaultTTL,
+		"ttl",
+		resource.DefaultTTL,
+		"TTL for fetched resources\nEnvironment variable equivalent: SCRAPE_TTL\n",
+	)
+	var userAgent string = os.Getenv("SCRAPE_USER_AGENT")
+	flags.StringVar(
+		&userAgent,
+		"user-agent",
+		fetch.DefaultUserAgent,
+		"The user agent to use for fetching\nEnvironment variable equivalent: SCRAPE_USER_AGENT\n",
+	)
+
+	flags.BoolVar(&profile, "profile", false, "Enable profiling at /debug/pprof\n (default off)")
 	flags.Func(
 		"log-level",
-		"Set the log level [debug|error|info|warn] (default info)",
+		"Set the log level [debug|error|info|warn]\n (default info)",
 		func(s string) error {
 			switch strings.ToLower(s) {
 			case "debug":
@@ -113,6 +154,8 @@ func init() {
 			}
 			return nil
 		})
+	var showSettings bool
+	flags.BoolVar(&showSettings, "s", false, "Show current settings and exit\n (default false)")
 	flags.Parse(os.Args[1:])
 	logger := slog.New(slog.NewTextHandler(
 		logWriter,
@@ -121,12 +164,44 @@ func init() {
 		},
 	))
 	slog.SetDefault(logger)
+	if showSettings {
+		showOptions()
+		os.Exit(0)
+	}
+}
+
+func showOptions() {
+	fmt.Print(`scrape-server options 
+(considering environment variables and command line options)`, "\n\n")
+	flags.VisitAll(func(f *flag.Flag) {
+		var value string
+		switch f.Name {
+		case "s":
+			return
+		case "log-level":
+			value = logLevel.String()
+		default:
+			value = f.Value.String()
+		}
+		fmt.Println("  ", f.Name, ":", value)
+	})
 }
 
 func usage() {
-	fmt.Println(`Usage: 
-	scrape-server [-port nnnn] [-h]
+	fmt.Println(`
+Usage:
+-----
+scrape-server [-port nnnn] [-h]
+
+Some options have environment variable equivalents. Invalid environment settings
+are ignored. Command line options override environment variables.
+	
+If environment variables are set, they'll override the defaults displayed in this 
+help message.
  
+Command line options:
+--------------------
+
   -h	
   	Show this help message`)
 

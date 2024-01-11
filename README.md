@@ -147,20 +147,48 @@ The server provides a REST API to get resource data one-at-a-time or in bulk. Th
 go install github.com/efixler/scrape/cmd/scrape-server@latest
 ```
 ```
-Usage: 
-        scrape-server [-port nnnn] [-h]
+scrape % ./build/scrape-server -h
+
+Usage:
+-----
+scrape-server [-port nnnn] [-h]
+
+Some options have environment variable equivalents. Invalid environment settings
+are ignored. Command line options override environment variables.
+
+If environment variables are set, they'll override the defaults displayed in this 
+help message.
  
+Command line options:
+--------------------
+
   -h
         Show this help message
   -database string
-        Database path. If the database doesn't exist, it will be created. 
-        Use ':memory:' for an in-memory database (default "scrape_data/scrape.db")
+        Database path. If the database doesn't exist, it will be created.
+        Use ':memory:' for an in-memory database
+        Environment variable equivalent: SCRAPE_DB
+         (default "scrape_data/scrape.db")
   -log-level value
-        Set the log level [debug|error|info|warn] (default info)
+        Set the log level [debug|error|info|warn]
+         (default info)
   -port int
-        The port to run the server on (default 8080)
+        Port to run the server on
+        Environment variable equivalent: SCRAPE_PORT
+         (default 8080)
   -profile
-        Enable profiling at /debug/pprof (default off)
+        Enable profiling at /debug/pprof
+         (default off)
+  -s    Show current settings and exit
+         (default false)
+  -ttl duration
+        TTL for fetched resources
+        Environment variable equivalent: SCRAPE_TTL
+         (default 720h0m0s)
+  -user-agent string
+        The user agent to use for fetching
+        Environment variable equivalent: SCRAPE_USER_AGENT
+         (default "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0")
 ```
 
 Use caution when using the in-memory database: There are currently no constraints on database size.
@@ -266,14 +294,14 @@ The `docker-run` make target docker will mount a local folder called `docker/dat
 
 
 ## Roadmap
-- Improve test coverage
 - Enforce TTLs and DB capacity limits for record eviction (TTLs are enforced, but not proactively flushed)
-- Expose TTL, Request Timeout, and User Agent configuration
-- Outbound request pacing
+- Expose Request Timeout configuration
+- Outbound same-domain request pacing
 - Headless fallback for pages that require Javascript
 - Add test coverage to cmd/.../main.go files
 - Explore performance optimizations if needed, e.g.
   - Batch request parallelization
   - zstd compression for stored resources
+- Explore alternate fetch/parse/storage backends
 
 Feature request or bug? Post issues [here](https://github.com/efixler/scrape/issues).

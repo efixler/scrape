@@ -8,6 +8,10 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
+var (
+	DefaultTTL = 30 * 24 * time.Hour
+)
+
 type WebPage struct {
 	trafilatura.Metadata
 	// The page that was requested by the caller

@@ -45,8 +45,7 @@ type DBHandle[T comparable] struct {
 	stmts  map[T]*sql.Stmt
 	done   chan bool
 	closed bool
-	closeM sync.Mutex
-	stmtM  sync.Mutex
+	mutex  *sync.Mutex
 }
 
 type MaterialDB struct {
@@ -75,6 +74,7 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 	}
 	s.DB = db
 	s.done = make(chan bool)
+	s.mutex = &sync.Mutex{}
 	return nil
 }
 
@@ -129,8 +129,8 @@ func (s *DBHandle[T]) Statement(key T, generator StatementGenerator) (*sql.Stmt,
 	if ok {
 		return stmt, nil
 	}
-	s.stmtM.Lock()
-	defer s.stmtM.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if s.stmts == nil {
 		s.stmts = make(map[T]*sql.Stmt, 8)
 	} else {
@@ -151,8 +151,8 @@ func (s *DBHandle[T]) Statement(key T, generator StatementGenerator) (*sql.Stmt,
 // also be called manually to release resources.
 // It will close the database handle and any prepared statements, and stop any maintenance jobs.
 func (s *DBHandle[T]) Close() error {
-	s.closeM.Lock() // Aggressively lock this function
-	defer s.closeM.Unlock()
+	s.mutex.Lock() // Aggressively lock this function
+	defer s.mutex.Unlock()
 	if s.DB == nil || s.closed {
 		slog.Info("db already closed, returning", "dsn", s.DSN())
 		return nil
