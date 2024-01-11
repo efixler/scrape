@@ -16,6 +16,7 @@ RUN mkdir -p /scrape/bin
 COPY --from=builder /go/bin/* /scrape/bin/
 RUN mkdir -p /scrape_data
 VOLUME [ "/scrape_data" ]
+ENV SCRAPE_DB=:memory:
 EXPOSE 8080/tcp
 CMD ["cd", "/"]
-ENTRYPOINT ["/scrape/bin/scrape-server", "-database", ":memory:"]
+ENTRYPOINT ["/scrape/bin/scrape-server"]

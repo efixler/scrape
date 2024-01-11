@@ -288,7 +288,8 @@ The Docker is mostly intended for distribution and testing. The docker build
 pulls the source from the repo via `go install` and the `latest` tag, so, this build will
 not be up to date with local changes.
 
-By default, the Docker will run using an in-memory database. This can be changed by modifying the arguments passed to `scrape-server` in the Dockerfile `ENTRYPOINT`.
+By default, the Docker will run using an in-memory database. This can be changed via the `SCRAPE_DB`
+environment variable.
 
 The `docker-run` make target docker will mount a local folder called `docker/data` and bind that to the container for file storage. If you want to use a file-based db you can use this directory, or update the `Makefile` to mount the desired local directory. 
 
