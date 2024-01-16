@@ -13,6 +13,7 @@ func TestCleanURL(t *testing.T) {
 	tests := []data{
 		{"https://example.com", "https://example.com"},
 		{"https://example.com?utm_source=foo", "https://example.com"},
+		{"https://example.com?utm_brand=foo", "https://example.com"},
 		{"https://example.com?utm_source=foo&utm_medium=bar", "https://example.com"},
 		{"https://example.com?utm_source=foo&utm_medium=bar&utm_campaign=baz", "https://example.com"},
 		{"https://example.com?utm_source=foo&utm_medium=bar&utm_campaign=baz&utm_term=quux", "https://example.com"},

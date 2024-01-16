@@ -12,6 +12,7 @@ var illegalParams = []string{
 	"utm_campaign",
 	"utm_term",
 	"utm_content",
+	"utm_brand",
 }
 
 func CleanURL(url *nurl.URL) *nurl.URL {
