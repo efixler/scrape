@@ -4,7 +4,7 @@ CWD := $(shell pwd)
 BUILD_DIR := build
 SCRAPE_PORT ?= 8080
 define GITHUB_ORG_USER
-$(shell git remote get-url origin | sed -n 's/.*github.com[:/]\([^/]*\)\/.*/\1/p')
+$(shell git remote get-url origin | sed -n 's/.*github.com[:/]\([^/]*\)\/.*/\1/p' | tr '[:upper:]' '[:lower:]')
 endef
 CONTAINER_REGISTRY ?= docker.io
 define PUSH_TAG
