@@ -271,11 +271,14 @@ These params work for any endpoint
 Best to build with `make`. The Makefile has a help target, here is its output:
 
 ```
+scrape % make help
+
 Usage:
   make 
   build            build the binaries, to the build/ folder (default target)
   clean            clean the build directory
-  docker-build     build the docker image
+  docker-build     build a docker image on the current platform, for local use
+  docker-push      push an amd64/arm64 image to Docker Hub or to a registry specfied by CONTAINER_REGISTRY
   docker-run       run the docker image, binding to port 8080, or the env value of SCRAPE_PORT
   test             run the tests
   vet              fmt, vet, and staticcheck
@@ -284,8 +287,15 @@ Usage:
 ```
 
 ### Using the Docker
-The Docker is mostly intended for distribution and testing. The docker build
-pulls the source from the repo via `go install` and the `latest` tag, so, this build will
+The `docker-build` target will build a docker on the current architecture. Run this image with
+`docker-run` to bring up a local instance of the service for testing. You don't need any Go 
+tooling installed locally to build and run via the Docker.
+
+To push a image to a registry, use `docker-push`. This will build a multiplatform amd64/arm64 image
+and deploy it upstream. This image is appropriate for cloud platform deployment. The registry username or organization should match the username or organization
+of the working repo, and you need the appropriate permissions. 
+
+The docker builds pull source from the root repo via `go install` and the `latest` tag, so, this build will
 not be up to date with local changes.
 
 By default, the Docker will run using an in-memory database. This can be changed via the `SCRAPE_DB`
