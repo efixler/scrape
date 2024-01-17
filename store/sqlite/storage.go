@@ -98,11 +98,25 @@ func Factory(filename string) store.Factory {
 	}
 }
 
+func New(filename string) (store.URLDataStore, error) {
+	return Factory(filename)()
+}
+
 type SqliteStore struct {
 	database.DBHandle[stmtIndex]
 	filename     string
 	resolvedPath string
 	options      sqliteOptions
+	stats        *Stats
+}
+
+func (s SqliteStore) dsn() string {
+	dsn := fmt.Sprintf(
+		"file:%s?%s",
+		s.filename,
+		s.options,
+	)
+	return dsn
 }
 
 // Opens the database, creating it if it doesn't exist.
@@ -335,13 +349,4 @@ func (s *SqliteStore) delete(url *nurl.URL) (bool, error) {
 	default:
 		return false, fmt.Errorf("expected 0 or 1 row affected, got %d", rows)
 	}
-}
-
-func (s SqliteStore) dsn() string {
-	dsn := fmt.Sprintf(
-		"file:%s?%s",
-		s.filename,
-		s.options,
-	)
-	return dsn
 }

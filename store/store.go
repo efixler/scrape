@@ -25,13 +25,6 @@ type StoredUrlData struct {
 	TTL  *time.Duration
 }
 
-// When we can close the gap between StoredUrlData and resource.WebPage, we can
-// unite these interfaces maybe
-// type URLDataStore interface {
-// 	fetch.URLData
-// 	Store(*StoredUrlData) (uint64, error)
-// }
-
 type URLDataStore interface {
 	Open(context.Context) error
 	Store(*StoredUrlData) (uint64, error)
