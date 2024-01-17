@@ -17,6 +17,7 @@ import (
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/resource"
+	"github.com/efixler/scrape/server/healthchecks"
 	"github.com/efixler/scrape/store/sqlite"
 )
 
@@ -33,6 +34,7 @@ func InitMux(ctx context.Context, withProfiling bool) (http.Handler, error) {
 	if withProfiling {
 		initPProf(mux)
 	}
+	mux.Handle("/.well-known/", healthchecks.Handler("/.well-known"))
 	return mux, nil
 }
 
