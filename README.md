@@ -9,6 +9,7 @@ Fast web scraping
 - [Usage as a Server](#usage-as-a-server)
   - [Web Interface](#web-interface)
   - [API](#api)
+  - [Healthchecks](#healthchecks)
 - [Building and Developing](#building-and-developing)
   - [Building](#building)
   - [Using the Docker](#using-the-docker)
@@ -263,6 +264,21 @@ These params work for any endpoint
 | Param | Value | Description |
 | ----- | ----- | ----------- |
 | pp | 1 | Pretty print JSON output |
+
+
+### Healthchecks 
+
+`scrape` currently supports two healthchecks
+
+#### /.well-known/health
+
+This is a JSON endpoint that returns data on the application's state, including memory and
+database runtime info.
+
+#### /.well-known/heartbeat
+
+This just returns a status `200` with the content `OK`
+
 
 ## Building and Developing
 

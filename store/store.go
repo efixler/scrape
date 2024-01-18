@@ -38,6 +38,10 @@ type Maintainable interface {
 	Maintain() error
 }
 
+type Observable interface {
+	Stats() (any, error)
+}
+
 func (u *StoredUrlData) AssertTimes() {
 	if u.Data.FetchTime == nil || u.Data.FetchTime.IsZero() {
 		now := nowf().UTC().Truncate(time.Second)

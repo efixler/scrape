@@ -7,11 +7,11 @@ const (
 )
 
 type Stats struct {
-	SqliteVersion string
-	PageCount     int `json:"page_count"`
-	PageSize      int `json:"page_size"`
-	UnusedPages   int `json:"unused_pages"`
-	MaxPageCount  int `json:"max_page_count"`
+	SqliteVersion string `json:"sqlite_version"`
+	PageCount     int    `json:"page_count"`
+	PageSize      int    `json:"page_size"`
+	UnusedPages   int    `json:"unused_pages"`
+	MaxPageCount  int    `json:"max_page_count"`
 	fetchTime     time.Time
 }
 
@@ -23,7 +23,10 @@ func (s Stats) expired() bool {
 	return time.Since(s.fetchTime) > minStatsInterval
 }
 
-func (s *SqliteStore) Stats() (*Stats, error) {
+// Implements the store.Observable interface. Return value intended to be
+// included in JSON outputs. For introspection of the results, type assert
+// to *sqlite.Stats.
+func (s *SqliteStore) Stats() (any, error) {
 	if s.stats != nil && !s.stats.expired() {
 		return s.stats, nil
 	}

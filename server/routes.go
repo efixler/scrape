@@ -18,6 +18,7 @@ import (
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/server/healthchecks"
+	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/store/sqlite"
 )
 
@@ -34,7 +35,8 @@ func InitMux(ctx context.Context, withProfiling bool) (http.Handler, error) {
 	if withProfiling {
 		initPProf(mux)
 	}
-	mux.Handle("/.well-known/", healthchecks.Handler("/.well-known"))
+	obs, _ := scrapeServer.Storage().(store.Observable)
+	mux.Handle("/.well-known/", healthchecks.Handler("/.well-known", obs))
 	return mux, nil
 }
 
@@ -87,6 +89,20 @@ func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
 type scrapeServer struct {
 	urlFetcher  fetch.URLFetcher
 	feedFetcher fetch.FeedFetcher
+}
+
+// Convenience method to get the underlying storage from the fetcher
+// which we use for healthchecks.
+// TODO: Re-evaluate. The underlying DB should probably be exposed via an
+// interface method, or (less likely) it could be references in the context
+// for consumers that we want to keep decoupled.
+func (h *scrapeServer) Storage() store.URLDataStore {
+	sbf, ok := h.urlFetcher.(*scrape.StorageBackedFetcher)
+	if !ok {
+		return nil
+	}
+
+	return sbf.Storage
 }
 
 func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {

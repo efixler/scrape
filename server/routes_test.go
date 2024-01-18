@@ -110,6 +110,37 @@ func TestFeedSourceErrors(t *testing.T) {
 	}
 }
 
+func TestWellknown(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mux, err := InitMux(ctx, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	client := ts.Client()
+	urlPath := "/.well-known/heartbeat"
+	targetUrl := ts.URL + urlPath
+	resp, err := client.Get(targetUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected 200 OK, got %d (url: %s)", resp.StatusCode, targetUrl)
+	}
+	urlPath = "/.well-known/health"
+	targetUrl = ts.URL + urlPath
+	resp, err = client.Get(targetUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected 200 OK, got %d (url: %s)", resp.StatusCode, targetUrl)
+	}
+}
+
 func init() {
 	// this ensures that any sqlite dbs referenced here are in memory
 	sqlite.DefaultDatabase = sqlite.InMemoryDBName

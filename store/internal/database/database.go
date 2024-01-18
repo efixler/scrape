@@ -154,7 +154,7 @@ func (s *DBHandle[T]) Close() error {
 	s.mutex.Lock() // Aggressively lock this function
 	defer s.mutex.Unlock()
 	if s.DB == nil || s.closed {
-		slog.Info("db already closed, returning", "dsn", s.DSN())
+		slog.Debug("db already closed, returning", "dsn", s.DSN())
 		return nil
 	}
 	s.closed = true

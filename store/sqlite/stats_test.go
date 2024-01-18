@@ -4,12 +4,18 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/efixler/scrape/store"
 )
 
 func TestStats(t *testing.T) {
 	s, err := New(":memory:")
 	if err != nil {
 		t.Fatal(err)
+	}
+	_, ok := s.(store.Observable)
+	if !ok {
+		t.Errorf("Expected SqliteStore to implement Observable interface")
 	}
 	db := s.(*SqliteStore)
 	context, cancel := context.WithCancel(context.Background())
@@ -22,10 +28,11 @@ func TestStats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stats, err := db.Stats()
+	sany, err := db.Stats()
 	if err != nil {
 		t.Fatal(err)
 	}
+	stats, _ := sany.(*Stats)
 	if stats.PageCount <= 0 {
 		t.Errorf("Expected pages, got %d", stats.PageCount)
 	}
@@ -44,7 +51,8 @@ func TestStats(t *testing.T) {
 	if stats.SqliteVersion == "" {
 		t.Errorf("Expected sqlite version, got empty string")
 	}
-	stats2, _ := db.Stats()
+	sany2, _ := db.Stats()
+	stats2, _ := sany2.(*Stats)
 	if stats2.fetchTime != stats.fetchTime {
 		t.Errorf("Expected stats fetch times to match, first: %v, second: %v", stats.fetchTime, stats2.fetchTime)
 	}
