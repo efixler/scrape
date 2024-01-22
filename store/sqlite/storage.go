@@ -161,20 +161,20 @@ func (s *SqliteStore) Close() error {
 
 // Save the data for a URL. Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
-func (s *SqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
-	uptr.AssertTimes()             // modify the original with times if needed
-	u := *uptr                     // copy this so we don't modify the original below
-	key := store.Key(u.Data.URL()) // key is for the canonical URL
-	contentText := u.Data.ContentText
-	u.Data.ContentText = "" // make sure this is a copy
-	if u.Data.RequestedURL == nil {
-		u.Data.RequestedURL = u.Data.URL()
+func (s *SqliteStore) Store(uptr *resource.WebPage) (uint64, error) {
+	uptr.AssertTimes()        // modify the original with times if needed
+	u := *uptr                // copy this so we don't modify the original below
+	key := store.Key(u.URL()) // key is for the canonical URL
+	contentText := u.ContentText
+	u.ContentText = "" // make sure this is a copy
+	if u.RequestedURL == nil {
+		u.RequestedURL = u.URL()
 	}
-	requestUrl := u.Data.RequestedURL.String()
-	u.Data.RequestedURL = nil // make sure this is a copy
-	fetchEpoch := u.Data.FetchTime.Unix()
-	u.Data.FetchTime = nil
-	metadata, err := json.Marshal(u.Data)
+	requestUrl := u.RequestedURL.String()
+	u.RequestedURL = nil // make sure this is a copy
+	fetchEpoch := u.FetchTime.Unix()
+	u.FetchTime = nil
+	metadata, err := json.Marshal(u)
 	if err != nil {
 		return 0, err
 	}
@@ -183,7 +183,7 @@ func (s *SqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 	// (id, url, parsed_url, fetch_time, expires, metadata, content_text)
 	values := []any{
 		key,
-		u.Data.URL().String(),
+		u.URL().String(),
 		requestUrl,
 		fetchEpoch,
 		expires,
@@ -201,7 +201,7 @@ func (s *SqliteStore) Store(uptr *store.StoredUrlData) (uint64, error) {
 		return 0, err
 	}
 	// todo: this can fail silently
-	err_id_map := s.storeIdMap(uptr.Data.RequestedURL, key)
+	err_id_map := s.storeIdMap(uptr.RequestedURL, key)
 
 	rows, err := result.RowsAffected()
 	if err != nil {
@@ -234,7 +234,7 @@ func (s SqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
 // being different than the requested URL.
 //
 // In that case, the canonical version of the content will be returned, if we have it.
-func (s SqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
+func (s SqliteStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	requested_key := store.Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
@@ -290,13 +290,13 @@ func (s SqliteStore) Fetch(url *nurl.URL) (*store.StoredUrlData, error) {
 		return nil, err
 	}
 	page.ContentText = contentText
-	sud := &store.StoredUrlData{
-		Data: *page,
-		TTL:  &ttl,
-	}
+	page.TTL = &ttl
+	// sud := &store.StoredUrlData{
+	// 	WebPage: *page,
+	// }
 
 	//fmt.Println(parsedUrl, fetchEpoch, expiryEpoch, metadata, contentText)
-	return sud, nil
+	return page, nil
 }
 
 // Will search url_ids to see if there's a parent entry for this url.

@@ -10,12 +10,14 @@ import (
 
 var (
 	DefaultTTL = 30 * 24 * time.Hour
+	nowf       = time.Now
 )
 
 type WebPage struct {
 	trafilatura.Metadata
 	// The page that was requested by the caller
-	OriginalURL string `json:",omitempty"`
+	OriginalURL string         `json:",omitempty"`
+	TTL         *time.Duration `json:"-"`
 	// When the returned source was fetched
 	FetchTime   *time.Time `json:",omitempty"`
 	StatusCode  int        `json:",omitempty"`
@@ -87,4 +89,15 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 		ar.Date = &r.Date
 	}
 	return json.Marshal(ar)
+}
+
+func (r *WebPage) AssertTimes() {
+	if r.FetchTime == nil || r.FetchTime.IsZero() {
+		now := nowf().UTC().Truncate(time.Second)
+		r.FetchTime = &now
+	}
+	if r.TTL == nil {
+		ttl := DefaultTTL
+		r.TTL = &ttl
+	}
 }
