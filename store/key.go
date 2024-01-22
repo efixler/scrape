@@ -32,17 +32,15 @@ func (u URLString) Hostname() string {
 }
 
 const (
-	MASK_56 uint64 = 0xffffffffffffff
-
+	MASK_56       uint64 = 0xffffffffffffff
 	CHECKSUM_MASK uint64 = 127 << 56
-	TIME_MASK     uint64 = 0xFFFFFF << 32
 )
 
 // Produces a 63 bit uint contained in a uint64
 // (SQLite cannot accept uint64 with high bit set as a primary key)
 // [Bit 63] Always 0
 // [Bits 62-56] A 7 bit checksum based on the domain name
-// [Bits 31-0] A 56 bit hash of the URL (reduced from a 64 bit fnv1a hash)
+// [Bits 55-0] A 56 bit hash of the URL (reduced from a 64 bit fnv1a hash)
 func Key(url URLWithHostname) uint64 {
 	dbytes := []byte(url.Hostname())
 	var sum uint8
