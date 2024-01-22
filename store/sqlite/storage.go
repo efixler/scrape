@@ -167,13 +167,14 @@ func (s *SqliteStore) Store(uptr *resource.WebPage) (uint64, error) {
 	key := store.Key(u.URL()) // key is for the canonical URL
 	contentText := u.ContentText
 	u.ContentText = "" // make sure this is a copy
+	u.OriginalURL = "" // we don't store original url
 	if u.RequestedURL == nil {
 		u.RequestedURL = u.URL()
 	}
 	requestUrl := u.RequestedURL.String()
-	u.RequestedURL = nil // make sure this is a copy
+	u.RequestedURL = nil // we store this, but in it's own column
 	fetchEpoch := u.FetchTime.Unix()
-	u.FetchTime = nil
+	u.FetchTime = nil // we store this, but in it's own column
 	metadata, err := json.Marshal(u)
 	if err != nil {
 		return 0, err
