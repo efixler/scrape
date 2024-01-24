@@ -3,6 +3,7 @@ FROM golang:latest AS builder
 RUN apt -y update && apt -y upgrade
 RUN apt-get -y install sqlite3
 ENV CGO_ENABLED=1
+RUN go clean -modcache
 RUN go install github.com/efixler/scrape/cmd/scrape-server@latest
 RUN go install github.com/efixler/scrape/cmd/scrape@latest
 WORKDIR /go/bin
