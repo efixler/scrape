@@ -15,8 +15,8 @@ RUN apt-get -y install sqlite3 ca-certificates
 RUN mkdir -p /scrape/bin
 COPY --from=builder /go/bin/* /scrape/bin/
 RUN mkdir -p /scrape_data
-VOLUME [ "/scrape_data" ]
-ENV SCRAPE_DB=:memory:
+# VOLUME [ "/scrape_data" ]
+ENV SCRAPE_DB=":memory:"
 EXPOSE 8080/tcp
 CMD ["cd", "/"]
 ENTRYPOINT ["/scrape/bin/scrape-server"]

@@ -69,6 +69,7 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 		s.Close()
 	})
 	db, err := sql.Open(string(s.Driver), s.DSN())
+	slog.Info("opening db", "dsn", s.DSN(), "driver", s.Driver)
 	if err != nil {
 		return err
 	}

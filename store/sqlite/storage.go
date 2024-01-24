@@ -294,9 +294,6 @@ func (s SqliteStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	page.ContentText = contentText
 	page.TTL = &ttl
-	// sud := &store.StoredUrlData{
-	// 	WebPage: *page,
-	// }
 
 	//fmt.Println(parsedUrl, fetchEpoch, expiryEpoch, metadata, contentText)
 	return page, nil
