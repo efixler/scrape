@@ -161,6 +161,7 @@ func (s *SqliteStore) Close() error {
 
 // Save the data for a URL. Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
+// TODO: Accept concrete resource.WebPage instead of a reference
 func (s *SqliteStore) Store(uptr *resource.WebPage) (uint64, error) {
 	uptr.AssertTimes()        // modify the original with times if needed
 	u := *uptr                // copy this so we don't modify the original below
@@ -260,6 +261,7 @@ func (s SqliteStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
+		// TODO: Should this return store.ErrorResourceNotFound?
 		return nil, nil
 	}
 	// parsed_url, fetch_time, expires, metadata, content_text
