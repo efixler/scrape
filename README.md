@@ -308,16 +308,16 @@ The `docker-build` target will build a docker on the current architecture. Run t
 tooling installed locally to build and run via the Docker.
 
 To push a image to a registry, use `docker-push`. This will build a multiplatform amd64/arm64 image
-and deploy it upstream. This image is appropriate for cloud platform deployment. The registry username or organization should match the username or organization
-of the working repo, and you need the appropriate permissions. 
+and deploy it upstream. This image is appropriate for cloud platform deployment. The registry username 
+or organization should match the username or organization of the working repo, and you need the 
+appropriate permissions. 
 
-The docker builds pull source from the root repo via `go install` and the `latest` tag, so, this build will
-not be up to date with local changes.
+The docker builds with local sources so use caution when pushing to registries.
 
 By default, the Docker will run using an in-memory database. This can be changed via the `SCRAPE_DB`
 environment variable.
 
-The `docker-run` make target docker will mount a local folder called `docker/data` and bind that to the container for file storage. If you want to use a file-based db you can use this directory, or update the `Makefile` to mount the desired local directory. 
+The `docker-run` make target will mount a local folder called `docker/data` and bind that to the container for file storage. If you want to use a file-based db you can use this directory, or update the `Makefile` to mount the desired local directory. 
 
 
 ## Roadmap

@@ -26,15 +26,9 @@ clean: ## clean the build directory
 	@echo "Cleaning $(MODULE_NAME)..."
 	@rm -rf $(BUILD_DIR)/*
 
-# Docker images pull code from the repo via `go install` so
-# we skip the local checks here.
-# So - changes to the source base won't show up these dockers
-# until they hit the `latest` tag.
-# TODO: Add a `docker-build-dev` target that builds a docker 
-# image with the local source code.
 docker-build: ## build a docker image on the current platform, for local use
 	@echo "Building $(DOCKER_IMAGE_NAME)..." 
-	@docker build --no-cache -t $(DOCKER_IMAGE_NAME) .
+	@docker build -t $(DOCKER_IMAGE_NAME) .
 
 docker-push: ## push an amd64/arm64 docker to Docker Hub or to a registry specfied by CONTAINER_REGISTRY
 	@echo "Pushing '$(PUSH_TAG)'..."
