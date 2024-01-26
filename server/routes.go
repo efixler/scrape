@@ -175,11 +175,9 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	if pp {
 		encoder.SetIndent("", "  ")
 	}
-
 	var page *resource.WebPage
 	for _, url := range req.Urls {
-		parsedUrl, err := nurl.Parse(url)
-		if err != nil {
+		if parsedUrl, err := nurl.Parse(url); err != nil {
 			page = &resource.WebPage{
 				OriginalURL: url,
 				Error:       err,
@@ -188,12 +186,12 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 			// In this case we ignore the error, since it'll be included in the page
 			page, _ = h.urlFetcher.Fetch(parsedUrl)
 		}
-		// pages = append(pages, page)
 		err = encoder.Encode(page)
 		if err != nil {
 			break
 		}
 	}
+	encoder.Finish()
 	if err != nil {
 		// this error is probably too late to matter, so let's log here:
 		slog.Error("Error encoding batch response", "error", err)

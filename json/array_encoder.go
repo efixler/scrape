@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -11,7 +12,7 @@ var (
 	comma    = []byte(",\n")
 	start    = []byte("[\n")
 	end      = []byte("\n]\n")
-	noindent = []string{}
+	noindent = []string{"", ""}
 )
 
 type ArrayEncoder[T any] struct {
@@ -19,12 +20,14 @@ type ArrayEncoder[T any] struct {
 	prefixer func() error
 	m        sync.Mutex
 	indent   []string
+	comma    []byte
 }
 
 func NewArrayEncoder[T any](w io.Writer) *ArrayEncoder[T] {
 	ae := &ArrayEncoder[T]{
 		w:      w,
 		indent: noindent,
+		comma:  comma,
 	}
 	ae.Reset()
 	return ae
@@ -33,9 +36,10 @@ func NewArrayEncoder[T any](w io.Writer) *ArrayEncoder[T] {
 func (ae *ArrayEncoder[T]) SetIndent(prefix, indent string) {
 	if prefix == "" && indent == "" {
 		ae.indent = noindent
-		return
+	} else {
+		ae.indent = []string{prefix, indent}
 	}
-	ae.indent = []string{prefix, indent}
+	ae.comma = append(comma, []byte(ae.indent[1])...)
 }
 
 func (ae *ArrayEncoder[T]) hasIndent() bool {
@@ -45,8 +49,9 @@ func (ae *ArrayEncoder[T]) hasIndent() bool {
 	return true
 }
 
-//TODO: Better indent implementation. when indenting,
-//all of the input except for the [] should be indented by one notch
+// TODO: Better indent implementation. The current implementation
+// does work for single depth objects, but it won't work right for
+// deeper nesting and it's a little hacky.
 
 func (ae *ArrayEncoder[T]) Encode(v T) error {
 	ae.m.Lock()
@@ -66,10 +71,15 @@ func (ae *ArrayEncoder[T]) Encode(v T) error {
 	}
 
 	var buf bytes.Buffer
-	err = json.Indent(&buf, b, ae.indent[0], ae.indent[1])
+	err = json.Indent(&buf, b, ae.indent[0], strings.Repeat(ae.indent[1], 2))
 	if err != nil {
 		return err
 	}
+	bb := buf.Bytes()
+	bbLen := len(bb)
+	lastChar := string(bb[bbLen-1])
+	buf.Truncate(bbLen - 1)
+	buf.Write([]byte(ae.indent[1] + lastChar))
 	_, err = buf.WriteTo(ae.w)
 	return err
 }
@@ -84,7 +94,7 @@ func (ae *ArrayEncoder[T]) Finish() error {
 func (ae *ArrayEncoder[T]) Reset() {
 	ae.prefixer = func() error {
 		ae.prefixer = func() error {
-			_, err := ae.w.Write(comma)
+			_, err := ae.w.Write(ae.comma)
 			return err
 		}
 		_, err := ae.w.Write(start)
