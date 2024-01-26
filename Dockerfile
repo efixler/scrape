@@ -6,7 +6,7 @@ RUN apt -y update && apt -y upgrade
 RUN apt-get -y install sqlite3
 WORKDIR /scrape
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 COPY . .
 RUN go install -v ./cmd/scrape
 RUN go install -v ./cmd/scrape-server

@@ -8,9 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/pprof"
 	nurl "net/url"
+
+	jstream "github.com/efixler/scrape/json"
 
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch"
@@ -166,7 +169,13 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	// if we made it here we are going to return JSON
 	w.Header().Set("Content-Type", "application/json")
-	pages := make([]*resource.WebPage, 0, len(req.Urls))
+
+	encoder := jstream.NewArrayEncoder[*resource.WebPage](w)
+	pp := r.FormValue("pp") != ""
+	if pp {
+		encoder.SetIndent("", "  ")
+	}
+
 	var page *resource.WebPage
 	for _, url := range req.Urls {
 		parsedUrl, err := nurl.Parse(url)
@@ -175,18 +184,20 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 				OriginalURL: url,
 				Error:       err,
 			}
+		} else {
+			// In this case we ignore the error, since it'll be included in the page
+			page, _ = h.urlFetcher.Fetch(parsedUrl)
 		}
-		// In this case we ignore the error, since it'll be included in the page
-		page, _ = h.urlFetcher.Fetch(parsedUrl)
-		pages = append(pages, page)
+		// pages = append(pages, page)
+		err = encoder.Encode(page)
+		if err != nil {
+			break
+		}
 	}
-	encoder := json.NewEncoder(w)
-	pp := r.FormValue("pp") != ""
-	if pp {
-		encoder.SetIndent("", "  ")
-	}
-	err = encoder.Encode(pages)
 	if err != nil {
+		// this error is probably too late to matter, so let's log here:
+		slog.Error("Error encoding batch response", "error", err)
+		// todo: Test mid-stream error handling
 		http.Error(w, fmt.Sprintf("Error encoding response: %s", err), http.StatusInternalServerError)
 		return
 	}
