@@ -69,7 +69,6 @@ func (ae *ArrayEncoder[T]) Encode(v T) error {
 		_, err = ae.w.Write(b)
 		return err
 	}
-
 	var buf bytes.Buffer
 	err = json.Indent(&buf, b, ae.indent[0], strings.Repeat(ae.indent[1], 2))
 	if err != nil {

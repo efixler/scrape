@@ -137,7 +137,7 @@ func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	encoder := json.NewEncoder(w)
-	pp := r.FormValue("pp") != ""
+	pp := r.FormValue("pp") == "1"
 	if pp {
 		encoder.SetIndent("", "  ")
 	}
@@ -171,7 +171,7 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	encoder := jstream.NewArrayEncoder[*resource.WebPage](w)
-	pp := r.FormValue("pp") != ""
+	pp := r.FormValue("pp") == "1"
 	if pp {
 		encoder.SetIndent("", "  ")
 	}

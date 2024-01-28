@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -138,6 +139,92 @@ func TestWellknown(t *testing.T) {
 	}
 	if resp.StatusCode != 200 {
 		t.Errorf("Expected 200 OK, got %d (url: %s)", resp.StatusCode, targetUrl)
+	}
+}
+
+func TestBatchReponseIsValid(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mux, err := InitMux(ctx, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	client := ts.Client()
+	urlPath := "/batch"
+	targetUrl := ts.URL + urlPath
+	var batchPayload BatchRequest
+	batchPayload.Urls = []string{
+		ts.URL,
+		ts.URL + "/1",
+		ts.URL + "/2",
+	}
+	var buf = new(bytes.Buffer)
+	payloadEncoder := json.NewEncoder(buf)
+	payloadEncoder.Encode(batchPayload)
+	resp, err := client.Post(targetUrl, "application/json", buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected 200 OK status, got %d (url: %s)", resp.StatusCode, targetUrl)
+	}
+	if resp.Header.Get("Content-Type") != "application/json" {
+		t.Errorf("Expected Content-Type 'application/json', got '%s'", resp.Header.Get("Content-Type"))
+	}
+	var batchResponse []*resource.WebPage
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&batchResponse)
+	if err != nil {
+		t.Errorf("Error decoding JSON: %s", err)
+	}
+	if len(batchResponse) != len(batchPayload.Urls) {
+		t.Fatalf("Expected %d URLs, got %d", len(batchPayload.Urls), len(batchResponse))
+	}
+	// NB: At this batch we expect the results order to be the same as the
+	// input order.
+	for i, url := range batchPayload.Urls {
+		if batchResponse[i].OriginalURL != url {
+			t.Errorf("Expected URL %s, got %s", url, batchResponse[i].OriginalURL)
+		}
+	}
+}
+
+func TestExtractErrors(t *testing.T) {
+	t.Parallel()
+	type data struct {
+		url            string
+		expectedStatus int
+	}
+	tests := []data{
+		{url: "/", expectedStatus: 404},
+		{url: "", expectedStatus: 400},
+		{url: "?url=", expectedStatus: 400},
+		{url: "?url=foo_scheme:invalidurl", expectedStatus: 400},
+		{url: "?url=http://[::1", expectedStatus: 400},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mux, err := InitMux(ctx, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewServer(mux)
+	defer ts.Close()
+	client := ts.Client()
+	urlPath := "/extract"
+	targetUrl := ts.URL + urlPath
+	for i, test := range tests {
+		resp, err := client.Get(targetUrl + test.url)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != test.expectedStatus {
+			t.Errorf("Expected %d status code for test %d, got %d", test.expectedStatus, i, resp.StatusCode)
+		}
 	}
 }
 
