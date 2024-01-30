@@ -123,9 +123,6 @@ func (s SqliteStore) dsn() string {
 // The passed contexts will be used for query preparation, and to
 // close the database when the context is cancelled.
 func (s *SqliteStore) Open(ctx context.Context) error {
-	if s.DB != nil {
-		return database.ErrDatabaseAlreadyOpen
-	}
 	err := s.DBHandle.Open(ctx)
 	if err != nil {
 		return err

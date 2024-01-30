@@ -4,6 +4,7 @@ go 1.21
 
 require (
 	github.com/go-shiori/go-readability v0.0.0-20230421032831-c66949dfc0ad
+	github.com/go-sql-driver/mysql v1.7.1
 	github.com/markusmobius/go-domdistiller v0.0.0-20230515154422-71af71939ff3
 	github.com/markusmobius/go-trafilatura v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.19

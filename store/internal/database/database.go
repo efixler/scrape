@@ -26,6 +26,7 @@ type MaintenanceFunction func(ctx context.Context, db *sql.DB, t time.Time) erro
 
 const (
 	SQLite DriverName = "sqlite3"
+	MySQL  DriverName = "mysql"
 )
 
 var (
@@ -63,6 +64,9 @@ func NewDB(dsnF DSNGenerator) *MaterialDB {
 }
 
 func (s *DBHandle[T]) Open(ctx context.Context) error {
+	if s.DB != nil {
+		return ErrDatabaseAlreadyOpen
+	}
 	s.Ctx = ctx
 	// close this handle when the context is done
 	context.AfterFunc(ctx, func() {
