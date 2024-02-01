@@ -175,20 +175,34 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	if pp {
 		encoder.SetIndent("", "  ")
 	}
-	var page *resource.WebPage
-	for _, url := range req.Urls {
-		if parsedUrl, err := nurl.Parse(url); err != nil {
-			page = &resource.WebPage{
-				OriginalURL: url,
-				Error:       err,
+	flusher, doFlush := w.(http.Flusher)
+	if batchFetcher, ok := h.urlFetcher.(fetch.BatchURLFetcher); ok {
+		rchan := batchFetcher.Batch(req.Urls, fetch.BatchOptions{})
+		for page := range rchan {
+			err = encoder.Encode(page)
+			if err != nil {
+				break
 			}
-		} else {
-			// In this case we ignore the error, since it'll be included in the page
-			page, _ = h.urlFetcher.Fetch(parsedUrl)
+			if doFlush {
+				flusher.Flush()
+			}
 		}
-		err = encoder.Encode(page)
-		if err != nil {
-			break
+	} else {
+		var page *resource.WebPage
+		for _, url := range req.Urls {
+			if parsedUrl, err := nurl.Parse(url); err != nil {
+				page = &resource.WebPage{
+					OriginalURL: url,
+					Error:       err,
+				}
+			} else {
+				// In this case we ignore the error, since it'll be included in the page
+				page, _ = h.urlFetcher.Fetch(parsedUrl)
+			}
+			err = encoder.Encode(page)
+			if err != nil {
+				break
+			}
 		}
 	}
 	encoder.Finish()

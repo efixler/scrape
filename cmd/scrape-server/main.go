@@ -27,7 +27,6 @@ const (
 var (
 	flags     flag.FlagSet
 	port      int = DefaultPort
-	dbPath    string
 	profile   bool
 	logLevel  slog.Level
 	logWriter io.Writer
@@ -56,7 +55,7 @@ func main() {
 			slog.Error("scrape-server shutting down", "error", err)
 		}
 	}()
-	slog.Info("scape-server started", "addr", s.Addr)
+	slog.Info("scrape-server started", "addr", s.Addr)
 	kill := make(chan os.Signal, 1)
 	signal.Notify(kill, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 	<-kill
@@ -103,7 +102,7 @@ func init() {
 	if os.Getenv("SCRAPE_DB") != "" {
 		sqlite.DefaultDatabase = os.Getenv("SCRAPE_DB")
 	}
-	flags.StringVar(&dbPath,
+	flags.StringVar(&sqlite.DefaultDatabase,
 		"database",
 		sqlite.DefaultDatabase,
 		`Database path. If the database doesn't exist, it will be created.
