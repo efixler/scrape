@@ -10,6 +10,33 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// Embedded type for testing
+type materialDB struct {
+	DBHandle[string]
+}
+
+func newDB(driver DriverName, dsnSource DatabaseOptions) *materialDB {
+	return &materialDB{
+		DBHandle: DBHandle[string]{
+			Driver:    driver,
+			DSNSource: dsnSource,
+			stmts:     make(map[string]*sql.Stmt, 8),
+		},
+	}
+}
+
+// a shim DatabaseOptions to be able to test a DBHandle without a real database
+type dbOptions string
+
+func (o dbOptions) DSN() string {
+	return string(o)
+}
+func (o dbOptions) String() string {
+	return string(o)
+}
+
+var inMemoryDSN = dbOptions(":memory:")
+
 func TestMaintenanceRunsAndsStops(t *testing.T) {
 	t.Parallel()
 	oldMinInterval := MinMaintenanceInterval
@@ -22,7 +49,7 @@ func TestMaintenanceRunsAndsStops(t *testing.T) {
 		return nil
 	}
 	ctx, cancelF := context.WithCancel(context.TODO())
-	dbh := NewDB(func() string { return ":memory:" })
+	dbh := newDB(SQLite, inMemoryDSN)
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -54,7 +81,7 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 		return errors.New("test error")
 	}
 	ctx, cancelF := context.WithCancel(context.Background())
-	dbh := NewDB(func() string { return ":memory:" })
+	dbh := newDB(SQLite, inMemoryDSN)
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -78,7 +105,7 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 func TestDBClosedOnContextCancel(t *testing.T) {
 	t.Parallel()
 	ctx, cancelF := context.WithCancel(context.Background())
-	dbh := NewDB(func() string { return ":memory:" })
+	dbh := newDB(SQLite, inMemoryDSN)
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -101,9 +128,9 @@ func TestDBCloseExpectations(t *testing.T) {
 
 	mdbh := &mockDBHandleForCloseTest{
 		DBHandle[string]{
-			Driver: SQLite,
-			DSN:    func() string { return ":memory:" },
-			stmts:  make(map[string]*sql.Stmt, 8),
+			Driver:    SQLite,
+			DSNSource: inMemoryDSN,
+			stmts:     make(map[string]*sql.Stmt, 8),
 		},
 		0,
 	}

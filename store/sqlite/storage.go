@@ -1,7 +1,7 @@
 /*
 This is the implementation of the store.URLDataStore interface for sqlite.
 
-Use Factory() to make a new sqlite storage instance.
+Use New() to make a new sqlite storage instance.
   - You *must* call Open()
   - The DB will be closed when the context passed to Open() is cancelled.
   - Concurrent usage OK
@@ -63,7 +63,6 @@ var (
 // the db and the instance is ready to use.
 func Factory(filename string) store.Factory {
 	options := DefaultOptions()
-
 	// If the factory function returns successfully, then we have a valid DSN
 	// and we've made any local directories needed to support it.
 	return func() (store.URLDataStore, error) {
@@ -71,8 +70,7 @@ func Factory(filename string) store.Factory {
 			DBHandle: database.DBHandle[stmtIndex]{
 				Driver: database.SQLite,
 			},
-			filename: filename,
-			options:  options,
+			options: options,
 		}
 		var err error
 		s.resolvedPath, err = dbPath(filename)
@@ -87,7 +85,8 @@ func Factory(filename string) store.Factory {
 				return nil, err
 			}
 		}
-		s.DBHandle.DSN = s.dsn
+		s.options.filename = filename
+		s.DBHandle.DSNSource = s.options
 		if (err == nil) && !exists(s.resolvedPath) {
 			if err = s.createPathToDB(); err != nil {
 				return nil, errors.Join(ErrCantCreateDatabase, err)
@@ -110,14 +109,14 @@ type SqliteStore struct {
 	stats        *Stats
 }
 
-func (s SqliteStore) dsn() string {
-	dsn := fmt.Sprintf(
-		"file:%s?%s",
-		s.filename,
-		s.options,
-	)
-	return dsn
-}
+// func (s SqliteStore) dsn() string {
+// 	dsn := fmt.Sprintf(
+// 		"file:%s?%s",
+// 		s.filename,
+// 		s.options,
+// 	)
+// 	return dsn
+// }
 
 // Opens the database, creating it if it doesn't exist.
 // The passed contexts will be used for query preparation, and to
@@ -143,17 +142,6 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 	}
 	s.Maintenance(24*time.Hour, maintain)
 	return nil
-}
-
-// The underlying DB handle's close will be called when the context
-// passed to Open() is cancelled
-func (s *SqliteStore) Close() error {
-	err := s.DBHandle.Close() // this might be bad bc the DBHandle is embedded and will
-	// also close when the context is cancelled
-	if err != nil {
-		slog.Warn("error closing sqlite store", "dsn", s.DSN(), "error", err)
-	}
-	return err
 }
 
 // Save the data for a URL. Returns a key for the stored URL (which you actually can't

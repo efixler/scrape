@@ -23,6 +23,7 @@ const (
 )
 
 type sqliteOptions struct {
+	filename    string
 	busyTimeout time.Duration
 	journalMode JournalMode
 	cacheSize   int
@@ -30,9 +31,14 @@ type sqliteOptions struct {
 	accessMode  AccessMode
 }
 
+func (o sqliteOptions) DSN() string {
+	return o.String()
+}
+
 func (o sqliteOptions) String() string {
 	return fmt.Sprintf(
-		"mode=%s&_busy_timeout=%d&_journal_mode=%s&_cache_size=%d&_sync=%s",
+		"file:%s?mode=%s&_busy_timeout=%d&_journal_mode=%s&_cache_size=%d&_sync=%s",
+		o.filename,
 		o.accessMode,
 		o.busyTimeout.Milliseconds(),
 		o.journalMode,
@@ -55,6 +61,7 @@ func DefaultOptions() sqliteOptions {
 // Returns an options set tuned for in-memory databases
 func InMemoryOptions() sqliteOptions {
 	return sqliteOptions{
+		filename:    InMemoryDBName, // this is _always_ the name for in-memory DBs
 		busyTimeout: FiveSecondDuration,
 		journalMode: JournalModeOff,
 		cacheSize:   NormalCacheSize,

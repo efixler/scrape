@@ -4,25 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 )
 
 type DriverName string
-
-// DSNGenerator is a function that returns a DSN string.
-type DSNGenerator func() string
-
-// StatementGenerator is a function that returns a prepared statement.
-// The DBHandle holds a map of prepared statements, and will clean them up
-// when closing.
-type StatementGenerator func(ctx context.Context, db *sql.DB) (*sql.Stmt, error)
-
-// MaintenanceFunction is a function that can be called periodically to
-// perform maintenance on the database. It's passed the context and current
-// database handle. Returning an error will stop the maintenance ticker.
-type MaintenanceFunction func(ctx context.Context, db *sql.DB, t time.Time) error
 
 const (
 	SQLite DriverName = "sqlite3"
@@ -38,29 +26,32 @@ var (
 	MinMaintenanceInterval  = 1 * time.Minute
 )
 
+type DatabaseOptions interface {
+	// Loggable string representation of the options
+	fmt.Stringer
+	// Returns the DSN string for the options (not ever written to logs)
+	DSN() string
+}
+
+// StatementGenerator is a function that returns a prepared statement.
+// The DBHandle holds a map of prepared statements, and will clean them up
+// when closing.
+type StatementGenerator func(ctx context.Context, db *sql.DB) (*sql.Stmt, error)
+
+// MaintenanceFunction is a function that can be called periodically to
+// perform maintenance on the database. It's passed the context and current
+// database handle. Returning an error will stop the maintenance ticker.
+type MaintenanceFunction func(ctx context.Context, db *sql.DB, t time.Time) error
+
 type DBHandle[T comparable] struct {
-	Ctx    context.Context
-	DB     *sql.DB
-	Driver DriverName
-	DSN    DSNGenerator
-	stmts  map[T]*sql.Stmt
-	done   chan bool
-	closed bool
-	mutex  *sync.Mutex
-}
-
-type MaterialDB struct {
-	DBHandle[string]
-}
-
-func NewDB(dsnF DSNGenerator) *MaterialDB {
-	return &MaterialDB{
-		DBHandle: DBHandle[string]{
-			Driver: SQLite,
-			DSN:    dsnF,
-			stmts:  make(map[string]*sql.Stmt, 8),
-		},
-	}
+	Ctx       context.Context
+	DB        *sql.DB
+	Driver    DriverName
+	DSNSource DatabaseOptions
+	stmts     map[T]*sql.Stmt
+	done      chan bool
+	closed    bool
+	mutex     *sync.Mutex
 }
 
 func (s *DBHandle[T]) Open(ctx context.Context) error {
@@ -72,8 +63,8 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 	context.AfterFunc(ctx, func() {
 		s.Close()
 	})
-	db, err := sql.Open(string(s.Driver), s.DSN())
-	slog.Info("opening db", "dsn", s.DSN(), "driver", s.Driver)
+	db, err := sql.Open(string(s.Driver), s.DSNSource.DSN())
+	slog.Info("opening db", "dsn", s.DSNSource, "driver", s.Driver)
 	if err != nil {
 		return err
 	}
@@ -100,13 +91,13 @@ func (s *DBHandle[T]) Maintenance(d time.Duration, f MaintenanceFunction) error 
 		for {
 			select {
 			case <-s.done:
-				slog.Debug("DBHandle: maintenance ticker cancelled", "dsn", s.DSN())
+				slog.Debug("DBHandle: maintenance ticker cancelled", "dsn", s.DSNSource)
 				return
 			case t := <-ticker.C:
-				slog.Debug("DBHandle: maintenance ticker fired", "dsn", s.DSN(), "time", t)
+				slog.Debug("DBHandle: maintenance ticker fired", "dsn", s.DSNSource, "time", t)
 				err := f(s.Ctx, s.DB, t)
 				if err != nil {
-					slog.Error("DBHandle: maintenance error, cancelling job", "dsn", s.DSN(), "error", err)
+					slog.Error("DBHandle: maintenance error, cancelling job", "dsn", s.DSNSource, "error", err)
 					return
 				}
 			}
@@ -159,11 +150,11 @@ func (s *DBHandle[T]) Close() error {
 	s.mutex.Lock() // Aggressively lock this function
 	defer s.mutex.Unlock()
 	if s.DB == nil || s.closed {
-		slog.Debug("db already closed, returning", "dsn", s.DSN())
+		slog.Debug("db already closed, returning", "dsn", s.DSNSource)
 		return nil
 	}
 	s.closed = true
-	slog.Info("closing db", "dsn", s.DSN())
+	slog.Info("closing db", "dsn", s.DSNSource)
 	s.StopMaintenance()
 	var errs []error
 	for _, stmt := range s.stmts {
@@ -184,7 +175,7 @@ func (s *DBHandle[T]) Close() error {
 		s.DB = nil
 	}
 	if len(errs) > 0 {
-		slog.Warn("errors closing db", "dsn", s.DSN(), "errors", errs)
+		slog.Warn("errors closing db", "dsn", s.DSNSource, "errors", errs)
 		return errors.Join(errs...)
 	}
 	return nil
