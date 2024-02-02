@@ -2,13 +2,10 @@ package store
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
 )
-
-type DatabaseOptions fmt.Stringer
 
 var (
 	ErrorDatabaseNotFound = errors.New("database not found")
@@ -25,6 +22,7 @@ type URLDataStore interface {
 }
 
 // This interface adds create/clear/maintain methods to the URLDataStore interface.
+// URLDataStores may support these methods to create, clear, and maintain the store.
 type Maintainable interface {
 	Create() error
 	Clear() error

@@ -211,6 +211,9 @@ func TestFetchUnstored(t *testing.T) {
 	if j != numpages {
 		t.Errorf("Expected %d pages to be fetched, got %d", numpages, j)
 	}
+	// sleep a little here to make sure the async stores finish.
+	// these are only at risk in fast/unexpected exits, but do need to fix
+	time.Sleep(10 * time.Millisecond)
 	pageChan = make(chan *resource.WebPage, numpages)
 	fetchChan = make(chan fetchMsg, numpages)
 	wg.Add(1)

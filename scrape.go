@@ -1,5 +1,5 @@
 /*
-Package scrape provides a simple interface for fetching and storing web pages
+Package scrape provides a simple interface for fetching and storing web pages'
 metadata and text content. The `scrape` and `scrape-server` commands provide
 a command-line interface and a REST API, respectively.
 */
@@ -58,8 +58,6 @@ func (f StorageBackedFetcher) Open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	// We actually shouldn't need this, since the child components will hook into the context
-	// directly.
 	context.AfterFunc(ctx, func() {
 		f.Close()
 	})

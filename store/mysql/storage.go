@@ -1,7 +1,6 @@
 package mysql
 
 import (
-	"fmt"
 	nurl "net/url"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -17,29 +16,20 @@ const (
 	_ stmtIndex = iota
 )
 
-func Factory(username, password, host string, port int) store.Factory {
-	dsnF := func() string {
-		return fmt.Sprintf(
-			"%s:%s@tcp(%s:%d)/scrape?charset=utf8mb4&parseTime=True&loc=UTC&timeout=10s",
-			username,
-			password,
-			host,
-			port,
-		)
-	}
+func Factory(opts Options) store.Factory {
 	return func() (store.URLDataStore, error) {
 		store := &MySQLStore{
 			DBHandle: database.DBHandle[stmtIndex]{
-				Driver: database.MySQL,
-				DSN:    dsnF,
+				Driver:    database.MySQL,
+				DSNSource: opts,
 			},
 		}
 		return store, nil
 	}
 }
 
-func New(username, password, host string, port int) (store.URLDataStore, error) {
-	return Factory(username, password, host, port)()
+func New(opts Options) (store.URLDataStore, error) {
+	return Factory(opts)()
 }
 
 type MySQLStore struct {

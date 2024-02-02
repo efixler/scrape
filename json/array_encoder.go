@@ -1,3 +1,7 @@
+/*
+Package json provides an interface to stream an array of JSON objects to an
+io.Writer. This is useful for streaming long JSON arrays to an HTTP response.
+*/
 package json
 
 import (
