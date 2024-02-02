@@ -6,6 +6,7 @@ import (
 	nurl "net/url"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
@@ -58,9 +59,9 @@ var mdata = `{
   }`
 
 func TestStore(t *testing.T) {
-	s, err := Factory(InMemoryDBName)()
+	s, err := dbFactory()
 	if err != nil {
-		t.Errorf("Error opening database factory: %v", err)
+		t.Errorf("Error opening database: %v", err)
 	}
 	err = s.Open(context.TODO())
 	if err != nil {
@@ -165,5 +166,62 @@ func TestStore(t *testing.T) {
 	} else if !ok {
 		t.Errorf("Delete returned false, didn't delete record (url: %s)", url)
 	}
+}
 
+func TestReturnValuesWhenResourceNotExists(t *testing.T) {
+	s, err := dbFactory()
+	if err != nil {
+		t.Errorf("Error opening database factory: %v", err)
+	}
+	err = s.Open(context.TODO())
+	if err != nil {
+		t.Errorf("Error opening database: %v", err)
+	}
+	defer s.Close()
+	url, err := nurl.Parse("https://martinfowler.com/aboutYou")
+	if err != nil {
+		t.Errorf("Error parsing url: %v", err)
+	}
+	res, err := s.Fetch(url)
+	if err != store.ErrorResourceNotFound {
+		t.Errorf("Expected error %v, got %v", store.ErrorResourceNotFound, err)
+	}
+	if res != nil {
+		t.Errorf("Expected nil resource, got %v", res)
+	}
+}
+
+func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
+	s, err := dbFactory()
+	if err != nil {
+		t.Errorf("Error opening database: %v", err)
+	}
+	err = s.Open(context.TODO())
+	if err != nil {
+		t.Errorf("Error opening database: %v", err)
+	}
+	defer s.Close()
+	var meta resource.WebPage
+	err = json.Unmarshal([]byte(mdata), &meta)
+	if err != nil {
+		t.Errorf("Error unmarshaling metadata: %v", err)
+	}
+	url, err := nurl.Parse("https://martinfowler.com/aboutThem")
+	if err != nil {
+		t.Errorf("Error parsing url: %v", err)
+	}
+	meta.RequestedURL = url
+	ttl := time.Duration(0)
+	meta.TTL = &ttl
+	_, err = s.Store(&meta)
+	if err != nil {
+		t.Errorf("Error storing data: %v", err)
+	}
+	res, err := s.Fetch(url)
+	if err != store.ErrorResourceNotFound {
+		t.Errorf("Expected error %v, got %v", store.ErrorResourceNotFound, err)
+	}
+	if res != nil {
+		t.Errorf("Expected nil resource, got %v", res)
+	}
 }
