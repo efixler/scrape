@@ -95,69 +95,29 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 }
 
 func (f StorageBackedFetcher) Batch(urls []string, options fetch.BatchOptions) <-chan *resource.WebPage {
-	rval := make(chan *resource.WebPage, len(urls))
-	type fetchChanMsg struct {
-		url         *nurl.URL
-		originalURL string
-	}
-	fetchChan := make(chan fetchChanMsg)
+	rchan := make(chan *resource.WebPage, len(urls))
+	unstoredChan := make(chan fetchMsg)
 
 	// This lets us wait on the goroutines to finish so we we can close the returned channel
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		wg.Wait()
-		close(rval)
+		close(rchan)
 	}()
 
 	// start the go func to fetch the urls if they aren't stored
-	// todo: Apply rate limiting here
 	go func() {
 		defer wg.Done()
-		for msg := range fetchChan {
-			res, err := f.Fetcher.Fetch(msg.url)
-			rcopy := *res
-			rcopy.OriginalURL = msg.originalURL
-			rcopy.Error = err
-			rval <- &rcopy
-			if err == nil {
-				go func() {
-					if _, err := f.Storage.Store(res); err != nil {
-						slog.Error("Error storing %s: %s\n", "url", res.RequestedURL, "error", err)
-					}
-				}()
-			}
-		}
+		f.fetchUnstored(unstoredChan, rchan)
 	}()
 
-	// start the go func that handles the url input
+	// start the go func that loads from the DB
 	go func() {
 		defer wg.Done()
-		var (
-			parsedURL *nurl.URL
-			err       error
-		)
-		for _, originalURL := range urls {
-			if parsedURL, err = nurl.Parse(originalURL); err != nil {
-				rval <- &resource.WebPage{
-					OriginalURL: originalURL,
-					Error:       err,
-				}
-				continue
-			}
-			url := resource.CleanURL(parsedURL)
-			if res, err := f.Storage.Fetch(url); err == nil {
-				res.OriginalURL = originalURL
-				rval <- res
-			} else if errors.Is(err, store.ErrorResourceNotFound) {
-				fetchChan <- fetchChanMsg{url: url, originalURL: originalURL}
-			} else { // this is really an error
-				slog.Error("Error fetching url in Batch", "url", url, "error", err)
-			}
-		}
-		close(fetchChan)
+		f.loadBatch(urls, rchan, unstoredChan)
 	}()
-	return rval
+	return rchan
 }
 
 // Close() will be invoked when the context sent to Open() is done
@@ -173,4 +133,56 @@ func (f *StorageBackedFetcher) Close() error {
 	f.Fetcher.Close()
 	f.Storage.Close()
 	return nil
+}
+
+type fetchMsg struct {
+	cleanedURL  *nurl.URL
+	originalURL string
+}
+
+// TODO: Apply rate limiting here
+func (f *StorageBackedFetcher) fetchUnstored(inchan <-chan fetchMsg, outchan chan<- *resource.WebPage) {
+	for msg := range inchan {
+		res, err := f.Fetcher.Fetch(msg.cleanedURL)
+		rcopy := *res
+		rcopy.OriginalURL = msg.originalURL
+		rcopy.Error = err
+		outchan <- &rcopy
+		if err == nil {
+			go func() {
+				if _, err := f.Storage.Store(res); err != nil {
+					slog.Error("Error storing %s: %s\n", "url", res.RequestedURL, "error", err)
+				}
+			}()
+		}
+	}
+}
+
+func (f *StorageBackedFetcher) loadBatch(
+	urls []string,
+	foundChan chan<- *resource.WebPage,
+	notFoundChan chan<- fetchMsg) {
+	defer close(notFoundChan)
+	var (
+		parsedURL *nurl.URL
+		err       error
+	)
+	for _, originalURL := range urls {
+		if parsedURL, err = nurl.Parse(originalURL); err != nil {
+			foundChan <- &resource.WebPage{
+				OriginalURL: originalURL,
+				Error:       err,
+			}
+			continue
+		}
+		url := resource.CleanURL(parsedURL)
+		if res, err := f.Storage.Fetch(url); err == nil {
+			res.OriginalURL = originalURL
+			foundChan <- res
+		} else if errors.Is(err, store.ErrorResourceNotFound) {
+			notFoundChan <- fetchMsg{cleanedURL: url, originalURL: originalURL}
+		} else { // this is really an error
+			slog.Error("Error fetching url in Batch", "url", url, "error", err)
+		}
+	}
 }

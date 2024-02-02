@@ -4,9 +4,12 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"fmt"
+	"html/template"
 	"net/http"
 	"net/http/httptest"
 	nurl "net/url"
+	"sync"
 	"testing"
 	"time"
 
@@ -130,4 +133,140 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 	if !fetched.FetchTime.Equal(*stored.FetchTime) {
 		t.Errorf("Expected fetch time %s for stored resource, got %s", fetched.FetchTime, stored.FetchTime)
 	}
+}
+
+func TestFetchUnstored(t *testing.T) {
+	tmpl, _ := htmlTemplate()
+	var ts *httptest.Server
+	ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		data := struct {
+			URL    string
+			Number int64
+		}{
+			URL:    fmt.Sprintf("%s%s", ts.URL, r.URL.String()),
+			Number: time.Now().UnixNano(),
+		}
+		err := tmpl.Execute(w, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer ts.Close()
+	client := ts.Client()
+	fOptions := *trafilatura.DefaultOptions
+	fOptions.HttpClient = client
+	fFactory := trafilatura.Factory(fOptions)
+	sFactory := sqlite.Factory(sqlite.InMemoryDBName)
+
+	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err = fetcher.Open(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	numpages := 10
+	urls := make([]string, numpages)
+	msgs := make([]fetchMsg, numpages)
+	pageChan := make(chan *resource.WebPage, numpages)
+	fetchChan := make(chan fetchMsg, numpages)
+	for i := 1; i <= numpages; i++ {
+		url := fmt.Sprintf("%s/%d", ts.URL, i)
+		urls[i-1] = url
+		netURL, _ := nurl.Parse(url)
+		msg := fetchMsg{cleanedURL: netURL, originalURL: url}
+		msgs[i-1] = msg
+		fetchChan <- msg
+	}
+	close(fetchChan)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fetcher.fetchUnstored(fetchChan, pageChan)
+	}()
+	wg.Wait()
+	close(pageChan)
+	var j = 0
+	for page := range pageChan {
+		if page.Error != nil {
+			t.Errorf("Expected no error for %s, got %s", page.RequestedURL, page.Error)
+		}
+		if page.OriginalURL != msgs[j].originalURL {
+			t.Errorf("Expected URL %s for fetched resource, got %s", msgs[j].originalURL, page.OriginalURL)
+		}
+		if page.RequestedURL.String() != msgs[j].cleanedURL.String() {
+			t.Errorf("Expected URL %s for fetched resource, got %s", msgs[j].cleanedURL.String(), page.RequestedURL.String())
+		}
+		if page.StatusCode != http.StatusOK {
+			t.Errorf("Expected status code %d for fetched resource, got %d", http.StatusOK, page.StatusCode)
+		}
+		j++
+	}
+	if j != numpages {
+		t.Errorf("Expected %d pages to be fetched, got %d", numpages, j)
+	}
+	pageChan = make(chan *resource.WebPage, numpages)
+	fetchChan = make(chan fetchMsg, numpages)
+	wg.Add(1)
+	// we can use loadBatch here to verify that fetchUnstored worked
+	go func() {
+		defer wg.Done()
+		fetcher.loadBatch(urls, pageChan, fetchChan)
+	}()
+	wg.Wait()
+	close(pageChan)
+	var notFoundCount = 0
+	for range fetchChan {
+		notFoundCount++
+	}
+	if notFoundCount != 0 {
+		t.Errorf("Expected no pages to be not found, got %d", notFoundCount)
+	}
+	var k = 0
+	for page := range pageChan {
+		if page.Error != nil {
+			t.Errorf("Expected no error for %s, got %s", page.RequestedURL, page.Error)
+		}
+		if page.OriginalURL != msgs[k].originalURL {
+			t.Errorf("Expected URL %s for fetched resource, got %s", msgs[k].originalURL, page.OriginalURL)
+		}
+		if page.RequestedURL.String() != msgs[k].cleanedURL.String() {
+			t.Errorf("Expected URL %s for fetched resource, got %s", msgs[k].cleanedURL.String(), page.RequestedURL.String())
+		}
+		if page.StatusCode != http.StatusOK {
+			t.Errorf("Expected status code %d for fetched resource, got %d", http.StatusOK, page.StatusCode)
+		}
+		k++
+	}
+	if k != numpages {
+		t.Errorf("Expected %d pages to be fetched, got %d", numpages, k)
+	}
+}
+
+func htmlTemplate() (*template.Template, error) {
+	templateHTML := `
+        <html>
+            <head>
+                <title>Web Page Number {{.Number}}</title>
+                <meta property="og:url" content="{{.URL}}">
+            </head>
+            <body>
+                <h1>Hello, World!</h1>
+                <p>This is a randomly generated HTML document.</p>
+                <p>Random number: {{.Number}}</p>
+            </body>
+        </html>
+    `
+	tmpl, err := template.New("fake_html").Parse(templateHTML)
+	if err != nil {
+		fmt.Println("Error parsing template:", err)
+		return nil, err
+	}
+	return tmpl, nil
 }

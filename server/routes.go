@@ -153,6 +153,7 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
 		return
 	}
+	// TODO: Move this to a middleware
 	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
@@ -170,12 +171,11 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	// if we made it here we are going to return JSON
 	w.Header().Set("Content-Type", "application/json")
 
-	encoder := jstream.NewArrayEncoder[*resource.WebPage](w)
+	encoder := jstream.NewArrayEncoder[*resource.WebPage](w, false)
 	pp := r.FormValue("pp") == "1"
 	if pp {
 		encoder.SetIndent("", "  ")
 	}
-	flusher, doFlush := w.(http.Flusher)
 	if batchFetcher, ok := h.urlFetcher.(fetch.BatchURLFetcher); ok {
 		rchan := batchFetcher.Batch(req.Urls, fetch.BatchOptions{})
 		for page := range rchan {
@@ -183,27 +183,9 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				break
 			}
-			if doFlush {
-				flusher.Flush()
-			}
 		}
-	} else {
-		var page *resource.WebPage
-		for _, url := range req.Urls {
-			if parsedUrl, err := nurl.Parse(url); err != nil {
-				page = &resource.WebPage{
-					OriginalURL: url,
-					Error:       err,
-				}
-			} else {
-				// In this case we ignore the error, since it'll be included in the page
-				page, _ = h.urlFetcher.Fetch(parsedUrl)
-			}
-			err = encoder.Encode(page)
-			if err != nil {
-				break
-			}
-		}
+	} else { // transitionally while we iron out the throttle-able batch
+		h.synchronousBatch(req.Urls, encoder)
 	}
 	encoder.Finish()
 	if err != nil {
@@ -212,6 +194,25 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 		// todo: Test mid-stream error handling
 		http.Error(w, fmt.Sprintf("Error encoding response: %s", err), http.StatusInternalServerError)
 		return
+	}
+}
+
+func (h *scrapeServer) synchronousBatch(urls []string, encoder *jstream.ArrayEncoder[*resource.WebPage]) {
+	var page *resource.WebPage
+	for _, url := range urls {
+		if parsedUrl, err := nurl.Parse(url); err != nil {
+			page = &resource.WebPage{
+				OriginalURL: url,
+				Error:       err,
+			}
+		} else {
+			// In this case we ignore the error, since it'll be included in the page
+			page, _ = h.urlFetcher.Fetch(parsedUrl)
+		}
+		err := encoder.Encode(page)
+		if err != nil {
+			break
+		}
 	}
 }
 

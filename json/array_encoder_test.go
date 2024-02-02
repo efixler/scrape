@@ -9,7 +9,7 @@ import (
 
 func TestArrayEncoderStrings(t *testing.T) {
 	var buf bytes.Buffer
-	ae := NewArrayEncoder[string](&buf)
+	ae := NewArrayEncoder[string](&buf, false)
 	ae.Encode("foo")
 	ae.Encode("bar")
 	ae.Finish()
@@ -38,7 +38,7 @@ func TestArrayEncoderStruct(t *testing.T) {
 		{"multiple non-zeroes", []testStruct{{"foo", 1, time.Hour}, {"bar", 2, time.Minute}, {"baz", 3, time.Second}}},
 	}
 	var buf bytes.Buffer
-	ae := NewArrayEncoder[testStruct](&buf)
+	ae := NewArrayEncoder[testStruct](&buf, false)
 	for _, indent := range [][]string{{"", ""}, {"", "  "}} {
 		ae.SetIndent(indent[0], indent[1])
 		for _, test := range tests {
