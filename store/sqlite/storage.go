@@ -103,20 +103,10 @@ func New(filename string) (store.URLDataStore, error) {
 
 type SqliteStore struct {
 	database.DBHandle[stmtIndex]
-	filename     string
 	resolvedPath string
 	options      sqliteOptions
 	stats        *Stats
 }
-
-// func (s SqliteStore) dsn() string {
-// 	dsn := fmt.Sprintf(
-// 		"file:%s?%s",
-// 		s.filename,
-// 		s.options,
-// 	)
-// 	return dsn
-// }
 
 // Opens the database, creating it if it doesn't exist.
 // The passed contexts will be used for query preparation, and to
@@ -129,7 +119,7 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 	// SQLite will open even if the the DB file is not present, it will only fail later.
 	// So, if the db hasn't been opened, check for the file here.
 	// In Memory DBs must always be created
-	inMemory := s.filename == InMemoryDBName
+	inMemory := s.options.filename == InMemoryDBName
 	needsCreate := inMemory || !exists(s.resolvedPath)
 	if needsCreate {
 		if err := s.Create(); err != nil {
