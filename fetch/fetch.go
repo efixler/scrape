@@ -30,6 +30,14 @@ type URLFetcher interface {
 	Close() error
 }
 
+type BatchURLFetcher interface {
+	Batch([]string, BatchOptions) <-chan *resource.WebPage
+}
+
+type BatchOptions struct {
+	//throttle time.Duration
+}
+
 type FeedFetcher interface {
 	Open(context.Context) error
 	Fetch(*nurl.URL) (*resource.Feed, error)

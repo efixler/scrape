@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log/slog"
+	"net/http"
 	"strings"
 	"sync"
 )
@@ -17,17 +19,27 @@ var (
 
 type ArrayEncoder[T any] struct {
 	w        io.Writer
+	flusher  func()
 	prefixer func() error
 	m        sync.Mutex
 	indent   []string
 	comma    []byte
 }
 
-func NewArrayEncoder[T any](w io.Writer) *ArrayEncoder[T] {
+func NewArrayEncoder[T any](w io.Writer, hotPipe bool) *ArrayEncoder[T] {
 	ae := &ArrayEncoder[T]{
-		w:      w,
-		indent: noindent,
-		comma:  comma,
+		w:       w,
+		flusher: func() {},
+		indent:  noindent,
+		comma:   comma,
+	}
+	if hotPipe {
+		flusher, ok := w.(http.Flusher)
+		if ok {
+			ae.flusher = flusher.Flush
+		} else {
+			slog.Warn("ArrayEncoder: hot pipe requested, but Writer is not a Flusher")
+		}
 	}
 	ae.Reset()
 	return ae

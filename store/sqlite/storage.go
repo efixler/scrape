@@ -258,8 +258,7 @@ func (s SqliteStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		// TODO: Should this return store.ErrorResourceNotFound?
-		return nil, nil
+		return nil, store.ErrorResourceNotFound
 	}
 	// parsed_url, fetch_time, expires, metadata, content_text
 	var (
