@@ -191,9 +191,6 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// this error is probably too late to matter, so let's log here:
 		slog.Error("Error encoding batch response", "error", err)
-		// todo: Test mid-stream error handling
-		http.Error(w, fmt.Sprintf("Error encoding response: %s", err), http.StatusInternalServerError)
-		return
 	}
 }
 
