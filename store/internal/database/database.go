@@ -147,10 +147,13 @@ func (s *DBHandle[T]) Statement(key T, generator StatementGenerator) (*sql.Stmt,
 // also be called manually to release resources.
 // It will close the database handle and any prepared statements, and stop any maintenance jobs.
 func (s *DBHandle[T]) Close() error {
-	s.mutex.Lock() // Aggressively lock this function
-	defer s.mutex.Unlock()
-	if s.DB == nil || s.closed {
+	if s.closed || (s.DB == nil) {
 		slog.Debug("db already closed, returning", "dsn", s.DSNSource)
+		return nil
+	}
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if s.closed || (s.DB == nil) {
 		return nil
 	}
 	s.closed = true
