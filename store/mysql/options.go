@@ -36,6 +36,9 @@ func Host(host string) option {
 
 func Port(port int) option {
 	return func(c *Config) error {
+		if port <= 0 {
+			return store.ErrorValueNotAllowed
+		}
 		c.port = port
 		return nil
 	}
@@ -43,6 +46,9 @@ func Port(port int) option {
 
 func Username(username string) option {
 	return func(c *Config) error {
+		if username == "" {
+			return store.ErrorValueNotAllowed
+		}
 		c.username = username
 		return nil
 	}
