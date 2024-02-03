@@ -10,6 +10,7 @@ import (
 var (
 	ErrorDatabaseNotFound = errors.New("database not found")
 	ErrorResourceNotFound = errors.New("resource not found in data store")
+	ErrorValueNotAllowed  = errors.New("value not allowed")
 )
 
 type Factory func() (URLDataStore, error)

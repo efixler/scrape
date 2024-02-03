@@ -16,30 +16,36 @@ const (
 	_ stmtIndex = iota
 )
 
-func Factory(opts Options) store.Factory {
+func Factory(options ...option) store.Factory {
 	return func() (store.URLDataStore, error) {
-		store := &MySQLStore{
-			DBHandle: database.DBHandle[stmtIndex]{
-				Driver:    database.MySQL,
-				DSNSource: opts,
-			},
-		}
-		return store, nil
+		return New(options...)
 	}
 }
 
-func New(opts Options) (store.URLDataStore, error) {
-	return Factory(opts)()
+func New(options ...option) (store.URLDataStore, error) {
+	store := &Store{
+		DBHandle: database.DBHandle[stmtIndex]{
+			Driver: database.MySQL,
+		},
+	}
+	config := defaultConfig()
+	for _, opt := range options {
+		if err := opt(&config); err != nil {
+			return nil, err
+		}
+	}
+	store.DSNSource = config
+	return store, nil
 }
 
-type MySQLStore struct {
+type Store struct {
 	database.DBHandle[stmtIndex]
 }
 
-func (s *MySQLStore) Fetch(*nurl.URL) (*resource.WebPage, error) {
+func (s *Store) Fetch(*nurl.URL) (*resource.WebPage, error) {
 	return nil, nil
 }
 
-func (s *MySQLStore) Store(*resource.WebPage) (uint64, error) {
+func (s *Store) Store(*resource.WebPage) (uint64, error) {
 	return 0, nil
 }

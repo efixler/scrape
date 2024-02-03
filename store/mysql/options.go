@@ -3,67 +3,103 @@ package mysql
 import (
 	"fmt"
 	"time"
+
+	"github.com/efixler/scrape/store"
 )
 
 type Charset string
 type Location string
 
 const (
-	Utf8mb4  Charset  = "utf8mb4"
-	UTC      Location = "UTC"
-	dsnFmt            = "%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s&timeout=%s"
-	dbSchema          = "scrape"
+	Utf8mb4     Charset  = "utf8mb4"
+	UTC         Location = "UTC"
+	DefaultPort          = 3306
+	dsnFmt               = "%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s&timeout=%s"
+	dbSchema             = "scrape"
 )
 
 var (
 	DefaultTimeout = 10 * time.Second
 )
 
-type Options struct {
-	Host      string
-	Port      int
-	Username  string
-	Password  string
+type option func(*Config) error
+
+func Host(host string) option {
+	return func(c *Config) error {
+		if host == "" {
+			return store.ErrorValueNotAllowed
+		}
+		c.host = host
+		return nil
+	}
+}
+
+func Port(port int) option {
+	return func(c *Config) error {
+		c.port = port
+		return nil
+	}
+}
+
+func Username(username string) option {
+	return func(c *Config) error {
+		c.username = username
+		return nil
+	}
+}
+
+func Password(password string) option {
+	return func(c *Config) error {
+		c.password = password
+		return nil
+	}
+}
+
+type Config struct {
+	host      string
+	port      int
+	username  string
+	password  string
 	database  string
 	timeout   time.Duration
 	parseTime bool
 }
 
-func DefaultOptions() Options {
-	return Options{
-		Port:      3306,
+func defaultConfig() Config {
+	return Config{
+		port:      DefaultPort,
 		database:  dbSchema,
 		timeout:   DefaultTimeout,
 		parseTime: true,
 	}
 }
 
-func (o Options) DSN() string {
+func (c Config) DSN() string {
 	return fmt.Sprintf(
 		dsnFmt,
-		o.Username,
-		o.Password,
-		o.Host,
-		o.Port,
-		o.database,
+		c.username,
+		c.password,
+		c.host,
+		c.port,
+		c.database,
 		Utf8mb4,
-		o.parseTime,
+		c.parseTime,
 		UTC,
-		o.timeout,
+		c.timeout,
 	)
 }
 
-func (o Options) String() string {
+func (c Config) String() string {
 	return fmt.Sprintf(
 		dsnFmt,
-		o.Username,
+		c.username,
 		"*****",
-		o.Host,
-		o.Port,
-		o.database,
+		c.host,
+		c.port,
+		c.database,
 		Utf8mb4,
-		o.parseTime,
+		c.parseTime,
 		UTC,
-		o.timeout,
+		c.timeout,
 	)
 }
