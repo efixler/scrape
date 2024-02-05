@@ -3,6 +3,7 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type AccessMode string
 type option func(*config) error
 
 const (
+	EnvDBPath                      = "SCRAPE_SQLITE_DB"
 	FiveSecondDuration             = 5 * time.Second
 	JournalModeWAL     JournalMode = "WAL"
 	JournalModeMemory  JournalMode = "MEMORY"
@@ -36,8 +38,27 @@ func InMemoryDB() option {
 	}
 }
 
-func WithFile(filename string) option {
+func Defaults() option {
+	return func(c *config) error {
+		c.accessMode = AccessModeRWC
+		c.busyTimeout = FiveSecondDuration
+		c.journalMode = JournalModeWAL
+		c.cacheSize = BigCacheSize
+		c.synchronous = SyncOff
+		return nil
+	}
+}
 
+func WithFileOrEnv(filename string) option {
+	return func(c *config) error {
+		if filename == "" {
+			filename = os.Getenv(EnvDBPath)
+		}
+		return WithFile(filename)(c)
+	}
+}
+
+func WithFile(filename string) option {
 	return func(c *config) error {
 		if resolvedPath, err := dbPath(filename); err != nil {
 			switch err {
@@ -50,15 +71,11 @@ func WithFile(filename string) option {
 		} else {
 			err = assertPathTo(resolvedPath)
 			if err != nil {
+				fmt.Printf("Resolved path: %s", resolvedPath)
 				return errors.Join(ErrCantCreateDatabase, err)
 			}
 			c.filename = resolvedPath
 		}
-		c.accessMode = AccessModeRWC
-		c.busyTimeout = FiveSecondDuration
-		c.journalMode = JournalModeWAL
-		c.cacheSize = BigCacheSize
-		c.synchronous = SyncOff
 		return nil
 	}
 }

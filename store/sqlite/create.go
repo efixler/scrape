@@ -33,10 +33,12 @@ func dbPath(filename string) (string, error) {
 		return InMemoryDBName, ErrIsInMemory
 	case "":
 		root, err := os.Executable()
+		fmt.Printf("Root: %s\n", root)
 		if err != nil {
 			return "", err
 		}
-		root, err = filepath.Abs(root)
+		root, err = filepath.Abs(filepath.Dir(root))
+		fmt.Printf("Root filepath: %s\n", root)
 		if err != nil {
 			return "", err
 		}

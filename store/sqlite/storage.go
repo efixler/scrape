@@ -70,7 +70,7 @@ func Factory(filename string) store.Factory {
 			DBHandle: database.DBHandle[stmtIndex]{
 				Driver: database.SQLite,
 			},
-			options: options,
+			config: options,
 		}
 		var err error
 		s.resolvedPath, err = dbPath(filename)
@@ -78,15 +78,15 @@ func Factory(filename string) store.Factory {
 			switch err {
 			case ErrIsInMemory:
 				// considering making options an input parameter
-				s.options = InMemoryOptions()
+				s.config = InMemoryOptions()
 				// continue below if the caller wants an in-memory DB
 			default:
 				// if we couldn't resolve the path, we won't be able to open or create
 				return nil, err
 			}
 		}
-		s.options.filename = filename
-		s.DBHandle.DSNSource = s.options
+		s.config.filename = filename
+		s.DBHandle.DSNSource = s.config
 		if (err == nil) && !exists(s.resolvedPath) {
 			if err = assertPathTo(s.resolvedPath); err != nil {
 				return nil, errors.Join(ErrCantCreateDatabase, err)
@@ -97,6 +97,24 @@ func Factory(filename string) store.Factory {
 	}
 }
 
+func NewWithOptions(options ...option) (store.URLDataStore, error) {
+	s := &SqliteStore{
+		DBHandle: database.DBHandle[stmtIndex]{
+			Driver: database.SQLite,
+		},
+	}
+	c := &config{}
+	Defaults()(c)
+	for _, opt := range options {
+		if err := opt(c); err != nil {
+			return nil, err
+		}
+	}
+	s.config = *c
+	s.DBHandle.DSNSource = s.config
+	return s, nil
+}
+
 func New(filename string) (store.URLDataStore, error) {
 	return Factory(filename)()
 }
@@ -104,7 +122,7 @@ func New(filename string) (store.URLDataStore, error) {
 type SqliteStore struct {
 	database.DBHandle[stmtIndex]
 	resolvedPath string
-	options      config
+	config       config
 	stats        *Stats
 }
 
@@ -119,7 +137,7 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 	// SQLite will open even if the the DB file is not present, it will only fail later.
 	// So, if the db hasn't been opened, check for the file here.
 	// In Memory DBs must always be created
-	inMemory := s.options.filename == InMemoryDBName
+	inMemory := s.config.filename == InMemoryDBName
 	needsCreate := inMemory || !exists(s.resolvedPath)
 	if needsCreate {
 		if err := s.Create(); err != nil {

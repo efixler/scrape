@@ -62,7 +62,7 @@ func TestDbPath(t *testing.T) {
 	}
 	cwd, _ := os.Getwd()
 	exec, _ := os.Executable()
-	execPath, _ := filepath.Abs(exec)
+	execPath, _ := filepath.Abs(filepath.Dir(exec))
 	tests := []args{
 		{"empty", "", filepath.Join(execPath, DefaultDatabase), nil},
 		{"in memory", InMemoryDBName, InMemoryDBName, ErrIsInMemory},
