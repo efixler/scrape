@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -8,6 +9,7 @@ import (
 type JournalMode string
 type SyncMode string
 type AccessMode string
+type option func(*config) error
 
 const (
 	FiveSecondDuration             = 5 * time.Second
@@ -22,7 +24,46 @@ const (
 	AccessModeMemory   AccessMode  = "memory"
 )
 
-type sqliteOptions struct {
+func InMemoryDB() option {
+	return func(c *config) error {
+		c.filename = InMemoryDBName
+		c.accessMode = AccessModeMemory
+		c.busyTimeout = FiveSecondDuration
+		c.journalMode = JournalModeOff
+		c.cacheSize = NormalCacheSize
+		c.synchronous = SyncNormal
+		return nil
+	}
+}
+
+func WithFile(filename string) option {
+
+	return func(c *config) error {
+		if resolvedPath, err := dbPath(filename); err != nil {
+			switch err {
+			case ErrIsInMemory:
+				return InMemoryDB()(c)
+			default:
+				// if there was an error here we won't be able to open or create
+				return err
+			}
+		} else {
+			err = assertPathTo(resolvedPath)
+			if err != nil {
+				return errors.Join(ErrCantCreateDatabase, err)
+			}
+			c.filename = resolvedPath
+		}
+		c.accessMode = AccessModeRWC
+		c.busyTimeout = FiveSecondDuration
+		c.journalMode = JournalModeWAL
+		c.cacheSize = BigCacheSize
+		c.synchronous = SyncOff
+		return nil
+	}
+}
+
+type config struct {
 	filename    string
 	busyTimeout time.Duration
 	journalMode JournalMode
@@ -31,11 +72,11 @@ type sqliteOptions struct {
 	accessMode  AccessMode
 }
 
-func (o sqliteOptions) DSN() string {
+func (o config) DSN() string {
 	return o.String()
 }
 
-func (o sqliteOptions) String() string {
+func (o config) String() string {
 	return fmt.Sprintf(
 		"file:%s?mode=%s&_busy_timeout=%d&_journal_mode=%s&_cache_size=%d&_sync=%s",
 		o.filename,
@@ -48,8 +89,8 @@ func (o sqliteOptions) String() string {
 }
 
 // Returns an options set tuned for on-disk databases
-func DefaultOptions() sqliteOptions {
-	return sqliteOptions{
+func DefaultOptions() config {
+	return config{
 		busyTimeout: FiveSecondDuration,
 		journalMode: JournalModeWAL,
 		cacheSize:   BigCacheSize,
@@ -59,8 +100,8 @@ func DefaultOptions() sqliteOptions {
 }
 
 // Returns an options set tuned for in-memory databases
-func InMemoryOptions() sqliteOptions {
-	return sqliteOptions{
+func InMemoryOptions() config {
+	return config{
 		filename:    InMemoryDBName, // this is _always_ the name for in-memory DBs
 		busyTimeout: FiveSecondDuration,
 		journalMode: JournalModeOff,

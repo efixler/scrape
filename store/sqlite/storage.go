@@ -88,7 +88,7 @@ func Factory(filename string) store.Factory {
 		s.options.filename = filename
 		s.DBHandle.DSNSource = s.options
 		if (err == nil) && !exists(s.resolvedPath) {
-			if err = s.createPathToDB(); err != nil {
+			if err = assertPathTo(s.resolvedPath); err != nil {
 				return nil, errors.Join(ErrCantCreateDatabase, err)
 			}
 		}
@@ -104,7 +104,7 @@ func New(filename string) (store.URLDataStore, error) {
 type SqliteStore struct {
 	database.DBHandle[stmtIndex]
 	resolvedPath string
-	options      sqliteOptions
+	options      config
 	stats        *Stats
 }
 

@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -27,6 +26,7 @@ var (
 // the path to the executable + the default path is returned.
 // If filename is not empty filename is returned and its
 // existence is checked.
+// TODO: Pull the ""/executable assumptions out of this function and into options.
 func dbPath(filename string) (string, error) {
 	switch filename {
 	case InMemoryDBName:
@@ -46,21 +46,30 @@ func dbPath(filename string) (string, error) {
 }
 
 func exists(fqn string) bool {
-	if _, err := os.Stat(fqn); errors.Is(err, fs.ErrNotExist) {
+	if _, err := os.Stat(fqn); err != nil {
 		return false
 	}
+	// TODO: Revisit this. fs.ErrNotExist is only returned when the
+	// last element doesn't exist, bbut when an intermediate path is a file
+	// it returns a different error.
 	return true
 }
 
-func (s SqliteStore) createPathToDB() error {
-	dir := filepath.Dir(s.resolvedPath)
+func assertPathTo(fqn string) error {
+	if exists(fqn) {
+		return nil
+	}
+	dir := filepath.Dir(fqn)
 	if dh, _ := os.Stat(dir); dh == nil {
 		err := os.MkdirAll(dir, 0775)
 		if err != nil {
 			return err
 		}
 	} else if !dh.IsDir() {
-		return fmt.Errorf("path %s exists but is not a directory", dir)
+		return errors.Join(
+			ErrCantCreateDatabase,
+			fmt.Errorf("path %s exists but is not a directory", dir),
+		)
 	}
 	return nil
 }

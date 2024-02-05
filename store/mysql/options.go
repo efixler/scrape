@@ -9,6 +9,7 @@ import (
 
 type Charset string
 type Location string
+type option func(*Config) error
 
 const (
 	Utf8mb4     Charset  = "utf8mb4"
@@ -21,8 +22,6 @@ const (
 var (
 	DefaultTimeout = 10 * time.Second
 )
-
-type option func(*Config) error
 
 func Host(host string) option {
 	return func(c *Config) error {
