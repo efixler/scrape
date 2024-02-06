@@ -26,7 +26,7 @@ func (s Stats) expired() bool {
 // Implements the store.Observable interface. Return value intended to be
 // included in JSON outputs. For introspection of the results, type assert
 // to *sqlite.Stats.
-func (s *SqliteStore) Stats() (any, error) {
+func (s *Store) Stats() (any, error) {
 	if s.stats != nil && !s.stats.expired() {
 		return s.stats, nil
 	}

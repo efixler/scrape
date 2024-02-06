@@ -3,6 +3,7 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -12,6 +13,7 @@ type AccessMode string
 type option func(*config) error
 
 const (
+	EnvDBPath                      = "SCRAPE_DB"
 	FiveSecondDuration             = 5 * time.Second
 	JournalModeWAL     JournalMode = "WAL"
 	JournalModeMemory  JournalMode = "MEMORY"
@@ -36,8 +38,28 @@ func InMemoryDB() option {
 	}
 }
 
-func WithFile(filename string) option {
+func Defaults() option {
+	return func(c *config) error {
+		c.filename = DefaultDatabase
+		c.accessMode = AccessModeRWC
+		c.busyTimeout = FiveSecondDuration
+		c.journalMode = JournalModeWAL
+		c.cacheSize = BigCacheSize
+		c.synchronous = SyncOff
+		return nil
+	}
+}
 
+func WithFileOrEnv(filename string) option {
+	return func(c *config) error {
+		if filename == "" {
+			filename = os.Getenv(EnvDBPath)
+		}
+		return WithFile(filename)(c)
+	}
+}
+
+func WithFile(filename string) option {
 	return func(c *config) error {
 		if resolvedPath, err := dbPath(filename); err != nil {
 			switch err {
@@ -54,11 +76,6 @@ func WithFile(filename string) option {
 			}
 			c.filename = resolvedPath
 		}
-		c.accessMode = AccessModeRWC
-		c.busyTimeout = FiveSecondDuration
-		c.journalMode = JournalModeWAL
-		c.cacheSize = BigCacheSize
-		c.synchronous = SyncOff
 		return nil
 	}
 }
@@ -88,25 +105,6 @@ func (o config) String() string {
 	)
 }
 
-// Returns an options set tuned for on-disk databases
-func DefaultOptions() config {
-	return config{
-		busyTimeout: FiveSecondDuration,
-		journalMode: JournalModeWAL,
-		cacheSize:   BigCacheSize,
-		synchronous: SyncOff,
-		accessMode:  AccessModeRWC,
-	}
-}
-
-// Returns an options set tuned for in-memory databases
-func InMemoryOptions() config {
-	return config{
-		filename:    InMemoryDBName, // this is _always_ the name for in-memory DBs
-		busyTimeout: FiveSecondDuration,
-		journalMode: JournalModeOff,
-		cacheSize:   NormalCacheSize,
-		synchronous: SyncNormal,
-		accessMode:  AccessModeMemory,
-	}
+func (o config) IsInMemory() bool {
+	return o.filename == InMemoryDBName
 }

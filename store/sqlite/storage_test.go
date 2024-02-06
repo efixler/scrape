@@ -12,10 +12,8 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
-var dbFactory store.Factory = Factory(InMemoryDBName)
-
 func TestOpen(t *testing.T) {
-	db, err := dbFactory()
+	db, err := New(InMemoryDB())
 	if err != nil {
 		t.Errorf("Error opening database factory: %v", err)
 	}
@@ -23,7 +21,7 @@ func TestOpen(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)
 	}
-	realStore, ok := db.(*SqliteStore)
+	realStore, ok := db.(*Store)
 	// dsn := realStore.dsn
 	if !ok {
 		t.Errorf("Database not of type SqliteStore")
@@ -59,7 +57,7 @@ var mdata = `{
   }`
 
 func TestStore(t *testing.T) {
-	s, err := dbFactory()
+	s, err := New(InMemoryDB())
 	if err != nil {
 		t.Errorf("Error opening database: %v", err)
 	}
@@ -151,7 +149,7 @@ func TestStore(t *testing.T) {
 		t.Errorf("PageType changed from %q to %q", stored.PageType, fetched.PageType)
 	}
 	// NB: Delete only works for canonical URLs
-	rs, _ := s.(*SqliteStore)
+	rs, _ := s.(*Store)
 	ok, err := rs.delete(url)
 	if err != nil {
 		t.Errorf("Unexpected error deleting non-canonical record: %v", err)
@@ -169,7 +167,7 @@ func TestStore(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceNotExists(t *testing.T) {
-	s, err := dbFactory()
+	s, err := New(InMemoryDB())
 	if err != nil {
 		t.Errorf("Error opening database factory: %v", err)
 	}
@@ -192,7 +190,7 @@ func TestReturnValuesWhenResourceNotExists(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
-	s, err := dbFactory()
+	s, err := New(InMemoryDB())
 	if err != nil {
 		t.Errorf("Error opening database: %v", err)
 	}

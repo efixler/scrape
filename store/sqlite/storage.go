@@ -58,60 +58,47 @@ var (
 	ErrCantCreateDatabase = errors.New("can't create the database")
 )
 
-// Returns the factory function that will be used to instantiate the store.
-// The factory function will guarantee that the preconditions are in place for
-// the db and the instance is ready to use.
-func Factory(filename string) store.Factory {
-	options := DefaultOptions()
-	// If the factory function returns successfully, then we have a valid DSN
-	// and we've made any local directories needed to support it.
+// Returns the factory function that can be used to instantiate a sqlite store
+// in the cases where either creation should be delayed or where the caller may
+// want to instantiate multiple stores with the same configuration.
+func Factory(options ...option) store.Factory {
 	return func() (store.URLDataStore, error) {
-		s := &SqliteStore{
-			DBHandle: database.DBHandle[stmtIndex]{
-				Driver: database.SQLite,
-			},
-			options: options,
-		}
-		var err error
-		s.resolvedPath, err = dbPath(filename)
-		if err != nil {
-			switch err {
-			case ErrIsInMemory:
-				// considering making options an input parameter
-				s.options = InMemoryOptions()
-				// continue below if the caller wants an in-memory DB
-			default:
-				// if we couldn't resolve the path, we won't be able to open or create
-				return nil, err
-			}
-		}
-		s.options.filename = filename
-		s.DBHandle.DSNSource = s.options
-		if (err == nil) && !exists(s.resolvedPath) {
-			if err = assertPathTo(s.resolvedPath); err != nil {
-				return nil, errors.Join(ErrCantCreateDatabase, err)
-			}
-		}
-
-		return s, nil
+		return New(options...)
 	}
 }
 
-func New(filename string) (store.URLDataStore, error) {
-	return Factory(filename)()
+func New(options ...option) (store.URLDataStore, error) {
+	s := &Store{
+		DBHandle: database.DBHandle[stmtIndex]{
+			Driver: database.SQLite,
+		},
+	}
+	c := &config{}
+	Defaults()(c)
+	for _, opt := range options {
+		if err := opt(c); err != nil {
+			return nil, err
+		}
+	}
+	s.config = *c
+	s.DBHandle.DSNSource = s.config
+	return s, nil
 }
 
-type SqliteStore struct {
+// func New(filename string) (store.URLDataStore, error) {
+// 	return Factory(filename)()
+// }
+
+type Store struct {
 	database.DBHandle[stmtIndex]
-	resolvedPath string
-	options      config
-	stats        *Stats
+	config config
+	stats  *Stats
 }
 
 // Opens the database, creating it if it doesn't exist.
 // The passed contexts will be used for query preparation, and to
 // close the database when the context is cancelled.
-func (s *SqliteStore) Open(ctx context.Context) error {
+func (s *Store) Open(ctx context.Context) error {
 	err := s.DBHandle.Open(ctx)
 	if err != nil {
 		return err
@@ -119,8 +106,8 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 	// SQLite will open even if the the DB file is not present, it will only fail later.
 	// So, if the db hasn't been opened, check for the file here.
 	// In Memory DBs must always be created
-	inMemory := s.options.filename == InMemoryDBName
-	needsCreate := inMemory || !exists(s.resolvedPath)
+	inMemory := s.config.IsInMemory()
+	needsCreate := inMemory || !exists(s.config.filename)
 	if needsCreate {
 		if err := s.Create(); err != nil {
 			return err
@@ -137,7 +124,7 @@ func (s *SqliteStore) Open(ctx context.Context) error {
 // Save the data for a URL. Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
 // TODO: Accept concrete resource.WebPage instead of a reference
-func (s *SqliteStore) Store(uptr *resource.WebPage) (uint64, error) {
+func (s *Store) Store(uptr *resource.WebPage) (uint64, error) {
 	uptr.AssertTimes()        // modify the original with times if needed
 	u := *uptr                // copy this so we don't modify the original below
 	key := store.Key(u.URL()) // key is for the canonical URL
@@ -190,7 +177,7 @@ func (s *SqliteStore) Store(uptr *resource.WebPage) (uint64, error) {
 	return key, nil
 }
 
-func (s SqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
+func (s Store) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
 	stmt, err := s.Statement(saveId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qStoreId)
 	})
@@ -211,7 +198,7 @@ func (s SqliteStore) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
 // being different than the requested URL.
 //
 // In that case, the canonical version of the content will be returned, if we have it.
-func (s SqliteStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+func (s Store) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	requested_key := store.Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
@@ -274,7 +261,7 @@ func (s SqliteStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 }
 
 // Will search url_ids to see if there's a parent entry for this url.
-func (s SqliteStore) lookupId(requested_id uint64) (uint64, error) {
+func (s Store) lookupId(requested_id uint64) (uint64, error) {
 	stmt, err := s.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qLookupId)
 	})
@@ -299,7 +286,7 @@ func (s SqliteStore) lookupId(requested_id uint64) (uint64, error) {
 
 // Delete will only delete a url that matches the canonical URL.
 // TODO: Evaluate desired behavior here
-func (s *SqliteStore) delete(url *nurl.URL) (bool, error) {
+func (s *Store) delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
 	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)

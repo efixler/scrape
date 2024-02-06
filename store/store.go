@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
@@ -20,6 +21,7 @@ type Factory func() (URLDataStore, error)
 type URLDataStore interface {
 	fetch.URLFetcher
 	Store(*resource.WebPage) (uint64, error)
+	fmt.Stringer
 }
 
 // This interface adds create/clear/maintain methods to the URLDataStore interface.

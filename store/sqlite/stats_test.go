@@ -9,7 +9,7 @@ import (
 )
 
 func TestStats(t *testing.T) {
-	s, err := New(":memory:")
+	s, err := New(InMemoryDB())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -17,7 +17,7 @@ func TestStats(t *testing.T) {
 	if !ok {
 		t.Errorf("Expected SqliteStore to implement Observable interface")
 	}
-	db := s.(*SqliteStore)
+	db := s.(*Store)
 	context, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err = db.Open(context)

@@ -35,7 +35,7 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 	fOptions := *trafilatura.DefaultOptions
 	fOptions.HttpClient = client
 	fFactory := trafilatura.Factory(fOptions)
-	sFactory := sqlite.Factory(sqlite.InMemoryDBName)
+	sFactory := sqlite.Factory(sqlite.InMemoryDB())
 
 	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
 	if err != nil {
@@ -158,7 +158,7 @@ func TestFetchUnstored(t *testing.T) {
 	fOptions := *trafilatura.DefaultOptions
 	fOptions.HttpClient = client
 	fFactory := trafilatura.Factory(fOptions)
-	sFactory := sqlite.Factory(sqlite.InMemoryDBName)
+	sFactory := sqlite.Factory(sqlite.InMemoryDB())
 
 	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
 	if err != nil {

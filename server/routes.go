@@ -22,13 +22,16 @@ import (
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/server/healthchecks"
 	"github.com/efixler/scrape/store"
-	"github.com/efixler/scrape/store/sqlite"
 )
 
-func InitMux(ctx context.Context, withProfiling bool) (http.Handler, error) {
+func InitMux(
+	ctx context.Context,
+	sf store.Factory,
+	withProfiling bool,
+) (http.Handler, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", handleHome)
-	scrapeServer, err := NewScrapeServer(ctx)
+	scrapeServer, err := NewScrapeServer(ctx, sf)
 	if err != nil {
 		return nil, err
 	}
@@ -58,10 +61,10 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 // When the context passed here is cancelled, the associated fetcher will
 // close and release any resources they have open.
-func NewScrapeServer(ctx context.Context) (*scrapeServer, error) {
+func NewScrapeServer(ctx context.Context, sf store.Factory) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(*trafilatura.DefaultOptions),
-		sqlite.Factory(sqlite.DefaultDatabase),
+		sf,
 	)
 	if err != nil {
 		return nil, err

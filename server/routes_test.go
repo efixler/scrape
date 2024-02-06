@@ -17,6 +17,8 @@ import (
 	"github.com/efixler/scrape/store/sqlite"
 )
 
+var storeFactory = sqlite.Factory(sqlite.InMemoryDB())
+
 func TestMutateFeedRequestForBatch(t *testing.T) {
 	type data struct {
 		url         string
@@ -46,7 +48,6 @@ func TestMutateFeedRequestForBatch(t *testing.T) {
 		if err != nil {
 			t.Errorf("Error decoding JSON: %s", err)
 		}
-		fmt.Printf("Form Values %v", mutated.Form)
 		if len(batchRequest.Urls) != len(urls) {
 			t.Errorf("Expected %d urls, got %d", len(urls), len(batchRequest.Urls))
 		}
@@ -115,7 +116,8 @@ func TestWellknown(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mux, err := InitMux(ctx, false)
+
+	mux, err := InitMux(ctx, storeFactory, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +148,7 @@ func TestBatchReponseIsValid(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mux, err := InitMux(ctx, false)
+	mux, err := InitMux(ctx, storeFactory, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,7 +210,7 @@ func TestExtractErrors(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mux, err := InitMux(ctx, false)
+	mux, err := InitMux(ctx, storeFactory, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,9 +228,4 @@ func TestExtractErrors(t *testing.T) {
 			t.Errorf("Expected %d status code for test %d, got %d", test.expectedStatus, i, resp.StatusCode)
 		}
 	}
-}
-
-func init() {
-	// this ensures that any sqlite dbs referenced here are in memory
-	sqlite.DefaultDatabase = sqlite.InMemoryDBName
 }
