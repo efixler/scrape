@@ -22,7 +22,7 @@ var (
 	flags       flag.FlagSet
 	logLevel    slog.Level = slog.LevelWarn
 	noContent   bool
-	dbPath      string = sqlite.DefaultDatabase
+	dbPath      string
 	csvPath     string
 	csvUrlIndex int
 	clear       bool
@@ -32,7 +32,7 @@ var (
 func initFetcher() (*scrape.StorageBackedFetcher, error) {
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(*trafilatura.DefaultOptions),
-		sqlite.Factory(sqlite.WithFile(dbPath)),
+		sqlite.Factory(sqlite.WithFileOrEnv(dbPath)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
@@ -160,7 +160,7 @@ func init() {
 	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
 	flags.Func(
 		"log-level",
-		"Set the log level [debug|error|info|warn]\n (default info)",
+		"Set the log level [debug|error|info|warn]\n (default warn)",
 		func(s string) error {
 			switch strings.ToLower(s) {
 			case "debug":

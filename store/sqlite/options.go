@@ -108,26 +108,3 @@ func (o config) String() string {
 func (o config) IsInMemory() bool {
 	return o.filename == InMemoryDBName
 }
-
-// Returns an options set tuned for on-disk databases
-func DefaultOptions() config {
-	return config{
-		busyTimeout: FiveSecondDuration,
-		journalMode: JournalModeWAL,
-		cacheSize:   BigCacheSize,
-		synchronous: SyncOff,
-		accessMode:  AccessModeRWC,
-	}
-}
-
-// Returns an options set tuned for in-memory databases
-func InMemoryOptions() config {
-	return config{
-		filename:    InMemoryDBName, // this is _always_ the name for in-memory DBs
-		busyTimeout: FiveSecondDuration,
-		journalMode: JournalModeOff,
-		cacheSize:   NormalCacheSize,
-		synchronous: SyncNormal,
-		accessMode:  AccessModeMemory,
-	}
-}
