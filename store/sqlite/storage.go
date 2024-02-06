@@ -85,10 +85,6 @@ func New(options ...option) (store.URLDataStore, error) {
 	return s, nil
 }
 
-// func New(filename string) (store.URLDataStore, error) {
-// 	return Factory(filename)()
-// }
-
 type Store struct {
 	database.DBHandle[stmtIndex]
 	config config
