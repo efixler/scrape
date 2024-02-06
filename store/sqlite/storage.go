@@ -58,9 +58,9 @@ var (
 	ErrCantCreateDatabase = errors.New("can't create the database")
 )
 
-// Returns the factory function that will be used to instantiate the store.
-// The factory function will guarantee that the preconditions are in place for
-// the db and the instance is ready to use.
+// Returns the factory function that can be used to instantiate a sqlite store
+// in the cases where either creation should be delayed or where the caller may
+// want to instantiate multiple stores with the same configuration.
 func Factory(options ...option) store.Factory {
 	return func() (store.URLDataStore, error) {
 		return New(options...)

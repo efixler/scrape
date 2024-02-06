@@ -72,7 +72,6 @@ func WithFile(filename string) option {
 		} else {
 			err = assertPathTo(resolvedPath)
 			if err != nil {
-				fmt.Printf("Resolved path: %s", resolvedPath)
 				return errors.Join(ErrCantCreateDatabase, err)
 			}
 			c.filename = resolvedPath
