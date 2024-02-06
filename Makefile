@@ -30,7 +30,7 @@ docker-build: ## build a docker image on the current platform, for local use
 	@echo "Building $(DOCKER_IMAGE_NAME)..." 
 	@docker build -t $(DOCKER_IMAGE_NAME) .
 
-docker-push: ## push an amd64/arm64 docker to Docker Hub or to a registry specfied by CONTAINER_REGISTRY
+docker-push: ## push an amd64/arm64 docker to Docker Hub or to a registry specified by CONTAINER_REGISTRY
 	@echo "Pushing '$(PUSH_TAG)'..."
 	@read -p "Do you want to push an amd64/arm64 image to '$(PUSH_TAG)'? (y/N) " answer; \
 	if [ "$$answer" != "y" ]; then \
@@ -39,7 +39,7 @@ docker-push: ## push an amd64/arm64 docker to Docker Hub or to a registry specfi
 	fi
 	@echo "Proceeding to make and push $(PUSH_TAG)..."
 	@docker buildx create --use
-	@docker buildx build --push --platform linux/amd64,linux/arm64 --no-cache -t $(PUSH_TAG) . 
+	@docker buildx build --push --platform linux/amd64,linux/arm64 -t $(PUSH_TAG) . 
 
 docker-run: ## run the local docker image, binding to port 8080, or the env value of SCRAPE_PORT
 	@echo "Running $(DOCKER_IMAGE_NAME)..."
