@@ -22,27 +22,16 @@ var (
 	ErrIsInMemory     = errors.New("file path is in-memory DB (':memory:')")
 )
 
-// dbPath returns the path to the database file. If filename is empty,
-// the path to the executable + the default path is returned.
-// If filename is not empty filename is returned and its
-// existence is checked.
-// TODO: Pull the ""/executable assumptions out of this function and into options.
+// dbPath returns the absolute path to the database file. If filename is empty,
+// the path to the current working directory + the default db filename is returned.
+// For the special case of ':memory:', which is an in-memory db, as ErrIsInMemory
+// is returned.
 func dbPath(filename string) (string, error) {
 	switch filename {
 	case InMemoryDBName:
 		return InMemoryDBName, ErrIsInMemory
 	case "":
-		root, err := os.Executable()
-		fmt.Printf("Root: %s\n", root)
-		if err != nil {
-			return "", err
-		}
-		root, err = filepath.Abs(filepath.Dir(root))
-		fmt.Printf("Root filepath: %s\n", root)
-		if err != nil {
-			return "", err
-		}
-		filename = filepath.Join(root, DefaultDatabase)
+		filename = DefaultDatabase
 	}
 	return filepath.Abs(filename)
 }
@@ -80,7 +69,7 @@ func assertPathTo(fqn string) error {
 var createSQL string
 
 // When this is called, the path to the database must already exist.
-func (s *SqliteStore) Create() error {
+func (s *Store) Create() error {
 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
 	if err != nil {
 		slog.Error("sqlite: error creating database", "error", err)
@@ -99,7 +88,7 @@ func maintain(ctx context.Context, db *sql.DB, tm time.Time) error {
 //go:embed maintenance.sql
 var maintenanceSQL string
 
-func (s *SqliteStore) Maintain() error {
+func (s *Store) Maintain() error {
 	_, err := s.DB.ExecContext(s.Ctx, maintenanceSQL)
 	return err
 }
@@ -107,7 +96,7 @@ func (s *SqliteStore) Maintain() error {
 // Clear() will drop all tables and recreate them.
 // This is a destructive operation.
 // Clear uses the same query as Create(), so it will also re-create the database
-func (s *SqliteStore) Clear() error {
+func (s *Store) Clear() error {
 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
 	return err
 }

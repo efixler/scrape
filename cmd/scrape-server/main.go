@@ -27,6 +27,7 @@ const (
 var (
 	flags     flag.FlagSet
 	port      int = DefaultPort
+	dbPath    string
 	profile   bool
 	logLevel  slog.Level
 	logWriter io.Writer
@@ -37,7 +38,7 @@ func main() {
 	slog.Info("scrape-server starting up", "port", port)
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
-	mux, err := server.InitMux(ctx, profile)
+	mux, err := server.InitMux(ctx, sqlite.Factory(sqlite.WithFileOrEnv(dbPath)), profile)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
@@ -98,13 +99,9 @@ func init() {
 	logWriter = os.Stderr
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
-
-	if os.Getenv("SCRAPE_DB") != "" {
-		sqlite.DefaultDatabase = os.Getenv("SCRAPE_DB")
-	}
-	flags.StringVar(&sqlite.DefaultDatabase,
+	flags.StringVar(&dbPath,
 		"database",
-		sqlite.DefaultDatabase,
+		dbPath,
 		`Database path. If the database doesn't exist, it will be created.
 Use ':memory:' for an in-memory database
 Environment variable equivalent: SCRAPE_DB
@@ -146,6 +143,8 @@ Environment variable equivalent: SCRAPE_DB
 			switch strings.ToLower(s) {
 			case "debug":
 				logLevel = slog.LevelDebug
+			case "info":
+				logLevel = slog.LevelInfo
 			case "warn":
 				logLevel = slog.LevelWarn
 			case "error":
@@ -175,6 +174,9 @@ func showOptions() {
 	flags.VisitAll(func(f *flag.Flag) {
 		var value string
 		switch f.Name {
+		case "database":
+			db, _ := sqlite.New(sqlite.WithFileOrEnv(dbPath))
+			value = db.String()
 		case "s":
 			return
 		case "log-level":

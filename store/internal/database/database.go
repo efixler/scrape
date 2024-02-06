@@ -74,6 +74,12 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 	return nil
 }
 
+// Convenience method to get the safe DSN string, with the password obscured.
+// Implements fmt.Stringer interface.
+func (s DBHandle[T]) String() string {
+	return s.DSNSource.String()
+}
+
 // Pass a maintenance function and a duration to run it at.
 // The maintenance function will be called with the context and the database handle.
 // If the function returns an error, the ticker will be stopped.

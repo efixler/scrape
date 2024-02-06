@@ -13,7 +13,7 @@ type AccessMode string
 type option func(*config) error
 
 const (
-	EnvDBPath                      = "SCRAPE_SQLITE_DB"
+	EnvDBPath                      = "SCRAPE_DB"
 	FiveSecondDuration             = 5 * time.Second
 	JournalModeWAL     JournalMode = "WAL"
 	JournalModeMemory  JournalMode = "MEMORY"
@@ -40,6 +40,7 @@ func InMemoryDB() option {
 
 func Defaults() option {
 	return func(c *config) error {
+		c.filename = DefaultDatabase
 		c.accessMode = AccessModeRWC
 		c.busyTimeout = FiveSecondDuration
 		c.journalMode = JournalModeWAL
@@ -103,6 +104,10 @@ func (o config) String() string {
 		o.cacheSize,
 		o.synchronous,
 	)
+}
+
+func (o config) IsInMemory() bool {
+	return o.filename == InMemoryDBName
 }
 
 // Returns an options set tuned for on-disk databases

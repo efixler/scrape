@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	nurl "net/url"
 	"os"
+	"strings"
 
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch/trafilatura"
@@ -19,8 +20,9 @@ import (
 
 var (
 	flags       flag.FlagSet
+	logLevel    slog.Level = slog.LevelWarn
 	noContent   bool
-	dbPath      string
+	dbPath      string = sqlite.DefaultDatabase
 	csvPath     string
 	csvUrlIndex int
 	clear       bool
@@ -30,7 +32,7 @@ var (
 func initFetcher() (*scrape.StorageBackedFetcher, error) {
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(*trafilatura.DefaultOptions),
-		sqlite.Factory(dbPath),
+		sqlite.Factory(sqlite.WithFile(dbPath)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
@@ -82,7 +84,7 @@ func clearDatabase(fetcher *scrape.StorageBackedFetcher) {
 		slog.Error("Error clearing database", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("Database cleared")
+	slog.Warn("Database cleared")
 }
 
 func maintainDatabase(fetcher *scrape.StorageBackedFetcher) {
@@ -96,7 +98,7 @@ func maintainDatabase(fetcher *scrape.StorageBackedFetcher) {
 		slog.Error("Error maintaining database", "err", err)
 		os.Exit(1)
 	}
-	slog.Info("Database maintenance complete")
+	slog.Warn("Database maintenance complete")
 }
 
 func main() {
@@ -151,13 +153,36 @@ func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
 	flags.BoolVar(&noContent, "notext", false, "Skip text content")
-	flags.StringVar(&dbPath, "database", sqlite.DefaultDatabase, "Database file path")
+	flags.StringVar(&dbPath, "database", dbPath, "Database file path")
 	flags.StringVar(&csvPath, "csv", "", "CSV file path")
 	flags.IntVar(&csvUrlIndex, "csv-column", 1, "The index of the column in the CSV that contains the URLs")
 	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
 	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
+	flags.Func(
+		"log-level",
+		"Set the log level [debug|error|info|warn]\n (default info)",
+		func(s string) error {
+			switch strings.ToLower(s) {
+			case "debug":
+				logLevel = slog.LevelDebug
+			case "info":
+				logLevel = slog.LevelInfo
+			case "warn":
+				logLevel = slog.LevelWarn
+			case "error":
+				logLevel = slog.LevelError
+			}
+			return nil
+		})
 	// flags automatically adds -h and --help
 	flags.Parse(os.Args[1:])
+	logger := slog.New(slog.NewTextHandler(
+		os.Stderr,
+		&slog.HandlerOptions{
+			Level: logLevel,
+		},
+	))
+	slog.SetDefault(logger)
 }
 
 func usage() {

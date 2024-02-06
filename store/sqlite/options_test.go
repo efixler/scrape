@@ -60,9 +60,8 @@ func TestWithFileOption(t *testing.T) {
 	// We expect filename to be resolved to an absolute path
 
 	cwd, _ := os.Getwd()
-
 	tests := []data{
-		{"empty", "", "", true},
+		{"empty", "", filepath.Join(cwd, DefaultDatabase), true},
 		{"in memory", InMemoryDBName, InMemoryDBName, false},
 		{"relative", "foo.db", filepath.Join(cwd, "foo.db"), false},
 		{"absolute", "/tmp/foo.db", "/tmp/foo.db", false},

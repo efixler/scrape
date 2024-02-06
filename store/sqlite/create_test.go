@@ -17,7 +17,7 @@ func TestInMemoryDSN(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	fname := "_test_create.db"
-	store, err := Factory(fname)()
+	store, err := New(WithFile(fname))
 	if err != nil {
 		t.Errorf("Error creating database factory: %v", err)
 	}
@@ -25,6 +25,7 @@ func TestCreate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error opening (and creating) database: %v", err)
 	}
+	// TODO: Test schema here
 	defer os.Remove(fname)
 	_, err = os.Stat(fname)
 	if os.IsNotExist(err) {
@@ -43,7 +44,7 @@ func TestDontCreateWhenExists(t *testing.T) {
 		t.Fatalf("Error creating dummy file %s: %v", fname, err)
 	}
 	defer os.Remove(fname)
-	store, err := Factory(fname)()
+	store, err := Factory(WithFile(fname))()
 	if err != nil {
 		t.Errorf("Error creating store: %v", err)
 	}
@@ -61,10 +62,8 @@ func TestDbPath(t *testing.T) {
 		expectedErr error
 	}
 	cwd, _ := os.Getwd()
-	exec, _ := os.Executable()
-	execPath, _ := filepath.Abs(filepath.Dir(exec))
 	tests := []args{
-		{"empty", "", filepath.Join(execPath, DefaultDatabase), nil},
+		{"empty", "", filepath.Join(cwd, DefaultDatabase), nil},
 		{"in memory", InMemoryDBName, InMemoryDBName, ErrIsInMemory},
 		{"file no path", "foo.db", filepath.Join(cwd, "foo.db"), nil},
 		{"file with relative path", "bar/foo.db", filepath.Join(cwd, "bar/foo.db"), nil},
