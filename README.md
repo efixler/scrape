@@ -318,12 +318,13 @@ The `docker-run` make target will mount a local folder called `docker/data` and 
 
 
 ## Roadmap
-- Enforce TTLs and DB capacity limits for record eviction (TTLs are enforced, but not proactively flushed)
-- Expose Request Timeout configuration
-- Outbound same-domain request pacing
+- Outbound request pacing
+- Expose outbound request options (headers, timeouts, etc)
 - Headless fallback for pages that require Javascript
-- Add test coverage to cmd/.../main.go files
-- Explore performance optimizations if needed, e.g.
+- Clean up cmd/ files, intern-alize most packages
+- Update ServeMux usage for 1.22
+- Finish alternate mysql storage backend
+- Explore performance optimizations
   - Batch request parallelization
   - zstd compression for stored resources
 - Explore alternate fetch/parse/storage backends
