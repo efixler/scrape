@@ -2,6 +2,7 @@ package resource
 
 import (
 	"encoding/json"
+	"errors"
 	nurl "net/url"
 	"time"
 
@@ -15,17 +16,13 @@ var (
 
 type WebPage struct {
 	trafilatura.Metadata
-	// The page that was requested by the caller
-	OriginalURL string         `json:",omitempty"`
-	TTL         *time.Duration `json:"-"`
-	// When the returned source was fetched
-	FetchTime   *time.Time `json:",omitempty"`
-	StatusCode  int        `json:",omitempty"`
-	Error       error      `json:"-"`
-	ContentText string     `json:",omitempty"`
-	// The url that was requested by whatever locally was fetching: allows
-	// for something downstream from OriginalURL to filter query params
-	RequestedURL *nurl.URL `json:"-"`
+	OriginalURL  string         `json:"original_url,omitempty"` // The page that was requested by the caller
+	RequestedURL *nurl.URL      `json:"-"`                      // The page that was actually fetched
+	TTL          *time.Duration `json:"-"`
+	FetchTime    *time.Time     `json:"fetch_time,omitempty"` // When the returned source was fetched
+	StatusCode   int            `json:"status_code,omitempty"`
+	Error        error          `json:"-"`
+	ContentText  string         `json:"content_text,omitempty"`
 	canonicalURL *nurl.URL
 }
 
@@ -37,31 +34,33 @@ func (r WebPage) URL() *nurl.URL {
 }
 
 func (r WebPage) MarshalJSON() ([]byte, error) {
-	type alias WebPage
-	// This alias is mainly here to precisely control the JSON output.
+	// Use this inline struct to control the output
 	ar := &struct {
-		OriginalURL        string     `json:"OriginalURL,omitempty"`
-		RequestedUrlString string     `json:"RequestedURL,omitempty"`
-		FetchTime          *time.Time `json:"FetchTime,omitempty"`
-		StatusCode         int        `json:"StatusCode,omitempty"`
-		ErrorString        string     `json:"Error,omitempty"`
-		Title              string     `json:"Title,omitempty"`
-		Description        string     `json:"Description,omitempty"`
-		Author             string     `json:"Author,omitempty"`
-		Sitename           string     `json:"Sitename,omitempty"`
-		Date               *time.Time `json:"Date,omitempty"`
-		Categories         []string   `json:"Categories,omitempty"`
-		Tags               []string   `json:"Tags,omitempty"`
-		Language           string     `json:"Language,omitempty"`
-		Image              string     `json:"Image,omitempty"`
-		PageType           string     `json:"PageType,omitempty"`
-		ID                 string     `json:"ID,omitempty"`
-		Fingerprint        string     `json:"Fingerprint,omitempty"`
-		License            string     `json:"License,omitempty"`
-		*alias
+		URL                string     `json:"url,omitempty"`
+		RequestedUrlString string     `json:"requested_url,omitempty"`
+		OriginalURL        string     `json:"original_url,omitempty"`
+		Hostname           string     `json:"hostname,omitempty"`
+		FetchTime          *time.Time `json:"fetch_time,omitempty"`
+		StatusCode         int        `json:"status_code,omitempty"`
+		ErrorString        string     `json:"error,omitempty"`
+		Title              string     `json:"title,omitempty"`
+		Description        string     `json:"description,omitempty"`
+		Author             string     `json:"author,omitempty"`
+		Sitename           string     `json:"sitename,omitempty"`
+		Date               *time.Time `json:"date,omitempty"`
+		Categories         []string   `json:"categories,omitempty"`
+		Tags               []string   `json:"tags,omitempty"`
+		Language           string     `json:"language,omitempty"`
+		Image              string     `json:"image,omitempty"`
+		PageType           string     `json:"page_type,omitempty"`
+		ID                 string     `json:"id,omitempty"`
+		Fingerprint        string     `json:"fingerprint,omitempty"`
+		License            string     `json:"license,omitempty"`
+		ContentText        string     `json:"content_text,omitempty"`
 	}{
-		alias:       (*alias)(&r),
+		URL:         r.Metadata.URL,
 		OriginalURL: r.OriginalURL,
+		Hostname:    r.Hostname,
 		FetchTime:   r.FetchTime,
 		StatusCode:  r.StatusCode,
 		Title:       r.Title,
@@ -76,6 +75,7 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 		ID:          r.ID,
 		Fingerprint: r.Fingerprint,
 		License:     r.License,
+		ContentText: r.ContentText,
 	}
 	// We can control the output by clearing these fields
 	// (in addition to ContentText.)
@@ -89,6 +89,35 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 		ar.Date = &r.Date
 	}
 	return json.Marshal(ar)
+}
+
+func (r *WebPage) UnmarshalJSON(b []byte) error {
+	type alias WebPage
+	// Unmarshal is case insensitive, so we only need to mask the fields
+	// that we need to mutate, or when the name change is more than just case.
+	ar := &struct {
+		RequestedUrlString string `json:"requested_url,omitempty"`
+		ErrorString        string `json:"error,omitempty"`
+		PageType           string `json:"page_type,omitempty"`
+		*alias
+	}{
+		alias: (*alias)(r),
+	}
+	if err := json.Unmarshal(b, ar); err != nil {
+		return err
+	}
+	r.PageType = ar.PageType
+	if ar.RequestedUrlString != "" {
+		u, err := nurl.Parse(ar.RequestedUrlString)
+		if err != nil {
+			return err
+		}
+		r.RequestedURL = u
+	}
+	if ar.ErrorString != "" {
+		r.Error = errors.New(ar.ErrorString)
+	}
+	return nil
 }
 
 func (r *WebPage) AssertTimes() {

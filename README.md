@@ -33,46 +33,47 @@ Fast web scraping
 
 
 ## Output Format
-JSON output is a superset of Trafilatura format. Empty fields may be omitted in responses.
+JSON output is a superset of Trafilatura fields. Empty fields may be omitted in responses.
 
 | Field | Type | Description |
 | ----  | ---- | ------------|
-| `OriginalURL` | String | Exactly the url that was in the inbound request |
-| `RequestedURL` | URL | The URL that was actually requested. (Some URL params (e.g. utm_*) may be stripped before the outbound request) |
-| `StatusCode` | Int | The status code returned by the target server when fetching this page |
-| `Error` | String | Error message(s), if there were any, while processing this page |
-| `Hostname` | Domain name | The domain serving this resource |
-| `URL` | URL | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |
-| `Date` | ISO8601 | The publish date of the page, in UTC time |
-| `FetchTime` | ISO8601 | The time that URL was retrieved |
-| `Sitename` | Text | Identifies the publisher. Can be domain, company name, or other text, IRL usage not consistent |
-| `Image` | URL | Hero image link |
-| `Title` | Text | The page's title | 
-| `Author` | Text | Author |
-| `Description` | Text | Page summary or excerpt |
-| `Categories` | Array | Content categories, if supplied |
-| `Tags` | Array | Tags, if supplied |
-| `ID` | Text | Generally empty |
-| `License` | Text | Generally empty |
-| `Language` | Text | 2-letter language code |
-| `PageType` | Text | If it's there it's usually "article" following the `og`` usage |
-| `ContentText` | Text | The text of the page, with all HTML removed |
+| `url` | URL | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |
+| `requested_url` | URL | The URL that was actually requested. (Some URL params (e.g. utm_*) may be stripped before the outbound request) |
+| `original_url` | String | Exactly the url that was in the inbound request |
+| `fetch_time` | ISO8601 | The time that URL was retrieved |
+| `status_code` | Int | The status code returned by the target server when fetching this page |
+| `error` | String | Error message(s), if there were any, while processing this page |
+| `hostname` | Domain name | The domain serving this resource |
+| `date` | ISO8601 | The publish date of the page, in UTC time |
+| `sitename` | Text | Identifies the publisher. Can be domain, company name, or other text, IRL usage not consistent |
+| `title` | Text | The page's title | 
+| `author` | Text | Author, semicolon delimited for multiple authors |
+| `description` | Text | Page summary or excerpt |
+| `categories` | Array | Content categories, if supplied |
+| `tags` | Array | Tags, if supplied |
+| `language` | Text | 2-letter language code |
+| `page_type` | Text | If it's there it's usually "article" following the `og`` usage |
+| `image` | URL | Hero image link |
+| `license` | Text | Generally empty |
+| `content_text` | Text | The text of the page, with all HTML removed |
 
 Parsed field content is largely dependent on metadata included in the page. GIGO/YMMV.
 
 Here's an example, with long fields truncated:
 ```json
 {
-  "OriginalURL": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
-  "RequestedURL": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
-  "Title": "NASA’s Webb Stuns With New High-Definition Look at Exploded Star - NASA",
-  "Author": "Steve Sabia",
-  "URL": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
-  "Hostname": "www.nasa.gov",
-  "Description": "Like a shiny, round ornament ready to be placed in the perfect spot on a holiday tree, supernova remnant Cassiopeia A (Cas A) gleams in a new image from",
-  "Sitename": "NASA",
-  "Date": "2023-12-10T00:00:00Z",
-  "Categories": [
+  "url": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
+  "requested_url": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
+  "original_url": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
+  "fetch_time": "2024-01-09T03:57:44Z",
+  "status_code": 200,
+  "hostname": "www.nasa.gov",
+  "date": "2023-12-10T00:00:00Z",
+  "sitename": "NASA",
+  "title": "NASA’s Webb Stuns With New High-Definition Look at Exploded Star - NASA",
+  "author": "Steve Sabia",
+  "description": "Like a shiny, round ornament ready to be placed in the perfect spot on a holiday tree, supernova remnant Cassiopeia A (Cas A) gleams in a new image from",
+  "categories": [
     "Astrophysics",
     "Goddard Space Flight Center",
     "James Webb Space Telescope (JWST)",
@@ -83,7 +84,7 @@ Here's an example, with long fields truncated:
     "Supernovae",
     "The Universe"
   ],
-  "Tags": [
+  "tags": [
     "Astrophysics",
     "Goddard Space Flight Center",
     "James Webb Space Telescope (JWST)",
@@ -94,14 +95,10 @@ Here's an example, with long fields truncated:
     "Supernovae",
     "The Universe"
   ],
-  "ID": "",
-  "Fingerprint": "",
-  "License": "",
-  "Language": "en",
-  "Image": "https://www.nasa.gov/wp-content/uploads/2023/12/webb-stsci-01hggzdyh8ghhssnwzd71mf0xh-2k.png",
-  "PageType": "article",
-  "ContentText": "Mysterious features hide in near-infrared light Like a shiny, round ornament ready to be placed in the perfect spot on a holiday tree, supernova remnant Cassiopeia A (Cas A) gleams in a new image from NASA’s James Webb Space Telescope. As part of the 2023...(there's about 10x more content in this example, truncated in the docs for readability)",
-  "FetchTime": "2023-12-18T03:37:14Z"
+  "language": "en",
+  "image": "https://www.nasa.gov/wp-content/uploads/2023/12/webb-stsci-01hggzdyh8ghhssnwzd71mf0xh-2k.png",
+  "page_type": "article",
+  "content_text": "Mysterious features hide in near-infrared light Like a shiny, round ornament ready to be placed in the perfect spot on a holiday tree, supernova remnant Cassiopeia A (Cas A) gleams in a new image from NASA’s James Webb Space Telescope. As part of the 2023...(there's about 10x more content in this example, truncated in the docs for readability)",
 }
 ```
 

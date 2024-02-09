@@ -44,13 +44,12 @@ The `resource.WebPage` struct (which is passed into `URLDataStore.store()` imple
 
 #### `urls` table
 
-The `urls` table used the stored `URL` along with the paired key as its `id`.
+The `urls` table used the stored `URL` (canonical, derived from the content whenever possible) along with the paired key as its `id`.
 
 #### `id_map` table
 
 The `id_map` table stores mappings between `canonical_url` and `requested_url`.
 
 When handling an inbound request, the `id_map` table is consulted first to see if there's a mapping for the `RequestedURL`. If there is, this metadata for this entry is returned to the client.
-
 
 
