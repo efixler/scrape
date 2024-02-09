@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -20,7 +21,7 @@ type Factory func() (URLDataStore, error)
 // It adds a Store() method to the fetch.URLFetcher interface.
 type URLDataStore interface {
 	fetch.URLFetcher
-	Store(*resource.WebPage) (uint64, error)
+	Save(*resource.WebPage) (uint64, error)
 	fmt.Stringer
 }
 
@@ -35,4 +36,13 @@ type Maintainable interface {
 // This interface is to expose a method to supply data to healthchecks.
 type Observable interface {
 	Stats() (any, error)
+}
+
+func SerializeMetadata(w *resource.WebPage) ([]byte, error) {
+	copy := *w
+	copy.ContentText = ""
+	copy.FetchTime = nil
+	copy.OriginalURL = ""
+	copy.RequestedURL = nil
+	return json.Marshal(copy)
 }

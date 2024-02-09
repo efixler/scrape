@@ -78,7 +78,7 @@ func TestStore(t *testing.T) {
 	meta.RequestedURL = url
 	cText := meta.ContentText
 	stored := meta // this is a copy
-	_, err = s.Store(&stored)
+	_, err = s.Save(&stored)
 	if err != nil {
 		t.Errorf("Error storing data: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 	meta.RequestedURL = url
 	ttl := time.Duration(0)
 	meta.TTL = &ttl
-	_, err = s.Store(&meta)
+	_, err = s.Save(&meta)
 	if err != nil {
 		t.Errorf("Error storing data: %v", err)
 	}

@@ -83,7 +83,7 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			key, err := f.Storage.Store(res)
+			key, err := f.Storage.Save(res)
 			if err != nil {
 				slog.Error("Error storing %s: %s\n", "url", url, "key", key, "error", err)
 			}
@@ -148,7 +148,7 @@ func (f *StorageBackedFetcher) fetchUnstored(inchan <-chan fetchMsg, outchan cha
 		outchan <- &rcopy
 		if err == nil {
 			go func() {
-				if _, err := f.Storage.Store(res); err != nil {
+				if _, err := f.Storage.Save(res); err != nil {
 					slog.Error("Error storing %s: %s\n", "url", res.RequestedURL, "error", err)
 				}
 			}()

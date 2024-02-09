@@ -120,7 +120,7 @@ func (s *Store) Open(ctx context.Context) error {
 // Save the data for a URL. Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
 // TODO: Accept concrete resource.WebPage instead of a reference
-func (s *Store) Store(uptr *resource.WebPage) (uint64, error) {
+func (s *Store) Save(uptr *resource.WebPage) (uint64, error) {
 	uptr.AssertTimes()        // modify the original with times if needed
 	u := *uptr                // copy this so we don't modify the original below
 	key := store.Key(u.URL()) // key is for the canonical URL

@@ -46,6 +46,6 @@ func (s *Store) Fetch(*nurl.URL) (*resource.WebPage, error) {
 	return nil, nil
 }
 
-func (s *Store) Store(*resource.WebPage) (uint64, error) {
+func (s *Store) Save(*resource.WebPage) (uint64, error) {
 	return 0, nil
 }
