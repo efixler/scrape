@@ -19,6 +19,9 @@ func TestSerializedMetadataFiltersWhenMarshaling(t *testing.T) {
 		t.Fatalf("Error unmarshaling base metadata: %v", err)
 	}
 	filtered, err := SerializeMetadata(saver)
+	if err != nil {
+		t.Fatalf("Error serializing metadata: %v", err)
+	}
 
 	s := &resource.WebPage{}
 	err = json.Unmarshal(filtered, s)
