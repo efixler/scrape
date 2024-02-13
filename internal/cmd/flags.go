@@ -40,7 +40,7 @@ func NewDatabaseSpec(s string) (DatabaseSpec, error) {
 	return spec, nil
 }
 
-func NewDatabaseValue(env string, def DatabaseSpec) *envflags.EnvFlagValue[DatabaseSpec] {
+func NewDatabaseValue(env string, def DatabaseSpec) *envflags.Value[DatabaseSpec] {
 	converter := NewDatabaseSpec
 	val := envflags.NewEnvFlagValue(env, def, converter)
 	return val

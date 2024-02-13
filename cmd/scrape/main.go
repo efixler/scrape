@@ -20,12 +20,12 @@ import (
 
 var (
 	flags       flag.FlagSet
-	noContent   *envflags.EnvFlagValue[bool]
-	dbSpec      *envflags.EnvFlagValue[cmd.DatabaseSpec]
-	csvPath     *envflags.EnvFlagValue[string]
-	csvUrlIndex *envflags.EnvFlagValue[int]
-	clear       *envflags.EnvFlagValue[bool]
-	maintain    *envflags.EnvFlagValue[bool]
+	noContent   *envflags.Value[bool]
+	dbSpec      *envflags.Value[cmd.DatabaseSpec]
+	csvPath     *envflags.Value[string]
+	csvUrlIndex *envflags.Value[int]
+	clear       *envflags.Value[bool]
+	maintain    *envflags.Value[bool]
 )
 
 func initFetcher() (*scrape.StorageBackedFetcher, error) {

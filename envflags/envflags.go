@@ -17,7 +17,7 @@ type ValueType interface {
 	any
 }
 
-type EnvFlagValue[T ValueType] struct {
+type Value[T ValueType] struct {
 	flagValue  T
 	converter  func(string) (T, error)
 	isBoolFlag bool
@@ -27,19 +27,19 @@ func NewEnvFlagValue[T ValueType](
 	envName string,
 	defaultValue T,
 	converter func(string) (T, error),
-) *EnvFlagValue[T] {
-	envFlag := &EnvFlagValue[T]{
+) *Value[T] {
+	envFlag := &Value[T]{
 		converter: converter,
 	}
 	envFlag.setDefault(envName, defaultValue)
 	return envFlag
 }
 
-func (p EnvFlagValue[T]) IsBoolFlag() bool {
+func (p Value[T]) IsBoolFlag() bool {
 	return p.isBoolFlag
 }
 
-func (p *EnvFlagValue[T]) setDefault(envName string, defaultValue T) {
+func (p *Value[T]) setDefault(envName string, defaultValue T) {
 	if env := os.Getenv(EnvPrefix + envName); env != "" {
 		converted, err := p.converter(env)
 		if err == nil {
@@ -52,15 +52,15 @@ func (p *EnvFlagValue[T]) setDefault(envName string, defaultValue T) {
 	p.flagValue = defaultValue
 }
 
-func (p EnvFlagValue[T]) String() string {
+func (p Value[T]) String() string {
 	return fmt.Sprintf("%v", p.flagValue)
 }
 
-func (p EnvFlagValue[T]) Get() T {
+func (p Value[T]) Get() T {
 	return p.flagValue
 }
 
-func (p *EnvFlagValue[T]) Set(value string) error {
+func (p *Value[T]) Set(value string) error {
 	if p.converter == nil {
 		return fmt.Errorf("no converter for type %T", p.flagValue)
 	}
@@ -72,7 +72,7 @@ func (p *EnvFlagValue[T]) Set(value string) error {
 	return nil
 }
 
-func NewString(env, defaultValue string) *EnvFlagValue[string] {
+func NewString(env, defaultValue string) *Value[string] {
 	converter := func(s string) (string, error) {
 		return s, nil
 	}
@@ -80,7 +80,7 @@ func NewString(env, defaultValue string) *EnvFlagValue[string] {
 	return pflag
 }
 
-func NewBool(env string, defaultValue bool) *EnvFlagValue[bool] {
+func NewBool(env string, defaultValue bool) *Value[bool] {
 	converter := func(s string) (bool, error) {
 		b, err := strconv.ParseBool(s)
 		if err != nil {
@@ -93,7 +93,7 @@ func NewBool(env string, defaultValue bool) *EnvFlagValue[bool] {
 	return eflag
 }
 
-func NewInt(env string, defaultValue int) *EnvFlagValue[int] {
+func NewInt(env string, defaultValue int) *Value[int] {
 	converter := func(s string) (int, error) {
 		i, err := strconv.Atoi(s)
 		if err != nil {
@@ -105,7 +105,7 @@ func NewInt(env string, defaultValue int) *EnvFlagValue[int] {
 	return pflag
 }
 
-func NewLogLevel(env string, defaultValue slog.Level) *EnvFlagValue[slog.Level] {
+func NewLogLevel(env string, defaultValue slog.Level) *Value[slog.Level] {
 	converter := func(s string) (slog.Level, error) {
 		switch strings.ToLower(s) {
 		case "debug":
