@@ -35,7 +35,7 @@ const (
 	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
 	qStoreId  = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
 	qClearId  = `DELETE FROM id_map where canonical_id = ?`
-	qFetch    = `SELECT parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
+	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
 	qDelete   = `DELETE FROM urls WHERE id = ?`
 )
 
@@ -117,35 +117,29 @@ func (s *Store) Open(ctx context.Context) error {
 	return nil
 }
 
-// Save the data for a URL. Returns a key for the stored URL (which you actually can't
+// Save the data for a URL. Will overwrite data where the URL is the same.
+// Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
-// TODO: Accept concrete resource.WebPage instead of a reference
 func (s *Store) Save(uptr *resource.WebPage) (uint64, error) {
-	uptr.AssertTimes()        // modify the original with times if needed
-	u := *uptr                // copy this so we don't modify the original below
-	key := store.Key(u.URL()) // key is for the canonical URL
-	contentText := u.ContentText
-	u.ContentText = "" // make sure this is a copy
-	u.OriginalURL = "" // we don't store original url
-	if u.RequestedURL == nil {
-		u.RequestedURL = u.URL()
+	uptr.AssertTimes() // modify the original with times if needed
+	requestedUrl := uptr.RequestedURL
+	if requestedUrl == nil {
+		requestedUrl = uptr.URL()
 	}
-	requestUrl := u.RequestedURL.String()
-	u.RequestedURL = nil // we store this, but in it's own column
-	fetchEpoch := u.FetchTime.Unix()
-	u.FetchTime = nil // we store this, but in it's own column
-	metadata, err := json.Marshal(u)
+	key := store.Key(uptr.URL()) // key is for the canonical URL
+	contentText := uptr.ContentText
+	metadata, err := store.SerializeMetadata(uptr)
 	if err != nil {
 		return 0, err
 	}
-	expires := time.Now().Add(*u.TTL).Unix()
+	expires := time.Now().Add(*uptr.TTL).Unix()
 
 	// (id, url, parsed_url, fetch_time, expires, metadata, content_text)
 	values := []any{
 		key,
-		u.URL().String(),
-		requestUrl,
-		fetchEpoch,
+		uptr.URL().String(),
+		requestedUrl.String(),
+		uptr.FetchTime.Unix(),
 		expires,
 		string(metadata),
 		contentText,
@@ -161,6 +155,7 @@ func (s *Store) Save(uptr *resource.WebPage) (uint64, error) {
 		return 0, err
 	}
 	// todo: this can fail silently
+	// todo: test case for this, including self-mapping when the canonical url is the same as the requested url
 	err_id_map := s.storeIdMap(uptr.RequestedURL, key)
 
 	rows, err := result.RowsAffected()
@@ -223,24 +218,25 @@ func (s Store) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	// parsed_url, fetch_time, expires, metadata, content_text
 	var (
-		parsedUrl   string
-		fetchEpoch  int64
-		expiryEpoch int64
-		metadata    string
-		contentText string
+		canonicalUrl string
+		parsedUrl    string
+		fetchEpoch   int64
+		expiryEpoch  int64
+		metadata     string
+		contentText  string
 	)
-	err = rows.Scan(&parsedUrl, &fetchEpoch, &expiryEpoch, &metadata, &contentText)
+	err = rows.Scan(&canonicalUrl, &parsedUrl, &fetchEpoch, &expiryEpoch, &metadata, &contentText)
 	if err != nil {
 		return nil, err
 	}
 	exptime := time.Unix(expiryEpoch, 0)
 	if time.Now().After(exptime) {
-		// todo: delete this record (async, without leaking)
 		return nil, store.ErrorResourceNotFound
 	}
 	fetchTime := time.Unix(fetchEpoch, 0).UTC()
 	ttl := exptime.Sub(fetchTime)
 	page := &resource.WebPage{FetchTime: &fetchTime}
+	page.Metadata.URL = canonicalUrl
 	page.RequestedURL, err = nurl.Parse(parsedUrl)
 	if err != nil {
 		return nil, err

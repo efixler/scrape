@@ -324,7 +324,7 @@ The `docker-run` make target will mount a local folder called `docker/data` and 
 - Clean up cmd/ files, intern-alize most packages
 - Update ServeMux usage for 1.22
 - Finish alternate mysql storage backend
-- Explore performance optimizations
+- Explore performance optimizations, e.g.
   - Batch request parallelization
   - zstd compression for stored resources
 - Explore alternate fetch/parse/storage backends
