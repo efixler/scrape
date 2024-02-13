@@ -9,6 +9,6 @@ coverage.html
 scrape_data/
 build/
 docker/
-internal/
+internal/testdata
 rest/
 samples/

@@ -10,29 +10,32 @@ import (
 	"log/slog"
 	nurl "net/url"
 	"os"
-	"strings"
 
 	"github.com/efixler/scrape"
+	"github.com/efixler/scrape/envflags"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/store"
-	"github.com/efixler/scrape/store/sqlite"
 )
 
 var (
 	flags       flag.FlagSet
-	logLevel    slog.Level = slog.LevelWarn
-	noContent   bool
-	dbPath      string
-	csvPath     string
-	csvUrlIndex int
-	clear       bool
-	maintain    bool
+	noContent   *envflags.EnvFlagValue[bool]
+	dbSpec      *envflags.EnvFlagValue[cmd.DatabaseSpec]
+	csvPath     *envflags.EnvFlagValue[string]
+	csvUrlIndex *envflags.EnvFlagValue[int]
+	clear       *envflags.EnvFlagValue[bool]
+	maintain    *envflags.EnvFlagValue[bool]
 )
 
 func initFetcher() (*scrape.StorageBackedFetcher, error) {
+	dbFactory, err := cmd.Database(dbSpec.Get())
+	if err != nil {
+		return nil, fmt.Errorf("error creating database factory: %s", err)
+	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(*trafilatura.DefaultOptions),
-		sqlite.Factory(sqlite.WithFileOrEnv(dbPath)),
+		dbFactory,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
@@ -45,8 +48,8 @@ func initFetcher() (*scrape.StorageBackedFetcher, error) {
 }
 
 func getArgs() []string {
-	if csvPath != "" {
-		csvFile, err := os.Open(csvPath)
+	if csvPath.Get() != "" {
+		csvFile, err := os.Open(csvPath.Get())
 		if err != nil {
 			slog.Error("Error opening CSV file", "csv", csvPath, "error", err)
 			os.Exit(1)
@@ -66,7 +69,7 @@ func getArgs() []string {
 				slog.Error("error reading CSV file", "csv", csvPath, "error", err)
 				os.Exit(1)
 			}
-			rval = append(rval, record[csvUrlIndex])
+			rval = append(rval, record[csvUrlIndex.Get()])
 		}
 		return rval
 	}
@@ -108,11 +111,11 @@ func main() {
 		os.Exit(1)
 	}
 	defer fetcher.Close()
-	if clear {
+	if clear.Get() {
 		clearDatabase(fetcher)
 		return
 	}
-	if maintain {
+	if maintain.Get() {
 		maintainDatabase(fetcher)
 		return
 	}
@@ -137,7 +140,7 @@ func main() {
 			slog.Error("fetching url, skipping", "url", parsedUrl.String(), "err", err)
 			continue
 		}
-		if noContent {
+		if noContent.Get() {
 			page.ContentText = ""
 		}
 		err = encoder.Encode(page)
@@ -152,34 +155,26 @@ func main() {
 func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
-	flags.BoolVar(&noContent, "notext", false, "Skip text content")
-	flags.StringVar(&dbPath, "database", dbPath, "Database file path")
-	flags.StringVar(&csvPath, "csv", "", "CSV file path")
-	flags.IntVar(&csvUrlIndex, "csv-column", 1, "The index of the column in the CSV that contains the URLs")
-	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
-	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
-	flags.Func(
-		"log-level",
-		"Set the log level [debug|error|info|warn]\n (default warn)",
-		func(s string) error {
-			switch strings.ToLower(s) {
-			case "debug":
-				logLevel = slog.LevelDebug
-			case "info":
-				logLevel = slog.LevelInfo
-			case "warn":
-				logLevel = slog.LevelWarn
-			case "error":
-				logLevel = slog.LevelError
-			}
-			return nil
-		})
-	// flags automatically adds -h and --help
+	envflags.EnvPrefix = "SCRAPE_"
+	noContent = envflags.NewBool("NOTEXT", false)
+	flags.Var(noContent, "notext", "Skip text content")
+	dbSpec = cmd.NewDatabaseValue("DB", cmd.DefaultDatabase)
+	flags.Var(dbSpec, "database", "Database type:path")
+	csvPath = envflags.NewString("", "")
+	flags.Var(csvPath, "csv", "CSV file path")
+	csvUrlIndex = envflags.NewInt("CSV_COLUMN", 1)
+	flags.Var(csvUrlIndex, "csv-column", "The index of the column in the CSV that contains the URLs")
+	clear = envflags.NewBool("", false)
+	flags.Var(clear, "clear", "Clear the database and exit")
+	maintain = envflags.NewBool("", false)
+	flags.Var(maintain, "maintain", "Execute database maintenance and exit")
+	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelWarn)
+	flags.Var(logLevel, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])
 	logger := slog.New(slog.NewTextHandler(
 		os.Stderr,
 		&slog.HandlerOptions{
-			Level: logLevel,
+			Level: logLevel.Get(),
 		},
 	))
 	slog.SetDefault(logger)
