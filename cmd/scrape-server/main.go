@@ -9,15 +9,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
+	"github.com/efixler/scrape/envflags"
 	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/server"
-	"github.com/efixler/scrape/store/sqlite"
 )
 
 const (
@@ -26,25 +25,32 @@ const (
 
 var (
 	flags     flag.FlagSet
-	port      int = DefaultPort
-	dbPath    string
-	profile   bool
-	logLevel  slog.Level
+	port      *envflags.Value[int]
+	ttl       *envflags.Value[time.Duration]
+	userAgent *envflags.Value[string]
+	dbSpec    *envflags.Value[cmd.DatabaseSpec]
+	profile   *envflags.Value[bool]
 	logWriter io.Writer
 )
 
 // TODO: Create the db on startup if it doesn't exist
 func main() {
-	slog.Info("scrape-server starting up", "port", port)
+	slog.Info("scrape-server starting up", "port", port.Get())
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
-	mux, err := server.InitMux(ctx, sqlite.Factory(sqlite.WithFileOrEnv(dbPath)), profile)
+	dbFactory, err := cmd.Database(dbSpec.Get())
+	if err != nil {
+		slog.Error("scrape-server error creating database factory", "error", err, "dbSpec", dbSpec.Get())
+		os.Exit(1)
+	}
+
+	mux, err := server.InitMux(ctx, dbFactory, profile.Get())
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
 	}
 	s := &http.Server{
-		Addr:           fmt.Sprintf(":%d", port),
+		Addr:           fmt.Sprintf(":%d", port.Get()),
 		Handler:        mux,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -97,95 +103,32 @@ func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
 
 func init() {
 	logWriter = os.Stderr
+	envflags.EnvPrefix = "SCRAPE_"
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
-	flags.StringVar(&dbPath,
-		"database",
-		dbPath,
-		`Database path. If the database doesn't exist, it will be created.
-Use ':memory:' for an in-memory database
-Environment variable equivalent: SCRAPE_DB
-`,
-	)
-	if envPort, err := strconv.Atoi(os.Getenv("SCRAPE_PORT")); err == nil {
-		port = envPort
-	}
-	flags.IntVar(&port, "port", port, "Port to run the server on\nEnvironment variable equivalent: SCRAPE_PORT\n")
 
-	if ttl, err := time.ParseDuration(os.Getenv("SCRAPE_TTL")); err == nil {
-		resource.DefaultTTL = ttl
-	} else if os.Getenv("SCRAPE_TTL") != "" {
-		slog.Error("scrape-server error parsing ttl from environment, ignoring",
-			"SCRAPE_TTL", os.Getenv("SCRAPE_TTL"),
-			"error", err,
-			"default", resource.DefaultTTL,
-		)
-	}
-	flags.DurationVar(
-		&resource.DefaultTTL,
-		"ttl",
-		resource.DefaultTTL,
-		"TTL for fetched resources\nEnvironment variable equivalent: SCRAPE_TTL\n",
-	)
-	var userAgent string = os.Getenv("SCRAPE_USER_AGENT")
-	flags.StringVar(
-		&userAgent,
-		"user-agent",
-		fetch.DefaultUserAgent,
-		"The user agent to use for fetching\nEnvironment variable equivalent: SCRAPE_USER_AGENT\n",
-	)
+	dbSpec = cmd.NewDatabaseValue("DB", cmd.DefaultDatabase)
+	dbSpec.AddTo(&flags, "database", "Database type:path")
 
-	flags.BoolVar(&profile, "profile", false, "Enable profiling at /debug/pprof\n (default off)")
-	flags.Func(
-		"log-level",
-		"Set the log level [debug|error|info|warn]\n (default info)",
-		func(s string) error {
-			switch strings.ToLower(s) {
-			case "debug":
-				logLevel = slog.LevelDebug
-			case "info":
-				logLevel = slog.LevelInfo
-			case "warn":
-				logLevel = slog.LevelWarn
-			case "error":
-				logLevel = slog.LevelError
-			}
-			return nil
-		})
-	var showSettings bool
-	flags.BoolVar(&showSettings, "s", false, "Show current settings and exit\n (default false)")
+	port = envflags.NewInt("PORT", DefaultPort)
+	port.AddTo(&flags, "port", "Port to run the server on")
+	ttl = envflags.NewDuration("TTL", resource.DefaultTTL)
+	ttl.AddTo(&flags, "ttl", "TTL for fetched resources")
+	userAgent = envflags.NewString("USER_AGENT", fetch.DefaultUserAgent)
+	userAgent.AddTo(&flags, "user-agent", "User agent to use for fetching")
+	profile = envflags.NewBool("PROFILE", false)
+	profile.AddTo(&flags, "profile", "Enable profiling at /debug/pprof")
+
+	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelInfo)
+	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])
 	logger := slog.New(slog.NewTextHandler(
 		logWriter,
 		&slog.HandlerOptions{
-			Level: logLevel,
+			Level: logLevel.Get(),
 		},
 	))
 	slog.SetDefault(logger)
-	if showSettings {
-		showOptions()
-		os.Exit(0)
-	}
-}
-
-func showOptions() {
-	fmt.Print(`scrape-server options 
-(considering environment variables and command line options)`, "\n\n")
-	flags.VisitAll(func(f *flag.Flag) {
-		var value string
-		switch f.Name {
-		case "database":
-			db, _ := sqlite.New(sqlite.WithFileOrEnv(dbPath))
-			value = db.String()
-		case "s":
-			return
-		case "log-level":
-			value = logLevel.String()
-		default:
-			value = f.Value.String()
-		}
-		fmt.Println("  ", f.Name, ":", value)
-	})
 }
 
 func usage() {

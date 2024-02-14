@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -118,6 +119,18 @@ func NewInt(env string, defaultValue int) *Value[int] {
 			return 0, err
 		}
 		return i, nil
+	}
+	pflag := NewEnvFlagValue(env, defaultValue, converter)
+	return pflag
+}
+
+func NewDuration(env string, defaultValue time.Duration) *Value[time.Duration] {
+	converter := func(s string) (time.Duration, error) {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return 0, err
+		}
+		return d, nil
 	}
 	pflag := NewEnvFlagValue(env, defaultValue, converter)
 	return pflag

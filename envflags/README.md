@@ -1,12 +1,13 @@
 # envflags
 
 ## Description
-`envflags` aims to make command line and configuration a little easier.
+`envflags` aims to make command line and environment configuration a little easier.
 - Back command line flags up wih environment variables and defaults
 - Use any standard or custom type as a flag/config value
 - Meant to work hand-in-hand with `flag`
-- Built-in support for all `flags` supported types with some useful extras like `slog.Level` control.
-- Easy to add support for custom types with a few lines of code.
+- Built-in support for all `flag` supported types with some useful extras like `slog.Level` control
+- Easy to add support for custom types with a few lines of code
+- Include enviroment variable names in usage
 
 ## Quickstart
 
@@ -45,7 +46,6 @@ portValue.AddTo(&flags, "port", "The port to use")
 The output of `myapp -h` will then include something like this:
 
 ```
-...
   -port
       The port to use
       Environment: MYAPP_PORT (default 8080)
