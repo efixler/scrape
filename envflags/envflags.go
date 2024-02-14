@@ -12,18 +12,13 @@ var (
 	EnvPrefix = ""
 )
 
-type ValueType interface {
-	// string | int | time.Duration | bool | []string
-	any
-}
-
-type Value[T ValueType] struct {
+type Value[T any] struct {
 	flagValue  T
 	converter  func(string) (T, error)
 	isBoolFlag bool
 }
 
-func NewEnvFlagValue[T ValueType](
+func NewEnvFlagValue[T any](
 	envName string,
 	defaultValue T,
 	converter func(string) (T, error),
