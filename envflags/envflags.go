@@ -1,6 +1,7 @@
 package envflags
 
 import (
+	"flag"
 	"fmt"
 	"log/slog"
 	"os"
@@ -9,13 +10,15 @@ import (
 )
 
 var (
-	EnvPrefix = ""
+	EnvPrefix        = ""
+	EnvUsageTemplate = "\nEnvironment: %s"
 )
 
 type Value[T any] struct {
 	flagValue  T
 	converter  func(string) (T, error)
 	isBoolFlag bool
+	envName    string
 }
 
 func NewEnvFlagValue[T any](
@@ -25,9 +28,29 @@ func NewEnvFlagValue[T any](
 ) *Value[T] {
 	envFlag := &Value[T]{
 		converter: converter,
+		envName:   envName,
 	}
 	envFlag.setDefault(envName, defaultValue)
 	return envFlag
+}
+
+func (p *Value[T]) AddTo(flags *flag.FlagSet, name, usage string) {
+	usage += p.envUsage()
+	flags.Var(p, name, usage)
+}
+
+func (p Value[T]) EnvName() string {
+	if p.envName == "" {
+		return ""
+	}
+	return EnvPrefix + p.envName
+}
+
+func (p Value[T]) envUsage() string {
+	if p.envName == "" {
+		return ""
+	}
+	return fmt.Sprintf(EnvUsageTemplate, p.EnvName())
 }
 
 func (p Value[T]) IsBoolFlag() bool {

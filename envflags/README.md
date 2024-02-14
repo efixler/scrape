@@ -33,6 +33,24 @@ var level slog.Level
 level = logLevel.Get()
 ```
 
+### Adding Environment Variable Names to Usage
+`envars` provides a utility function that will add environment variable specs to usage
+entries, while also adding a flag to a `flags.FlagSet`. 
+
+Instead of calling `flags.Var()` as in the example above, do:
+```
+portValue.AddTo(&flags, "port", "The port to use")
+```
+
+The output of `myapp -h` will then include something like this:
+
+```
+...
+  -port
+      The port to use
+      Environment: MYAPP_PORT (default 8080)
+```
+
 ## Custom Types
 
 To map a flag/environment variable to a custom type you just need to:

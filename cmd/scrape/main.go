@@ -157,19 +157,19 @@ func init() {
 	flags.Usage = usage
 	envflags.EnvPrefix = "SCRAPE_"
 	noContent = envflags.NewBool("NOTEXT", false)
-	flags.Var(noContent, "notext", "Skip text content")
+	noContent.AddTo(&flags, "notext", "Skip text content")
 	dbSpec = cmd.NewDatabaseValue("DB", cmd.DefaultDatabase)
-	flags.Var(dbSpec, "database", "Database type:path")
+	dbSpec.AddTo(&flags, "database", "Database type:path")
 	csvPath = envflags.NewString("", "")
-	flags.Var(csvPath, "csv", "CSV file path")
+	csvPath.AddTo(&flags, "csv", "CSV file path")
 	csvUrlIndex = envflags.NewInt("CSV_COLUMN", 1)
-	flags.Var(csvUrlIndex, "csv-column", "The index of the column in the CSV that contains the URLs")
+	csvUrlIndex.AddTo(&flags, "csv-column", "The index of the column in the CSV that contains the URLs")
 	clear = envflags.NewBool("", false)
-	flags.Var(clear, "clear", "Clear the database and exit")
+	clear.AddTo(&flags, "clear", "Clear the database and exit")
 	maintain = envflags.NewBool("", false)
-	flags.Var(maintain, "maintain", "Execute database maintenance and exit")
+	maintain.AddTo(&flags, "maintain", "Execute database maintenance and exit")
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelWarn)
-	flags.Var(logLevel, "log-level", "Set the log level [debug|error|info|warn]")
+	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])
 	logger := slog.New(slog.NewTextHandler(
 		os.Stderr,
