@@ -100,39 +100,18 @@ func NewString(env, defaultValue string) *Value[string] {
 }
 
 func NewBool(env string, defaultValue bool) *Value[bool] {
-	converter := func(s string) (bool, error) {
-		b, err := strconv.ParseBool(s)
-		if err != nil {
-			return false, err
-		}
-		return b, nil
-	}
-	eflag := NewEnvFlagValue(env, defaultValue, converter)
+	eflag := NewEnvFlagValue(env, defaultValue, strconv.ParseBool)
 	eflag.isBoolFlag = true
 	return eflag
 }
 
 func NewInt(env string, defaultValue int) *Value[int] {
-	converter := func(s string) (int, error) {
-		i, err := strconv.Atoi(s)
-		if err != nil {
-			return 0, err
-		}
-		return i, nil
-	}
-	pflag := NewEnvFlagValue(env, defaultValue, converter)
+	pflag := NewEnvFlagValue(env, defaultValue, strconv.Atoi)
 	return pflag
 }
 
 func NewDuration(env string, defaultValue time.Duration) *Value[time.Duration] {
-	converter := func(s string) (time.Duration, error) {
-		d, err := time.ParseDuration(s)
-		if err != nil {
-			return 0, err
-		}
-		return d, nil
-	}
-	pflag := NewEnvFlagValue(env, defaultValue, converter)
+	pflag := NewEnvFlagValue(env, defaultValue, time.ParseDuration)
 	return pflag
 }
 

@@ -84,6 +84,10 @@ func NewMyType(env string, defaultValue MyType) *envflags.Value[MyType] {
 Implement `fmt.Stringer` on your custom type so it shows up properly when `flags`
 displays defaults.
 
+You can also use 
+`envflags.NewEnvFlag(env string, defaultValue T, converter func(string) (T, error))` 
+directly to make a new envflag. (`T` is a generic `any`). For example, the `envflags.NewInt()` function just wraps an invocation of `NewEnvFlagValue(env, defaultValue, strconv.Atoi)`.
+
 ## Hints and Details
 
 Pass a value of `""` as the `env` to ignore the environment and just use command-line flags.
