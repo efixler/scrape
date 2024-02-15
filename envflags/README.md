@@ -1,13 +1,20 @@
 # envflags
 
 ## Description
-`envflags` aims to make command line and environment configuration a little easier.
+`envflags` is for when you need to provide alternative environment variable settings for a command
+line flags, a common requirement for configuration-based deployments. You can also use for switches that don't have command line options, to be consistent or to provide an easy shim to implement 
+custom types for your command line flags.
+
+Features: 
+
 - Back command line flags up wih environment variables and defaults
 - Use any standard or custom type as a flag/config value
 - Meant to work hand-in-hand with `flag`
-- Built-in support for all `flag` supported types with some useful extras like `slog.Level` control
+- Built-in support for most `flag` supported types with some useful extras like `slog.Level` control
 - Easy to add support for custom types with a few lines of code
-- Include enviroment variable names in usage
+- Include environment variable names in usage
+
+The priority logic is command line flag -> environment value -> default. 
 
 ## Quickstart
 

@@ -133,3 +133,11 @@ func NewLogLevel(env string, defaultValue slog.Level) *Value[slog.Level] {
 	pflag := NewEnvFlagValue(env, defaultValue, converter)
 	return pflag
 }
+
+func NewUint64(env string, defaultValue uint64) *Value[uint64] {
+	converter := func(s string) (uint64, error) {
+		return strconv.ParseUint(s, 10, strconv.IntSize)
+	}
+	pflag := NewEnvFlagValue(env, defaultValue, converter)
+	return pflag
+}

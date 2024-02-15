@@ -342,3 +342,85 @@ func TestDuration(t *testing.T) {
 		os.Setenv("ENVFLAGS_TEST", "")
 	}
 }
+
+func TestNewUint64(t *testing.T) {
+	tests := []struct {
+		name         string
+		envValue     string
+		defaultValue uint64
+		setValue     string
+		want         uint64
+		expectError  bool
+	}{
+		{
+			name:         "env, no explicit value",
+			envValue:     "42",
+			defaultValue: 0,
+			setValue:     "_",
+			want:         42,
+			expectError:  false,
+		},
+		{
+			name:         "env not set, no explicit value",
+			envValue:     "",
+			defaultValue: 10,
+			setValue:     "_",
+			want:         10,
+			expectError:  false,
+		},
+		{
+			name:         "env not set, explicit value",
+			envValue:     "",
+			defaultValue: 10,
+			setValue:     "42",
+			want:         42,
+			expectError:  false,
+		},
+		{
+			name:         "env, explicit value",
+			envValue:     "42",
+			defaultValue: 10,
+			setValue:     "100",
+			want:         100,
+			expectError:  false,
+		},
+		{
+			name:         "env, empty explicit value",
+			envValue:     "42",
+			defaultValue: 10,
+			setValue:     "",
+			want:         42,
+			expectError:  true,
+		},
+		{
+			name:         "malformed env, no explicit value",
+			envValue:     "xyzabc",
+			defaultValue: 10,
+			setValue:     "_",
+			want:         10,
+			expectError:  true,
+		},
+	}
+	envKey := "ENVFLAGS_TEST"
+	for _, test := range tests {
+		os.Setenv(envKey, test.envValue)
+		pflag := NewUint64(envKey, test.defaultValue)
+		if test.setValue != "_" {
+			err := pflag.Set(test.setValue)
+			if (err != nil) != test.expectError {
+				t.Errorf(
+					"%s: Set(%s) returned error %v, expected error %t",
+					test.name,
+					test.setValue,
+					err,
+					test.expectError,
+				)
+			}
+		}
+		got := pflag.Get()
+		if got != test.want {
+			t.Errorf("%s: Get() = %d, want %d", test.name, got, test.want)
+		}
+		os.Setenv("ENVFLAGS_TEST", "")
+	}
+}
