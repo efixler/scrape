@@ -18,8 +18,6 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
-const ()
-
 var (
 	DefaultUserAgent    = "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0"
 	DefaultTimeout      = 30 * time.Second
@@ -40,10 +38,6 @@ type Options struct {
 	Transport      http.RoundTripper
 	Timeout        time.Duration
 }
-
-// func Defaults() Options {
-// 	return *defaultOptions
-// }
 
 type TrafilaturaFetcher struct {
 	httpClient *http.Client
