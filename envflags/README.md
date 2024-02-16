@@ -1,7 +1,7 @@
 # envflags
 
 ## Description
-`envflags` is for when you need to provide alternative environment variable settings for a command
+`envflags` is for when you need to provide alternative environment variable settings for  command
 line flags, a common requirement for configuration-based deployments. You can also use for switches that don't have command line options, to be consistent or to provide an easy shim to implement 
 custom types for your command line flags.
 
