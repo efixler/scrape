@@ -125,20 +125,26 @@ scrape % ./scrape -h
 Usage: 
         scrape [flags] :url [...urls]
  
-  -h
+    -h
         Show this help message
   -clear
         Clear the database and exit
-  -csv string
+  -csv value
         CSV file path
-  -csv-column int
-        The index of the column in the CSV that contains the URLs (default 1)
-  -database string
-        Database file path (default "scrape_data/scrape.db")
+  -csv-column value
+        The index of the column in the CSV that contains the URLs
+        Environment: SCRAPE_CSV_COLUMN (default 1)
+  -database value
+        Database type:path
+        Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+  -log-level value
+        Set the log level [debug|error|info|warn]
+        Environment: SCRAPE_LOG_LEVEL (default WARN)
   -maintain
         Execute database maintenance and exit
   -notext
         Skip text content
+        Environment: SCRAPE_NOTEXT
 ```
 ## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
@@ -167,31 +173,24 @@ Command line options:
 
   -h
         Show this help message
-  -database string
-        Database path. If the database doesn't exist, it will be created.
-        Use ':memory:' for an in-memory database
-        Environment variable equivalent: SCRAPE_DB
-         (default "scrape_data/scrape.db")
+  -database value
+        Database type:path
+        Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
   -log-level value
         Set the log level [debug|error|info|warn]
-         (default info)
-  -port int
+        Environment: SCRAPE_LOG_LEVEL
+  -port value
         Port to run the server on
-        Environment variable equivalent: SCRAPE_PORT
-         (default 8080)
+        Environment: SCRAPE_PORT (default 8080)
   -profile
         Enable profiling at /debug/pprof
-         (default off)
-  -s    Show current settings and exit
-         (default false)
-  -ttl duration
+        Environment: SCRAPE_PROFILE
+  -ttl value
         TTL for fetched resources
-        Environment variable equivalent: SCRAPE_TTL
-         (default 720h0m0s)
-  -user-agent string
-        The user agent to use for fetching
-        Environment variable equivalent: SCRAPE_USER_AGENT
-         (default "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0")
+        Environment: SCRAPE_TTL (default 720h0m0s)
+  -user-agent value
+        User agent to use for fetching
+        Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
 ```
 
 Use caution when using the in-memory database: There are currently no constraints on database size.
