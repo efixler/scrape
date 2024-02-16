@@ -1,10 +1,12 @@
 package envflags
 
 import (
+	"encoding"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -62,10 +64,11 @@ func (p *Value[T]) setDefault(envName string, defaultValue T) {
 	if env := os.Getenv(EnvPrefix + envName); env != "" {
 		converted, err := p.converter(env)
 		if err == nil {
+			//defaultValue = converted
 			p.flagValue = converted
 			return
 		} else {
-			slog.Warn("error converting environment variable, ignoring", "env", EnvPrefix+envName, "error", err)
+			slog.Warn("error converting environment variable, ignoring", "env", EnvPrefix+envName, "error", err, "default", defaultValue)
 		}
 	}
 	p.flagValue = defaultValue
@@ -137,6 +140,30 @@ func NewLogLevel(env string, defaultValue slog.Level) *Value[slog.Level] {
 func NewUint64(env string, defaultValue uint64) *Value[uint64] {
 	converter := func(s string) (uint64, error) {
 		return strconv.ParseUint(s, 10, strconv.IntSize)
+	}
+	pflag := NewEnvFlagValue(env, defaultValue, converter)
+	return pflag
+}
+
+func NewText[S encoding.TextUnmarshaler](env string, defaultValue S) *Value[S] {
+	// It seems not to be possible to create a new S without reflection.
+	// If we don't create a new instance of S and use defaultValue as the UnmarshalText target,
+	// defaultValue will be modified by the UnmarshalText call. This is only materially a problem
+	// when the Unmarshal fails, because it can still update the thing's value.
+	defVal := reflect.ValueOf(defaultValue)
+	if defVal.Kind() == reflect.Ptr {
+		defVal = defVal.Elem()
+	}
+	defType := defVal.Type()
+	converter := func(s string) (S, error) {
+		text := reflect.New(defType).Interface().(S)
+		if s == "" {
+			return text, fmt.Errorf("empty string for text value")
+		}
+		if err := text.UnmarshalText([]byte(s)); err != nil {
+			return text, err
+		}
+		return text, nil
 	}
 	pflag := NewEnvFlagValue(env, defaultValue, converter)
 	return pflag

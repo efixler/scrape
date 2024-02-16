@@ -118,7 +118,6 @@ func init() {
 	userAgent.AddTo(&flags, "user-agent", "User agent to use for fetching")
 	profile = envflags.NewBool("PROFILE", false)
 	profile.AddTo(&flags, "profile", "Enable profiling at /debug/pprof")
-
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelInfo)
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])

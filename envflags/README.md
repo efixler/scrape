@@ -10,7 +10,7 @@ Features:
 - Back command line flags up wih environment variables and defaults
 - Use any standard or custom type as a flag/config value
 - Meant to work hand-in-hand with `flag`
-- Built-in support for most `flag` supported types with some useful extras like `slog.Level` control
+- Built-in support for `flag` supported types with some useful extras like `slog.Level` control
 - Easy to add support for custom types with a few lines of code
 - Include environment variable names in usage
 
@@ -65,7 +65,7 @@ To map a flag/environment variable to a custom type you just need to:
 1. Write a function to convert a string into your custom type
 2. Write a function to instantiate the `envflag.Value` for that type  
 
-You can implement (1) as an anonymous function in the context of (2)
+You can implement (1) as an anonymous function in the context of (2), as shown below. 
 
 ```
 type MyType struct {
@@ -91,13 +91,24 @@ func NewMyType(env string, defaultValue MyType) *envflags.Value[MyType] {
 Implement `fmt.Stringer` on your custom type so it shows up properly when `flags`
 displays defaults.
 
-You can also use 
-`envflags.NewEnvFlag(env string, defaultValue T, converter func(string) (T, error))` 
-directly to make a new envflag. (`T` is a generic `any`). For example, the `envflags.NewInt()` function just wraps an invocation of `NewEnvFlagValue(env, defaultValue, strconv.Atoi)`.
+You can also just use any applicable function value as pass it to the `converter` param of `envflags.NewEnvFlag(env string, defaultValue T, converter func(string) (T, error))` 
+directly. (`T` is a generic `any`). 
+
+The `converter` signature follows the general `strconv`-ish pattern. For example, the `envflags.NewInt()` function just wraps an invocation of `NewEnvFlagValue(env, defaultValue, strconv.Atoi)`.
+
+`NewText` can be used in conjunction with any type that supports `encoding.TextUnmarshaler`. If your type
+implements that interface, it's probably a better choice than implementing a converter.
 
 ## Hints and Details
 
 Pass a value of `""` as the `env` to ignore the environment and just use command-line flags.
+
+### Using `NewText`
+
+`NewText` maps to `flag.TextVar` and supports any type that implements `encoding.TextUnmarshaler`. As `UnmarshalText` is a pointer receiver, you'll need to pass a pointer (or a type that's a pointer type, like a slice) under the hood. (The passed TextUnmarshaler is never Unmarshaled to, but gopls doesn't like values here)
+
+`NewLogLevel` supports `slog.Level` values directly without the minor inconvenience of referencing. It is
+possible to use `NewText` for this case as well, as log as a pointer is passed for `defaultValue`
 
 ## Bugs and Suggestions?
 

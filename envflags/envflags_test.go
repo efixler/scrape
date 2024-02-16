@@ -1,6 +1,7 @@
 package envflags
 
 import (
+	"net"
 	"os"
 	"testing"
 	"time"
@@ -420,6 +421,176 @@ func TestNewUint64(t *testing.T) {
 		got := pflag.Get()
 		if got != test.want {
 			t.Errorf("%s: Get() = %d, want %d", test.name, got, test.want)
+		}
+		os.Setenv("ENVFLAGS_TEST", "")
+	}
+}
+
+func TestNewTextWithNetIP(t *testing.T) {
+	tests := []struct {
+		name         string
+		envValue     string
+		defaultValue net.IP
+		setValue     string
+		want         net.IP
+		expectError  bool
+	}{
+		{
+			name:         "malformed env uses default",
+			envValue:     "foo",
+			defaultValue: net.IPv4(255, 0, 0, 0),
+			setValue:     "_",
+			want:         net.IPv4(255, 0, 0, 0),
+			expectError:  false,
+		},
+		{
+			name:         "env, no explicit value",
+			envValue:     "255.255.0.0",
+			defaultValue: nil,
+			setValue:     "_",
+			want:         net.IPv4(255, 255, 0, 0),
+			expectError:  false,
+		},
+		{
+			name:         "env overrides default",
+			envValue:     "255.255.0.0",
+			defaultValue: net.IPv4(255, 0, 0, 0),
+			setValue:     "_",
+			want:         net.IPv4(255, 255, 0, 0),
+			expectError:  false,
+		},
+		{
+			name:         "set overrides all",
+			envValue:     "255.0.0.0",
+			defaultValue: net.IPv4(255, 255, 0, 0),
+			setValue:     "255.255.255.0",
+			want:         net.IPv4(255, 255, 255, 0),
+			expectError:  false,
+		},
+		{
+			name:         "empty explicit value uses env",
+			envValue:     "255.0.0.0",
+			defaultValue: nil,
+			setValue:     "",
+			want:         net.IPv4(255, 0, 0, 0),
+			expectError:  true,
+		},
+		{
+			name:         "malformed explicit value uses env",
+			envValue:     "255.0.0.0",
+			defaultValue: net.IPv4(255, 255, 0, 0),
+			setValue:     "xyzabc",
+			want:         net.IPv4(255, 0, 0, 0),
+			expectError:  true,
+		},
+	}
+	envKey := "ENVFLAGS_TEST"
+	for _, test := range tests {
+		os.Setenv(envKey, test.envValue)
+		pflag := NewText(envKey, &test.defaultValue)
+		if test.setValue != "_" {
+			err := pflag.Set(test.setValue)
+			if (err != nil) != test.expectError {
+				t.Errorf(
+					"%s: Set(%s) returned error %v, expected error %t",
+					test.name,
+					test.setValue,
+					err,
+					test.expectError,
+				)
+			}
+		}
+		got := pflag.Get()
+		if !got.Equal(test.want) {
+			t.Errorf("%s: Get() = %v, want %v", test.name, got, test.want)
+		}
+		os.Setenv("ENVFLAGS_TEST", "")
+	}
+}
+
+func TestNewTextWithTime(t *testing.T) {
+	defaultValue := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	envValue := time.Date(2021, 1, 2, 0, 0, 0, 0, time.UTC)
+	envValueBytes, _ := envValue.MarshalText()
+	setValue := time.Date(2022, 1, 3, 0, 0, 0, 0, time.UTC)
+	setValueBytes, _ := setValue.MarshalText()
+
+	tests := []struct {
+		name         string
+		envValue     string
+		defaultValue time.Time
+		setValue     string
+		want         time.Time
+		expectError  bool
+	}{
+		{
+			name:         "malformed env uses default",
+			envValue:     "foo",
+			defaultValue: defaultValue,
+			setValue:     "_",
+			want:         defaultValue,
+			expectError:  false,
+		},
+		{
+			name:         "env, no explicit value",
+			envValue:     string(envValueBytes),
+			defaultValue: defaultValue,
+			setValue:     "_",
+			want:         envValue,
+			expectError:  false,
+		},
+		{
+			name:         "env overrides default",
+			envValue:     string(envValueBytes),
+			defaultValue: defaultValue,
+			setValue:     "_",
+			want:         envValue,
+			expectError:  false,
+		},
+		{
+			name:         "set overrides all",
+			envValue:     string(envValueBytes),
+			defaultValue: defaultValue,
+			setValue:     string(setValueBytes),
+			want:         setValue,
+			expectError:  false,
+		},
+		{
+			name:         "empty explicit value uses env",
+			envValue:     string(envValueBytes),
+			defaultValue: defaultValue,
+			setValue:     "",
+			want:         envValue,
+			expectError:  true,
+		},
+		{
+			name:         "malformed explicit value uses env",
+			envValue:     string(envValueBytes),
+			defaultValue: defaultValue,
+			setValue:     "xyzabc",
+			want:         envValue,
+			expectError:  true,
+		},
+	}
+	envKey := "ENVFLAGS_TEST"
+	for _, test := range tests {
+		os.Setenv(envKey, test.envValue)
+		pflag := NewText(envKey, &test.defaultValue)
+		if test.setValue != "_" {
+			err := pflag.Set(test.setValue)
+			if (err != nil) != test.expectError {
+				t.Errorf(
+					"%s: Set(%s) returned error %v, expected error %t",
+					test.name,
+					test.setValue,
+					err,
+					test.expectError,
+				)
+			}
+		}
+		got := pflag.Get()
+		if !got.Equal(test.want) {
+			t.Errorf("%s: Get() = %v, want %v", test.name, got, test.want)
 		}
 		os.Setenv("ENVFLAGS_TEST", "")
 	}
