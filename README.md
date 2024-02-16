@@ -1,6 +1,8 @@
 # scrape 
 Fast web scraping
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/efixler/scrape.svg)](https://pkg.go.dev/github.com/efixler/scrape)
+[![Go Report Card](https://goreportcard.com/badge/github.com/efixler/scrape)](https://goreportcard.com/report/github.com/efixler/scrape)
 ## Table of Contents
 
 - [Description](#description)
