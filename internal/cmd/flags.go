@@ -4,7 +4,7 @@ import (
 	"errors"
 	"regexp"
 
-	"github.com/efixler/scrape/envflags"
+	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/store/sqlite"
 )

@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/efixler/scrape/envflags"
+	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/resource"

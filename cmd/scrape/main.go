@@ -11,8 +11,8 @@ import (
 	nurl "net/url"
 	"os"
 
+	"github.com/efixler/envflags"
 	"github.com/efixler/scrape"
-	"github.com/efixler/scrape/envflags"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/store"
