@@ -2,8 +2,10 @@
 Fast web scraping
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/efixler/scrape.svg)](https://pkg.go.dev/github.com/efixler/scrape)
-[![Build status](https://github.com/efixler/envflags/scrape/workflows/test.yml/badge.svg)](https://github.com/efixler/scrape/actions/workflows/test.yml)
+[![Build status](https://github.com/efixler/scrape/actions/workflows/test.yml/badge.svg)](https://github.com/efixler/scrape/actions/workflows/test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/efixler/scrape)](https://goreportcard.com/report/github.com/efixler/scrape)
+[![License GPL](https://img.shields.io/badge/License-GPL--3.0-informational)](https://github.com/efixler/scrape/?tab=GPL-3.0-1-ov-file)
+
 ## Table of Contents
 
 - [Description](#description)
