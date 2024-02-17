@@ -11,7 +11,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
 )
 
 var (
@@ -25,7 +24,6 @@ type ArrayEncoder[T any] struct {
 	w        io.Writer
 	flusher  func()
 	prefixer func() error
-	m        sync.Mutex
 	indent   []string
 	comma    []byte
 }
@@ -69,9 +67,13 @@ func (ae *ArrayEncoder[T]) hasIndent() bool {
 // does work for single depth objects, but it won't work right for
 // deeper nesting and it's a little hacky.
 
+// Encode writes a JSON object to the underlying io.Writer. If the
+// ArrayEncoder was created with hotPipe set to true, it will also
+// flush the writer after writing the object.
+// It is assumed that writing is being done in a single goroutine.
+// If there's a chance of concurrent writes, lock the function invocation
+// with a mutex.
 func (ae *ArrayEncoder[T]) Encode(v T) error {
-	ae.m.Lock()
-	defer ae.m.Unlock()
 	err := ae.prefixer()
 	if err != nil {
 		return err
