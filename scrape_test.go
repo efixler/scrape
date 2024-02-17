@@ -18,10 +18,10 @@ import (
 	"github.com/efixler/scrape/store/sqlite"
 )
 
-//go:embed samples/arstechnica-1993804.html
+//go:embed test_support/ars-2003724.html
 var testPage []byte
 
-//go:embed samples/arstechnica-1993804.json
+//go:embed test_support/ars-2003724.json
 var testJson []byte
 
 func TestFetchStoresAndRetrieves(t *testing.T) {
