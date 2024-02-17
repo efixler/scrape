@@ -199,7 +199,7 @@ Use caution when using the in-memory database: There are currently no constraint
 
 The root path of the server (`/`) is browsable and provides a simple url to test URLs and results.
 
-![Alt text](samples/webui-control.png)
+![Alt text](internal/server/pages/webui-control.png)
 
 The pulldown on the right lets you select between loading results for a page url or for a feed.
 
