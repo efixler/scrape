@@ -15,8 +15,8 @@ import (
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/internal/cmd"
+	"github.com/efixler/scrape/internal/server"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/server"
 )
 
 const (

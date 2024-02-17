@@ -19,8 +19,8 @@ import (
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal/server/healthchecks"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/server/healthchecks"
 	"github.com/efixler/scrape/store"
 )
 
