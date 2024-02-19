@@ -68,7 +68,7 @@ func TestWithFileOption(t *testing.T) {
 	}
 	for _, test := range tests {
 		c := &config{}
-		wopt := WithFile(test.filename)
+		wopt := File(test.filename)
 		err := wopt(c)
 		if err != nil {
 			t.Logf("Error: %s", err)

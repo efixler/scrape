@@ -119,3 +119,37 @@ func TestPassword(t *testing.T) {
 		}
 	}
 }
+
+func TestAddress(t *testing.T) {
+	t.Parallel()
+	type data struct {
+		name        string
+		address     string
+		expectHost  string
+		expectPort  int
+		expectError bool
+	}
+	tests := []data{
+		{"empty", "", "", 0, true},
+		{"localhost", "localhost", "localhost", 3306, false},
+		{"localhost with port", "localhost:5000", "localhost", 5000, false},
+		{"localhost with invalid port", "localhost:foo", "", 0, true},
+		{"127.0.0.1", "127.0.0.1", "127.0.0.1", 3306, false},
+		{"127 with port", "127.0.0.1:5000", "127.0.0.1", 5000, false},
+	}
+	for _, test := range tests {
+		c := defaultConfig()
+		err := Address(test.address)(&c)
+		if (err != nil) != test.expectError {
+			t.Fatalf("%s: unexpected error: %s", test.name, err)
+		} else if test.expectError {
+			continue
+		}
+		if c.host != test.expectHost {
+			t.Errorf("%s: unexpected host: %q, expected %q", test.name, c.host, test.expectHost)
+		}
+		if c.port != test.expectPort {
+			t.Errorf("%s: unexpected port: %d, expected %d", test.name, c.port, test.expectPort)
+		}
+	}
+}

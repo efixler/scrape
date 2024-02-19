@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"errors"
+	"flag"
 	"regexp"
 
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/store/mysql"
 	"github.com/efixler/scrape/store/sqlite"
 )
 
@@ -46,14 +48,40 @@ func NewDatabaseValue(env string, def DatabaseSpec) *envflags.Value[DatabaseSpec
 	return val
 }
 
-func Database(spec DatabaseSpec) (store.Factory, error) {
+type DatabaseFlags struct {
+	database *envflags.Value[DatabaseSpec]
+	username *envflags.Value[string]
+	password *envflags.Value[string]
+}
+
+func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet) *DatabaseFlags {
+	dbFlags := &DatabaseFlags{
+		database: NewDatabaseValue(baseEnv, DefaultDatabase),
+		username: envflags.NewString(baseEnv+"_USER", ""),
+		password: envflags.NewString(baseEnv+"_PASSWORD", ""),
+	}
+	dbFlags.database.AddTo(flags, "database", "Database type:path")
+	dbFlags.username.AddTo(flags, "db-user", "Database user")
+	dbFlags.password.AddTo(flags, "db-password", "Database password")
+	return dbFlags
+}
+
+func (f DatabaseFlags) String() DatabaseSpec {
+	return f.database.Get()
+}
+
+func (f DatabaseFlags) Database() (store.Factory, error) {
+	return Database(f.database.Get(), f.username.Get(), f.password.Get())
+}
+
+func Database(spec DatabaseSpec, username string, password string) (store.Factory, error) {
 	switch spec.Type {
 	case "sqlite3":
 		fallthrough
 	case "sqlite":
-		return sqlite.Factory(sqlite.WithFile(spec.Path)), nil
+		return sqlite.Factory(sqlite.File(spec.Path)), nil
 	case "mysql":
-		return nil, errors.New("no implementation for mysql")
+		return mysql.Factory(mysql.Address(spec.Path), mysql.Username(username), mysql.Password(password)), nil
 	default:
 		return nil, errors.New("no implementation for " + spec.Type)
 	}

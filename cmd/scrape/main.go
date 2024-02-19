@@ -21,7 +21,7 @@ import (
 var (
 	flags       flag.FlagSet
 	noContent   *envflags.Value[bool]
-	dbSpec      *envflags.Value[cmd.DatabaseSpec]
+	dbFlags     *cmd.DatabaseFlags
 	csvPath     *envflags.Value[string]
 	csvUrlIndex *envflags.Value[int]
 	clear       *envflags.Value[bool]
@@ -29,10 +29,11 @@ var (
 )
 
 func initFetcher() (*scrape.StorageBackedFetcher, error) {
-	dbFactory, err := cmd.Database(dbSpec.Get())
+	dbFactory, err := dbFlags.Database()
 	if err != nil {
 		return nil, fmt.Errorf("error creating database factory: %s", err)
 	}
+	dbFlags = nil
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(*trafilatura.DefaultOptions),
 		dbFactory,
@@ -158,8 +159,7 @@ func init() {
 	envflags.EnvPrefix = "SCRAPE_"
 	noContent = envflags.NewBool("NOTEXT", false)
 	noContent.AddTo(&flags, "notext", "Skip text content")
-	dbSpec = cmd.NewDatabaseValue("DB", cmd.DefaultDatabase)
-	dbSpec.AddTo(&flags, "database", "Database type:path")
+	dbFlags = cmd.AddDatabaseFlags("DB", &flags)
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
 	csvUrlIndex = envflags.NewInt("CSV_COLUMN", 1)

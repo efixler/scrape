@@ -17,7 +17,7 @@ func TestInMemoryDSN(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	fname := "_test_create.db"
-	store, err := New(WithFile(fname))
+	store, err := New(File(fname))
 	if err != nil {
 		t.Errorf("Error creating database factory: %v", err)
 	}
@@ -44,7 +44,7 @@ func TestDontCreateWhenExists(t *testing.T) {
 		t.Fatalf("Error creating dummy file %s: %v", fname, err)
 	}
 	defer os.Remove(fname)
-	store, err := Factory(WithFile(fname))()
+	store, err := Factory(File(fname))()
 	if err != nil {
 		t.Errorf("Error creating store: %v", err)
 	}

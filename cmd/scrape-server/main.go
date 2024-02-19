@@ -28,7 +28,7 @@ var (
 	port      *envflags.Value[int]
 	ttl       *envflags.Value[time.Duration]
 	userAgent *envflags.Value[string]
-	dbSpec    *envflags.Value[cmd.DatabaseSpec]
+	dbFlags   *cmd.DatabaseFlags
 	profile   *envflags.Value[bool]
 	logWriter io.Writer
 )
@@ -38,12 +38,12 @@ func main() {
 	slog.Info("scrape-server starting up", "port", port.Get())
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
-	dbFactory, err := cmd.Database(dbSpec.Get())
+	dbFactory, err := dbFlags.Database()
 	if err != nil {
-		slog.Error("scrape-server error creating database factory", "error", err, "dbSpec", dbSpec.Get())
+		slog.Error("scrape-server error creating database factory", "error", err, "dbSpec", dbFlags)
 		os.Exit(1)
 	}
-
+	dbFlags = nil
 	mux, err := server.InitMux(ctx, dbFactory, profile.Get())
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
@@ -106,10 +106,7 @@ func init() {
 	envflags.EnvPrefix = "SCRAPE_"
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
-
-	dbSpec = cmd.NewDatabaseValue("DB", cmd.DefaultDatabase)
-	dbSpec.AddTo(&flags, "database", "Database type:path")
-
+	dbFlags = cmd.AddDatabaseFlags("DB", &flags)
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
 	ttl = envflags.NewDuration("TTL", resource.DefaultTTL)

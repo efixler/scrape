@@ -2,6 +2,8 @@ package mysql
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/efixler/scrape/store"
@@ -22,6 +24,31 @@ const (
 var (
 	DefaultTimeout = 10 * time.Second
 )
+
+func Address(addr string) option {
+	return func(c *Config) error {
+		elems := strings.SplitN(addr, ":", 2)
+		err := Host(elems[0])(c)
+		if err != nil {
+			return err
+		}
+		var port int
+		switch len(elems) {
+		case 1:
+			port = DefaultPort
+		case 2:
+			port, err = strconv.Atoi(elems[1])
+			if err != nil {
+				return err
+			}
+		}
+		err = Port(port)(c)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
 
 func Host(host string) option {
 	return func(c *Config) error {

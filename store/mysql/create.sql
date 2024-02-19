@@ -1,5 +1,4 @@
-BEGIN TRANSACTION;
-
+BEGIN;
 CREATE DATABASE IF NOT EXISTS `scrape` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
 
 DROP TABLE IF EXISTS `scrape`.`urls`;
@@ -18,7 +17,7 @@ CREATE TABLE `scrape`.`urls` (
     `requested_id` BIGINT UNSIGNED NOT NULL,
     `canonical_id` BIGINT UNSIGNED NOT NULL,
     PRIMARY KEY (`requested_id`)
-  )
-
-  COMMIT TRANSACTION;
+  );
   
+COMMIT;
+SET AUTOCOMMIT = 1;

@@ -55,11 +55,11 @@ func WithFileOrEnv(filename string) option {
 		if filename == "" {
 			filename = os.Getenv(EnvDBPath)
 		}
-		return WithFile(filename)(c)
+		return File(filename)(c)
 	}
 }
 
-func WithFile(filename string) option {
+func File(filename string) option {
 	return func(c *config) error {
 		if resolvedPath, err := dbPath(filename); err != nil {
 			switch err {
