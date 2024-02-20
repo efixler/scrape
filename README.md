@@ -315,8 +315,8 @@ appropriate permissions.
 
 The docker builds with local sources so use caution when pushing to registries.
 
-By default, the Docker will run using an in-memory database. This can be changed via the `SCRAPE_DB`
-environment variable.
+By default, the Docker will run using a sqlite database at `/scrape_data/scrape.db` on the container itself. This can be changed via the `SCRAPE_DB` environment variable. You can also
+use a mount to mount this locally.
 
 The `docker-run` make target will mount a local folder called `docker/data` and bind that to the container for file storage. If you want to use a file-based db you can use this directory, or update the `Makefile` to mount the desired local directory. 
 
