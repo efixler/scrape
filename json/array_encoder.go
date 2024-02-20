@@ -25,6 +25,7 @@ type ArrayEncoder[T any] struct {
 	flusher  func()
 	prefixer func() error
 	indent   []string
+	start    []byte
 	comma    []byte
 }
 
@@ -33,6 +34,7 @@ func NewArrayEncoder[T any](w io.Writer, hotPipe bool) *ArrayEncoder[T] {
 		w:       w,
 		flusher: func() {},
 		indent:  noindent,
+		start:   start,
 		comma:   comma,
 	}
 	if hotPipe {
@@ -53,6 +55,7 @@ func (ae *ArrayEncoder[T]) SetIndent(prefix, indent string) {
 	} else {
 		ae.indent = []string{prefix, indent}
 	}
+	ae.start = append(start, []byte(ae.indent[1])...)
 	ae.comma = append(comma, []byte(ae.indent[1])...)
 }
 
@@ -114,7 +117,7 @@ func (ae *ArrayEncoder[T]) Reset() {
 			_, err := ae.w.Write(ae.comma)
 			return err
 		}
-		_, err := ae.w.Write(start)
+		_, err := ae.w.Write(ae.start)
 		return err
 	}
 }

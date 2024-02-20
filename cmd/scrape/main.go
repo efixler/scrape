@@ -138,9 +138,12 @@ func main() {
 	encoder := jstream.NewArrayEncoder[*resource.WebPage](os.Stdout, false)
 
 	encoder.SetIndent("", "  ")
-	// todo: add notext option to BatchOptions
 	rchan := fetcher.Batch(args, fetch.BatchOptions{})
 	for page := range rchan {
+		// TODO: Make it so we don't have to run a conditional on every iteration
+		if noContent.Get() {
+			page.ContentText = ""
+		}
 		err = encoder.Encode(page)
 		if err != nil {
 			slog.Error("Error encoding page", "page", page, "err", err)
