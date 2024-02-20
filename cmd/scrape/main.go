@@ -3,18 +3,19 @@ package main
 import (
 	"context"
 	"encoding/csv"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"log/slog"
-	nurl "net/url"
 	"os"
 
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape"
+	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/cmd"
+	jstream "github.com/efixler/scrape/json"
+	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
 )
 
@@ -134,30 +135,18 @@ func main() {
 		flags.Usage()
 		os.Exit(1)
 	}
+	encoder := jstream.NewArrayEncoder[*resource.WebPage](os.Stdout, false)
 
-	encoder := json.NewEncoder(os.Stdout)
 	encoder.SetIndent("", "  ")
-	for _, url := range args {
-		parsedUrl, err := nurl.Parse(url)
-		if err != nil {
-			slog.Error("invalid url, skipping", "url", url, "err", err)
-			continue
-		}
-		page, err := fetcher.Fetch(parsedUrl)
-		if err != nil {
-			slog.Error("fetching url, skipping", "url", parsedUrl.String(), "err", err)
-			continue
-		}
-		if noContent.Get() {
-			page.ContentText = ""
-		}
+	// todo: add notext option to BatchOptions
+	rchan := fetcher.Batch(args, fetch.BatchOptions{})
+	for page := range rchan {
 		err = encoder.Encode(page)
 		if err != nil {
-			slog.Error("failed to marshal, skipping: %v", "url", url, "err", err)
-			continue
+			slog.Error("Error encoding page", "page", page, "err", err)
 		}
-		os.Stdout.Write([]byte(",\n"))
 	}
+	encoder.Finish()
 }
 
 func init() {
