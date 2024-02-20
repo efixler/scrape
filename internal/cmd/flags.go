@@ -81,7 +81,7 @@ func Database(spec DatabaseSpec, username string, password string) (store.Factor
 	case "sqlite":
 		return sqlite.Factory(sqlite.File(spec.Path)), nil
 	case "mysql":
-		return mysql.Factory(mysql.Address(spec.Path), mysql.Username(username), mysql.Password(password)), nil
+		return mysql.Factory(mysql.NetAddress(spec.Path), mysql.Username(username), mysql.Password(password)), nil
 	default:
 		return nil, errors.New("no implementation for " + spec.Type)
 	}

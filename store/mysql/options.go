@@ -7,21 +7,23 @@ import (
 	"time"
 
 	"github.com/efixler/scrape/store"
+	"github.com/go-sql-driver/mysql"
 )
 
 type Charset string
 type Location string
 type ConnectionType string
+type Collation string
 type option func(*Config) error
 
 const (
-	Utf8mb4     Charset        = "utf8mb4"
-	UTC         Location       = "UTC"
-	TCP         ConnectionType = "tcp"
-	Unix        ConnectionType = "unix"
-	DefaultPort                = 3306
-	dsnFmt                     = "%s:%s@%s(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s&timeout=%s&multiStatements=%t"
-	dbSchema                   = "scrape"
+	Utf8mb4         Charset        = "utf8mb4"
+	TCP             ConnectionType = "tcp"
+	Unix            ConnectionType = "unix"
+	DefaultPort                    = 3306
+	dbSchema                       = "scrape"
+	utf8mb4General  Collation      = "utf8mb4_general_ci"
+	utf8mb4Unicode9 Collation      = "utf8mb4_0900_ai_ci"
 )
 
 var (
@@ -30,47 +32,22 @@ var (
 	DefaultWriteTimeout = 30 * time.Second
 )
 
-func Address(addr string) option {
+func NetAddress(addr string) option {
 	return func(c *Config) error {
-		elems := strings.SplitN(addr, ":", 2)
-		err := Host(elems[0])(c)
-		if err != nil {
-			return err
+		if addr == "" {
+			return store.ErrorValueNotAllowed
 		}
-		var port int
+		elems := strings.SplitN(addr, ":", 2)
 		switch len(elems) {
 		case 1:
-			port = DefaultPort
+			addr = fmt.Sprintf("%s:%d", elems[0], DefaultPort)
 		case 2:
-			port, err = strconv.Atoi(elems[1])
-			if err != nil {
+			if _, err := strconv.Atoi(elems[1]); err != nil {
 				return err
 			}
 		}
-		err = Port(port)(c)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-}
-
-func Host(host string) option {
-	return func(c *Config) error {
-		if host == "" {
-			return store.ErrorValueNotAllowed
-		}
-		c.host = host
-		return nil
-	}
-}
-
-func Port(port int) option {
-	return func(c *Config) error {
-		if port <= 0 {
-			return store.ErrorValueNotAllowed
-		}
-		c.port = port
+		c.Net = string(TCP)
+		c.Addr = addr
 		return nil
 	}
 }
@@ -80,75 +57,42 @@ func Username(username string) option {
 		if username == "" {
 			return store.ErrorValueNotAllowed
 		}
-		c.username = username
+		c.User = username
 		return nil
 	}
 }
 
 func Password(password string) option {
 	return func(c *Config) error {
-		c.password = password
+		c.Passwd = password
 		return nil
 	}
 }
 
 type Config struct {
-	connectionType     ConnectionType
-	host               string
-	port               int
-	username           string
-	password           string
-	database           string
-	timeout            time.Duration
-	readTimeout        time.Duration
-	writeTimeout       time.Duration
-	parseTime          bool
-	multipleStatements bool
+	*mysql.Config
 }
 
 func defaultConfig() Config {
-	return Config{
-		connectionType:     TCP,
-		port:               DefaultPort,
-		database:           dbSchema,
-		timeout:            DefaultTimeout,
-		readTimeout:        DefaultReadTimeout,
-		writeTimeout:       DefaultWriteTimeout,
-		parseTime:          true,
-		multipleStatements: true,
-	}
+	cfg := mysql.NewConfig()
+	cfg.Net = string(TCP)
+	cfg.DBName = dbSchema
+	cfg.Loc = time.UTC
+	cfg.Collation = string(utf8mb4Unicode9)
+	cfg.Timeout = DefaultTimeout
+	cfg.ReadTimeout = DefaultReadTimeout
+	cfg.WriteTimeout = DefaultWriteTimeout
+	cfg.ParseTime = true
+	cfg.MultiStatements = true
+	return Config{cfg}
 }
 
 func (c Config) DSN() string {
-	return fmt.Sprintf(
-		dsnFmt,
-		c.username,
-		c.password,
-		c.connectionType,
-		c.host,
-		c.port,
-		c.database,
-		Utf8mb4,
-		c.parseTime,
-		UTC,
-		c.timeout,
-		c.multipleStatements,
-	)
+	return c.Config.FormatDSN()
 }
 
 func (c Config) String() string {
-	return fmt.Sprintf(
-		dsnFmt,
-		c.username,
-		"*****",
-		c.connectionType,
-		c.host,
-		c.port,
-		c.database,
-		Utf8mb4,
-		c.parseTime,
-		UTC,
-		c.timeout,
-		c.multipleStatements,
-	)
+	cp := *c.Config
+	cp.Passwd = "*****"
+	return cp.FormatDSN()
 }

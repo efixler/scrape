@@ -1,80 +1,29 @@
 package mysql
 
 import (
+	"strconv"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/efixler/scrape/store"
 )
 
-func TestDSN(t *testing.T) {
+func TestPasswordMaskingOnString(t *testing.T) {
 	t.Parallel()
-	o := defaultConfig()
-	o.host = "localhost"
-	o.username = "user"
-	o.password = "password"
-	o.database = "test"
-	o.port = 5000
-	o.timeout = 5 * time.Second
-	o.parseTime = true
-	o.connectionType = TCP
-	if o.DSN() != "user:password@tcp(localhost:5000)/test?charset=utf8mb4&parseTime=true&loc=UTC&timeout=5s&multiStatements=true" {
-		t.Errorf("DSN: unexpected DSN: %s", o.DSN())
+	c := defaultConfig()
+	Username("root")(&c)
+	Password("password")(&c)
+	NetAddress("localhost")(&c)
+
+	str := c.String()
+	if !strings.HasPrefix(str, "root:*****@") {
+		t.Errorf("String: unexpected DSN string, password not masked: %s", str)
 	}
-	if o.String() != "user:*****@tcp(localhost:5000)/test?charset=utf8mb4&parseTime=true&loc=UTC&timeout=5s&multiStatements=true" {
-		t.Errorf("String: unexpected DSN: %s", o.String())
+	dsn := c.DSN()
+	if !strings.HasPrefix(dsn, "root:password@") {
+		t.Errorf("DSN: unexpected DSN string, password incorrect: %s", dsn)
 	}
 }
-
-func TestHost(t *testing.T) {
-	t.Parallel()
-	type data struct {
-		name        string
-		host        string
-		expectedErr error
-	}
-	tests := []data{
-		{"empty", "", store.ErrorValueNotAllowed},
-		{"localhost", "localhost", nil},
-		{"127.0.0.1", "127.0.0.1", nil},
-	}
-	for _, test := range tests {
-		c := defaultConfig()
-		err := Host(test.host)(&c)
-		if err == nil && c.host != test.host {
-			t.Errorf("Host: unexpected host: %s", c.host)
-		}
-		if err != test.expectedErr {
-			t.Errorf("%s: unexpected error: %s", test.name, err)
-		}
-	}
-}
-
-func TestPort(t *testing.T) {
-	t.Parallel()
-	type data struct {
-		name        string
-		port        int
-		expectedErr error
-	}
-	tests := []data{
-		{"zero", 0, store.ErrorValueNotAllowed},
-		{"negative", -1, store.ErrorValueNotAllowed},
-		{"positive", 1, nil},
-	}
-	for _, test := range tests {
-		c := defaultConfig()
-		err := Port(test.port)(&c)
-		if err != test.expectedErr {
-			t.Errorf("%s: unexpected error: %s", test.name, err)
-		}
-		if err == nil && c.port != test.port {
-			t.Errorf("Port - %s: unexpected port: %d", test.name, c.port)
-		}
-
-	}
-}
-
 func TestUsername(t *testing.T) {
 	t.Parallel()
 	type data struct {
@@ -89,8 +38,8 @@ func TestUsername(t *testing.T) {
 	for _, test := range tests {
 		c := defaultConfig()
 		err := Username(test.username)(&c)
-		if err == nil && c.username != test.username {
-			t.Errorf("Username - %s: unexpected username: %s", test.name, c.username)
+		if err == nil && c.User != test.username {
+			t.Errorf("Username - %s: unexpected username: %s", test.name, c.User)
 		}
 		if err != test.expectedErr {
 			t.Errorf("%s: unexpected error: %s", test.name, err)
@@ -112,8 +61,8 @@ func TestPassword(t *testing.T) {
 	for _, test := range tests {
 		c := defaultConfig()
 		err := Password(test.password)(&c)
-		if err == nil && c.password != test.password {
-			t.Errorf("%s: unexpected password: %s", test.name, c.password)
+		if err == nil && c.Passwd != test.password {
+			t.Errorf("%s: unexpected password: %s", test.name, c.Passwd)
 		}
 		if err != test.expectedErr {
 			t.Errorf("%s: unexpected error: %s", test.name, err)
@@ -140,17 +89,22 @@ func TestAddress(t *testing.T) {
 	}
 	for _, test := range tests {
 		c := defaultConfig()
-		err := Address(test.address)(&c)
+		err := NetAddress(test.address)(&c)
 		if (err != nil) != test.expectError {
 			t.Fatalf("%s: unexpected error: %s", test.name, err)
 		} else if test.expectError {
 			continue
 		}
-		if c.host != test.expectHost {
-			t.Errorf("%s: unexpected host: %q, expected %q", test.name, c.host, test.expectHost)
+		elems := strings.SplitN(c.Addr, ":", 2)
+		if elems[0] != test.expectHost {
+			t.Errorf("%s: unexpected host: %q, expected %q", test.name, elems[0], test.expectHost)
 		}
-		if c.port != test.expectPort {
-			t.Errorf("%s: unexpected port: %d, expected %d", test.name, c.port, test.expectPort)
+		port, err := strconv.Atoi(elems[1])
+		if err != nil {
+			t.Errorf("%s: non-numeric port: expected %d, got %q, %s", test.name, test.expectPort, elems[1], err)
+		}
+		if port != test.expectPort {
+			t.Errorf("%s: unexpected port: %d, expected %d", test.name, port, test.expectPort)
 		}
 	}
 }
