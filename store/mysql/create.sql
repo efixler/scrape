@@ -1,9 +1,10 @@
 BEGIN;
-CREATE DATABASE IF NOT EXISTS `scrape` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
+CREATE DATABASE IF NOT EXISTS `scrape` DEFAULT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' ;
+USE scrape ;
 
-DROP TABLE IF EXISTS `scrape`.`urls`;
+DROP TABLE IF EXISTS `urls`;
 
-CREATE TABLE `scrape`.`urls` (
+CREATE TABLE `urls` (
   `id` BIGINT UNSIGNED NOT NULL,
   `url` VARCHAR(255) CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' NOT NULL,
   `parsed_url` VARCHAR(255) CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' NOT NULL,
@@ -13,11 +14,18 @@ CREATE TABLE `scrape`.`urls` (
   `content_text` TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' NULL,
   PRIMARY KEY (`id`));
 
-  CREATE TABLE `scrape`.`id_map` (
+DROP TABLE IF EXISTS `id_map`;
+
+  CREATE TABLE `id_map` (
     `requested_id` BIGINT UNSIGNED NOT NULL,
     `canonical_id` BIGINT UNSIGNED NOT NULL,
     PRIMARY KEY (`requested_id`)
   );
+  
+  CREATE ROLE IF NOT EXISTS scrape_app;
+  GRANT SELECT, UPDATE, DELETE on scrape.* to scrape_app;
+  CREATE ROLE IF NOT EXISTS scrape_admin;
+  GRANT ALL ON scrape.* to scrape_admin;
   
 COMMIT;
 SET AUTOCOMMIT = 1;

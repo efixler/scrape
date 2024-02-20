@@ -24,8 +24,9 @@ var (
 	dbFlags     *cmd.DatabaseFlags
 	csvPath     *envflags.Value[string]
 	csvUrlIndex *envflags.Value[int]
-	clear       *envflags.Value[bool]
-	maintain    *envflags.Value[bool]
+	clear       bool
+	maintain    bool
+	ping        bool
 )
 
 func initFetcher() (*scrape.StorageBackedFetcher, error) {
@@ -85,24 +86,24 @@ func clearDatabase(fetcher *scrape.StorageBackedFetcher) {
 	}
 	err := db.Clear()
 	if err != nil {
-		slog.Error("Error clearing database", "err", err)
+		slog.Error("Error clearing database", "database", fetcher.Storage, "err", err)
 		os.Exit(1)
 	}
-	slog.Warn("Database cleared")
+	slog.Warn("Database cleared", "database", fetcher.Storage)
 }
 
 func maintainDatabase(fetcher *scrape.StorageBackedFetcher) {
 	db, ok := fetcher.Storage.(store.Maintainable)
 	if !ok {
-		slog.Error("Maintaining database not available for this storage backend")
+		slog.Error("Maintaining database not available for this storage backend", "database", fetcher.Storage)
 		os.Exit(1)
 	}
 	err := db.Maintain()
 	if err != nil {
-		slog.Error("Error maintaining database", "err", err)
+		slog.Error("Error maintaining database", "database", fetcher.Storage, "err", err)
 		os.Exit(1)
 	}
-	slog.Warn("Database maintenance complete")
+	slog.Warn("Database maintenance complete", "database", fetcher.Storage)
 }
 
 func main() {
@@ -112,12 +113,18 @@ func main() {
 		os.Exit(1)
 	}
 	defer fetcher.Close()
-	if clear.Get() {
+	if clear {
 		clearDatabase(fetcher)
 		return
-	}
-	if maintain.Get() {
+	} else if maintain {
 		maintainDatabase(fetcher)
+		return
+	} else if ping {
+		if err = fetcher.Storage.Ping(); err != nil {
+			slog.Error("Error pinging database", "err", err)
+			os.Exit(1)
+		}
+		slog.Warn("Database ping successful", "database", fetcher.Storage)
 		return
 	}
 
@@ -164,10 +171,11 @@ func init() {
 	csvPath.AddTo(&flags, "csv", "CSV file path")
 	csvUrlIndex = envflags.NewInt("CSV_COLUMN", 1)
 	csvUrlIndex.AddTo(&flags, "csv-column", "The index of the column in the CSV that contains the URLs")
-	clear = envflags.NewBool("", false)
-	clear.AddTo(&flags, "clear", "Clear the database and exit")
-	maintain = envflags.NewBool("", false)
-	maintain.AddTo(&flags, "maintain", "Execute database maintenance and exit")
+
+	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
+	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
+	flags.BoolVar(&ping, "ping", false, "Ping the database and exit")
+
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelWarn)
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])

@@ -33,7 +33,6 @@ var (
 	logWriter io.Writer
 )
 
-// TODO: Create the db on startup if it doesn't exist
 func main() {
 	slog.Info("scrape-server starting up", "port", port.Get())
 	// use this context to handle resources hanging off mux handlers

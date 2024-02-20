@@ -11,18 +11,23 @@ import (
 
 type Charset string
 type Location string
+type ConnectionType string
 type option func(*Config) error
 
 const (
-	Utf8mb4     Charset  = "utf8mb4"
-	UTC         Location = "UTC"
-	DefaultPort          = 3306
-	dsnFmt               = "%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s&timeout=%s"
-	dbSchema             = "scrape"
+	Utf8mb4     Charset        = "utf8mb4"
+	UTC         Location       = "UTC"
+	TCP         ConnectionType = "tcp"
+	Unix        ConnectionType = "unix"
+	DefaultPort                = 3306
+	dsnFmt                     = "%s:%s@%s(%s:%d)/%s?charset=%s&parseTime=%t&loc=%s&timeout=%s&multiStatements=%t"
+	dbSchema                   = "scrape"
 )
 
 var (
-	DefaultTimeout = 10 * time.Second
+	DefaultTimeout      = 10 * time.Second
+	DefaultReadTimeout  = 30 * time.Second
+	DefaultWriteTimeout = 30 * time.Second
 )
 
 func Address(addr string) option {
@@ -88,21 +93,29 @@ func Password(password string) option {
 }
 
 type Config struct {
-	host      string
-	port      int
-	username  string
-	password  string
-	database  string
-	timeout   time.Duration
-	parseTime bool
+	connectionType     ConnectionType
+	host               string
+	port               int
+	username           string
+	password           string
+	database           string
+	timeout            time.Duration
+	readTimeout        time.Duration
+	writeTimeout       time.Duration
+	parseTime          bool
+	multipleStatements bool
 }
 
 func defaultConfig() Config {
 	return Config{
-		port:      DefaultPort,
-		database:  dbSchema,
-		timeout:   DefaultTimeout,
-		parseTime: true,
+		connectionType:     TCP,
+		port:               DefaultPort,
+		database:           dbSchema,
+		timeout:            DefaultTimeout,
+		readTimeout:        DefaultReadTimeout,
+		writeTimeout:       DefaultWriteTimeout,
+		parseTime:          true,
+		multipleStatements: true,
 	}
 }
 
@@ -111,6 +124,7 @@ func (c Config) DSN() string {
 		dsnFmt,
 		c.username,
 		c.password,
+		c.connectionType,
 		c.host,
 		c.port,
 		c.database,
@@ -118,6 +132,7 @@ func (c Config) DSN() string {
 		c.parseTime,
 		UTC,
 		c.timeout,
+		c.multipleStatements,
 	)
 }
 
@@ -126,6 +141,7 @@ func (c Config) String() string {
 		dsnFmt,
 		c.username,
 		"*****",
+		c.connectionType,
 		c.host,
 		c.port,
 		c.database,
@@ -133,5 +149,6 @@ func (c Config) String() string {
 		c.parseTime,
 		UTC,
 		c.timeout,
+		c.multipleStatements,
 	)
 }

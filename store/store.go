@@ -24,6 +24,7 @@ type Factory func() (URLDataStore, error)
 type URLDataStore interface {
 	fetch.URLFetcher
 	Save(*resource.WebPage) (uint64, error)
+	Ping() error
 	fmt.Stringer
 }
 

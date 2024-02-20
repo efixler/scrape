@@ -112,6 +112,8 @@ func (s *Store) Open(ctx context.Context) error {
 	if inMemory {
 		// Unfortunately, SQLite in-memory DBs are bound to a single connection.
 		s.DB.SetMaxOpenConns(1)
+		s.DB.SetMaxIdleConns(1)
+		s.DB.SetConnMaxLifetime(-1)
 	}
 	s.Maintenance(24*time.Hour, maintain)
 	return nil
