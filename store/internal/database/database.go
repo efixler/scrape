@@ -168,8 +168,7 @@ func (s *DBHandle[T]) Close() error {
 	var errs []error
 	for _, stmt := range s.stmts {
 		if stmt != nil {
-			err := stmt.Close()
-			if err != nil {
+			if err := stmt.Close(); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -177,12 +176,12 @@ func (s *DBHandle[T]) Close() error {
 	clear(s.stmts)
 
 	if s.DB != nil {
-		err := s.DB.Close()
-		if err != nil {
+		if err := s.DB.Close(); err != nil {
 			errs = append(errs, err)
 		}
 		s.DB = nil
 	}
+
 	if len(errs) > 0 {
 		slog.Warn("errors closing db", "dsn", s.DSNSource, "errors", errs)
 		return errors.Join(errs...)
