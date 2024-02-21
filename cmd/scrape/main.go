@@ -30,24 +30,52 @@ var (
 	ping        bool
 )
 
-func initFetcher() (*scrape.StorageBackedFetcher, error) {
+func main() {
 	dbFactory, err := dbFlags.Database()
 	if err != nil {
-		return nil, fmt.Errorf("error creating database factory: %s", err)
+		slog.Error("Error initializing database connection", "err", err)
+		os.Exit(1)
 	}
 	dbFlags = nil
-	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(*trafilatura.DefaultOptions),
-		dbFactory,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
+	// NB: Can't create a db from scratch here bc the DSN contains a DB name.
+	// TODO: Either handle that case or use a schema migration tool like skeema.
+	if clear {
+		clearDatabase(dbFactory)
+		return
+	} else if maintain {
+		maintainDatabase(dbFactory)
+		return
+	} else if ping {
+		pingDatabase(dbFactory)
+		return
 	}
-	err = fetcher.Open(context.TODO())
+	fetcher, err := initFetcher(dbFactory)
 	if err != nil {
-		return nil, fmt.Errorf("error opening storage backed fetcher: %s", err)
+		slog.Error("Error initializing fetcher", "err", err)
+		os.Exit(1)
 	}
-	return fetcher, nil
+	defer fetcher.Close()
+	args := getArgs()
+	if len(args) == 0 {
+		slog.Error("Error: At least one URL is required\n\n")
+		flags.Usage()
+		os.Exit(1)
+	}
+	encoder := jstream.NewArrayEncoder[*resource.WebPage](os.Stdout, false)
+
+	encoder.SetIndent("", "  ")
+	rchan := fetcher.Batch(args, fetch.BatchOptions{})
+	for page := range rchan {
+		// TODO: Make it so we don't have to run a conditional on every iteration
+		if noContent.Get() {
+			page.ContentText = ""
+		}
+		err = encoder.Encode(page)
+		if err != nil {
+			slog.Error("Error encoding page", "page", page, "err", err)
+		}
+	}
+	encoder.Finish()
 }
 
 func getArgs() []string {
@@ -79,77 +107,74 @@ func getArgs() []string {
 	return flags.Args()
 }
 
-func clearDatabase(fetcher *scrape.StorageBackedFetcher) {
-	db, ok := fetcher.Storage.(store.Maintainable)
+func clearDatabase(dbFactory store.Factory) {
+	db, ok := openDatabase(dbFactory).(store.Maintainable)
 	if !ok {
 		slog.Error("Clearing database not available for this storage backend")
 		os.Exit(1)
 	}
+	defer db.(store.URLDataStore).Close()
 	err := db.Clear()
 	if err != nil {
-		slog.Error("Error clearing database", "database", fetcher.Storage, "err", err)
+		slog.Error("Error clearing database", "database", db, "err", err)
 		os.Exit(1)
 	}
-	slog.Warn("Database cleared", "database", fetcher.Storage)
+	slog.Warn("Database cleared", "database", db)
 }
 
-func maintainDatabase(fetcher *scrape.StorageBackedFetcher) {
-	db, ok := fetcher.Storage.(store.Maintainable)
+func maintainDatabase(dbFactory store.Factory) {
+	db, ok := openDatabase(dbFactory).(store.Maintainable)
 	if !ok {
-		slog.Error("Maintaining database not available for this storage backend", "database", fetcher.Storage)
+		slog.Error("Maintaining database not available for this storage backend", "database", db)
 		os.Exit(1)
 	}
+	defer db.(store.URLDataStore).Close()
 	err := db.Maintain()
 	if err != nil {
-		slog.Error("Error maintaining database", "database", fetcher.Storage, "err", err)
+		slog.Error("Error maintaining database", "database", db, "err", err)
 		os.Exit(1)
 	}
-	slog.Warn("Database maintenance complete", "database", fetcher.Storage)
+	slog.Warn("Database maintenance complete", "database", db)
 }
 
-func main() {
-	fetcher, err := initFetcher()
+func pingDatabase(dbFactory store.Factory) {
+	db := openDatabase(dbFactory)
+	defer db.Close()
+	err := db.Ping()
 	if err != nil {
-		slog.Error("Error initializing fetcher", "err", err)
+		slog.Error("Error pinging database", "database", db, "err", err)
 		os.Exit(1)
 	}
-	defer fetcher.Close()
-	if clear {
-		clearDatabase(fetcher)
-		return
-	} else if maintain {
-		maintainDatabase(fetcher)
-		return
-	} else if ping {
-		if err = fetcher.Storage.Ping(); err != nil {
-			slog.Error("Error pinging database", "err", err)
-			os.Exit(1)
-		}
-		slog.Warn("Database ping successful", "database", fetcher.Storage)
-		return
-	}
+	slog.Warn("Database ping successful", "database", db)
+}
 
-	args := getArgs()
-	if len(args) == 0 {
-		slog.Error("Error: At least one URL is required\n\n")
-		flags.Usage()
+func openDatabase(dbFactory store.Factory) store.URLDataStore {
+	db, err := dbFactory()
+	if err != nil {
+		slog.Error("Error opening database factory", "db", db, "err", err)
 		os.Exit(1)
 	}
-	encoder := jstream.NewArrayEncoder[*resource.WebPage](os.Stdout, false)
-
-	encoder.SetIndent("", "  ")
-	rchan := fetcher.Batch(args, fetch.BatchOptions{})
-	for page := range rchan {
-		// TODO: Make it so we don't have to run a conditional on every iteration
-		if noContent.Get() {
-			page.ContentText = ""
-		}
-		err = encoder.Encode(page)
-		if err != nil {
-			slog.Error("Error encoding page", "page", page, "err", err)
-		}
+	err = db.Open(context.TODO())
+	if err != nil {
+		slog.Error("Error opening database", "db", db, "err", err)
+		os.Exit(1)
 	}
-	encoder.Finish()
+	return db
+}
+
+func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
+	fetcher, err := scrape.NewStorageBackedFetcher(
+		trafilatura.Factory(*trafilatura.DefaultOptions),
+		dbFactory,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
+	}
+	err = fetcher.Open(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("error opening storage backed fetcher: %s", err)
+	}
+	return fetcher, nil
 }
 
 func init() {

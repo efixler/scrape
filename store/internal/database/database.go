@@ -59,16 +59,16 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 		return ErrDatabaseAlreadyOpen
 	}
 	s.Ctx = ctx
-	// close this handle when the context is done
-	context.AfterFunc(ctx, func() {
-		s.Close()
-	})
-	db, err := sql.Open(string(s.Driver), s.DSNSource.DSN())
+	var err error
+	s.DB, err = sql.Open(string(s.Driver), s.DSNSource.DSN())
 	slog.Info("opening db", "dsn", s.DSNSource, "driver", s.Driver)
 	if err != nil {
 		return err
 	}
-	s.DB = db
+	// close this handle when the context is done
+	context.AfterFunc(s.Ctx, func() {
+		s.Close()
+	})
 	s.done = make(chan bool)
 	s.mutex = &sync.Mutex{}
 	return nil

@@ -69,6 +69,13 @@ func Password(password string) option {
 	}
 }
 
+func WithoutSchema() option {
+	return func(c *Config) error {
+		c.DBName = ""
+		return nil
+	}
+}
+
 type Config struct {
 	*mysql.Config
 }

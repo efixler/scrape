@@ -108,3 +108,12 @@ func TestAddress(t *testing.T) {
 		}
 	}
 }
+
+func TestWithoutSchema(t *testing.T) {
+	t.Parallel()
+	c := defaultConfig()
+	WithoutSchema()(&c)
+	if c.DBName != "" {
+		t.Errorf("WithoutSchema: unexpected schema: %s", c.DBName)
+	}
+}
