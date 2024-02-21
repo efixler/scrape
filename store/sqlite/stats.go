@@ -1,17 +1,23 @@
 package sqlite
 
-import "time"
+import (
+	"log/slog"
+	"path/filepath"
+	"syscall"
+	"time"
+)
 
 const (
 	minStatsInterval = 1 * time.Minute
 )
 
 type Stats struct {
-	SqliteVersion string `json:"sqlite_version"`
-	PageCount     int    `json:"page_count"`
-	PageSize      int    `json:"page_size"`
-	UnusedPages   int    `json:"unused_pages"`
-	MaxPageCount  int    `json:"max_page_count"`
+	SqliteVersion string           `json:"sqlite_version"`
+	PageCount     int              `json:"page_count"`
+	PageSize      int              `json:"page_size"`
+	UnusedPages   int              `json:"unused_pages"`
+	MaxPageCount  int              `json:"max_page_count"`
+	Filesystem    *FilesystemStats `json:"fs,omitempty"`
 	fetchTime     time.Time
 }
 
@@ -62,6 +68,34 @@ func (s *Store) Stats() (any, error) {
 	s.stats.PageSize = pageSize
 	s.stats.UnusedPages = unusedPages
 	s.stats.MaxPageCount = maxPageCount
+	s.stats.Filesystem = s.filesystemStats()
 	s.stats.fetchTime = time.Now()
 	return s.stats, nil
+}
+
+type FilesystemStats struct {
+	Path    string `json:"path"`
+	TotalMB uint   `json:"total_mb"`
+	UsedMB  uint   `json:"used_mb"`
+	FreeMB  uint   `json:"free_mb"`
+	AvailMB uint   `json:"avail_mb"`
+}
+
+func (s Store) filesystemStats() *FilesystemStats {
+	if s.config.filename == InMemoryDBName {
+		return nil
+	}
+	dir := filepath.Dir(s.config.filename)
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(dir, &stat); err != nil {
+		slog.Warn("Error getting filesystem stats", "error", err)
+		return nil
+	}
+	return &FilesystemStats{
+		Path:    dir,
+		TotalMB: uint(stat.Blocks * uint64(stat.Bsize) / (1024 * 1024)),
+		FreeMB:  uint(stat.Bfree * uint64(stat.Bsize) / (1024 * 1024)),
+		UsedMB:  uint((stat.Blocks - stat.Bfree) * uint64(stat.Bsize) / (1024 * 1024)),
+		AvailMB: uint(stat.Bavail * uint64(stat.Bsize) / (1024 * 1024)),
+	}
 }
