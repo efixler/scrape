@@ -33,6 +33,13 @@ func (r WebPage) URL() *nurl.URL {
 	return r.canonicalURL
 }
 
+func (r WebPage) RequestURL() *nurl.URL {
+	if r.RequestedURL != nil {
+		return r.RequestedURL
+	}
+	return r.URL()
+}
+
 func (r WebPage) MarshalJSON() ([]byte, error) {
 	// Use this inline struct to control the output
 	ar := &struct {
@@ -129,4 +136,9 @@ func (r *WebPage) AssertTimes() {
 		ttl := DefaultTTL
 		r.TTL = &ttl
 	}
+}
+
+func (r *WebPage) ExpireTime() time.Time {
+	r.AssertTimes()
+	return r.FetchTime.Add(*r.TTL)
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	nurl "net/url"
 
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
@@ -13,6 +14,7 @@ var (
 	ErrorDatabaseNotFound = errors.New("database not found")
 	ErrorResourceNotFound = errors.New("resource not found in data store")
 	ErrorValueNotAllowed  = errors.New("value not allowed")
+	ErrMappingNotFound    = errors.New("id mapping not found")
 )
 
 type Factory func() (URLDataStore, error)
@@ -25,6 +27,7 @@ type URLDataStore interface {
 	fetch.URLFetcher
 	Save(*resource.WebPage) (uint64, error)
 	Ping() error
+	Delete(*nurl.URL) (bool, error)
 	fmt.Stringer
 }
 

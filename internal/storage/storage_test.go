@@ -1,7 +1,6 @@
-package sqlite
+package storage
 
 import (
-	"context"
 	"encoding/json"
 	nurl "net/url"
 	"slices"
@@ -12,22 +11,21 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
+type dsnGen string
+
+var dsn = dsnGen(dbURL)
+
+func (d dsnGen) String() string {
+	return string(d)
+}
+
+func (d dsnGen) DSN() string {
+	return string(d)
+}
+
 func TestOpen(t *testing.T) {
-	db, err := New(InMemoryDB())
-	if err != nil {
-		t.Errorf("Error opening database factory: %v", err)
-	}
-	err = db.Open(context.TODO())
-	if err != nil {
-		t.Fatalf("Error opening database: %v", err)
-	}
-	realStore, ok := db.(*Store)
-	// dsn := realStore.dsn
-	if !ok {
-		t.Errorf("Database not of type SqliteStore")
-	}
-	// defer db.Close()
-	err = realStore.Ping()
+	db := db(t)
+	err := db.Ping()
 	if err != nil {
 		t.Errorf("Error pinging database: %v", err)
 	}
@@ -38,36 +36,29 @@ func TestOpen(t *testing.T) {
 }
 
 var mdata = `{
-	"Title": "About Martin Fowler",
-	"Author": "",
-	"URL": "https://martinfowler.com/aboutMe.html",
-	"Hostname": "martinfowler.com",
-	"Description": "Background to Martin Fowler and martinfowler.com",
-	"Sitename": "martinfowler.com",
-	"Date": "1999-01-01T00:00:00Z",
-	"Categories": null,
-	"Tags": null,
-	"ID": "",
-	"Fingerprint": "",
-	"License": "",
-	"Language": "en",
-	"Image": "https://martinfowler.com/logo-sq.png",
-	"PageType": "article",
-	"ContentText": "Martin Fowler"
+	"title": "About Martin Fowler",
+	"author": "Martin Fowler",
+	"url": "https://martinfowler.com/aboutMe.html",
+	"hostname": "martinfowler.com",
+	"description": "Background to Martin Fowler and martinfowler.com",
+	"sitename": "martinfowler.com",
+	"date": "1999-01-01T00:00:00Z",
+	"categories": null,
+	"tags": null,
+	"id": "",
+	"fingerprint": "",
+	"license": "",
+	"language": "en",
+	"image": "https://martinfowler.com/logo-sq.png",
+	"page_type": "article",
+	"content_text": "Martin Fowler"
   }`
 
 func TestStore(t *testing.T) {
-	s, err := New(InMemoryDB())
-	if err != nil {
-		t.Errorf("Error opening database: %v", err)
-	}
-	err = s.Open(context.TODO())
-	if err != nil {
-		t.Errorf("Error opening database: %v", err)
-	}
+	s := db(t)
 	defer s.Close()
 	var meta resource.WebPage
-	err = json.Unmarshal([]byte(mdata), &meta)
+	err := json.Unmarshal([]byte(mdata), &meta)
 	if err != nil {
 		t.Errorf("Error unmarshaling metadata: %v", err)
 	}
@@ -77,10 +68,11 @@ func TestStore(t *testing.T) {
 	}
 	meta.RequestedURL = url
 	cText := meta.ContentText
+	t.Logf("ContentText: %q", cText)
 	stored := meta // this is a copy
 	_, err = s.Save(&stored)
 	if err != nil {
-		t.Errorf("Error storing data: %v", err)
+		t.Fatalf("Error storing data: %v", err)
 	}
 	if stored.ContentText != cText {
 		t.Errorf("ContentText changed from %q to %q", cText, stored.ContentText)
@@ -89,7 +81,7 @@ func TestStore(t *testing.T) {
 	fetched, err := s.Fetch(url)
 	// fetched, err := s.Fetch(storedUrl)
 	if err != nil {
-		t.Errorf("Error fetching data: %v", err)
+		t.Fatalf("Error fetching data: %v", err)
 	}
 	if stored.TTL.Seconds() != fetched.TTL.Seconds() {
 		t.Errorf("TTL changed from %v to %v", stored.TTL, fetched.TTL)
@@ -149,16 +141,14 @@ func TestStore(t *testing.T) {
 		t.Errorf("PageType changed from %q to %q", stored.PageType, fetched.PageType)
 	}
 	// NB: Delete only works for canonical URLs
-	rs, _ := s.(*Store)
-	ok, err := rs.delete(url)
+	ok, err := s.Delete(url)
 	if err != nil {
 		t.Errorf("Unexpected error deleting non-canonical record: %v", err)
 	}
 	if ok {
 		t.Errorf("Delete returned true, deleted non-canonical record (url: %s)", url)
 	}
-
-	ok, err = rs.delete(stored.URL())
+	ok, err = s.Delete(stored.URL())
 	if err != nil {
 		t.Errorf("Error deleting record: %v", err)
 	} else if !ok {
@@ -167,14 +157,7 @@ func TestStore(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceNotExists(t *testing.T) {
-	s, err := New(InMemoryDB())
-	if err != nil {
-		t.Errorf("Error opening database factory: %v", err)
-	}
-	err = s.Open(context.TODO())
-	if err != nil {
-		t.Errorf("Error opening database: %v", err)
-	}
+	s := db(t)
 	defer s.Close()
 	url, err := nurl.Parse("https://martinfowler.com/aboutYou")
 	if err != nil {
@@ -190,17 +173,10 @@ func TestReturnValuesWhenResourceNotExists(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
-	s, err := New(InMemoryDB())
-	if err != nil {
-		t.Errorf("Error opening database: %v", err)
-	}
-	err = s.Open(context.TODO())
-	if err != nil {
-		t.Errorf("Error opening database: %v", err)
-	}
+	s := db(t)
 	defer s.Close()
 	var meta resource.WebPage
-	err = json.Unmarshal([]byte(mdata), &meta)
+	err := json.Unmarshal([]byte(mdata), &meta)
 	if err != nil {
 		t.Errorf("Error unmarshaling metadata: %v", err)
 	}
