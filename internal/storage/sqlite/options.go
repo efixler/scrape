@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/efixler/scrape/store"
 )
 
 type JournalMode string
@@ -72,7 +74,7 @@ func File(filename string) option {
 		} else {
 			err = assertPathTo(resolvedPath)
 			if err != nil {
-				return errors.Join(ErrCantCreateDatabase, err)
+				return errors.Join(store.ErrCantCreateDatabase, err)
 			}
 			c.filename = resolvedPath
 		}

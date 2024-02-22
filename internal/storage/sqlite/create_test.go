@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/efixler/scrape/store"
 )
 
 func TestInMemoryDSN(t *testing.T) {
@@ -90,7 +92,7 @@ func TestAssertPathTo(t *testing.T) {
 	tests := []args{
 		{"empty", "", "", nil},
 		{"not empty", "foo", "", nil},
-		{"unreachable", "bfile-xyz.txt/baz", "bfile-xyz.txt", ErrCantCreateDatabase},
+		{"unreachable", "bfile-xyz.txt/baz", "bfile-xyz.txt", store.ErrCantCreateDatabase},
 	}
 	deletes := make([]*os.File, 0)
 	for _, test := range tests {

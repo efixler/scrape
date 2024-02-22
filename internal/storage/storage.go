@@ -31,6 +31,10 @@ const (
 	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
 	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
 	qDelete   = `DELETE FROM urls WHERE id = ?`
+	// qClear    = `DELETE FROM urls; DELETE FROM id_map`
+	// qClearId  = `DELETE FROM id_map where canonical_id = ?`
+	// qDelete   = `DELETE FROM urls WHERE id = ?`
+
 )
 
 type SQLStorage struct {
@@ -82,6 +86,8 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 	if (rows == 0) || (rows > 2) {
 		return 0, fmt.Errorf("expected 1 row affected, got %d", rows)
 	}
+	// TODO: Test case
+	// TODO: Clarify intent when canonical = requested
 	err = s.storeIdMap(uptr.RequestURL(), key)
 	if err != nil {
 		return 0, err
@@ -199,6 +205,8 @@ func (s SQLStorage) lookupId(requested_id uint64) (uint64, error) {
 
 // Delete will only delete a url that matches the canonical URL.
 // TODO: Evaluate desired behavior here
+// TODO: Not accounting for lookup keys
+// NB: TTL management is handled by maintenance routines
 func (s SQLStorage) Delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
 	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
