@@ -1,8 +1,6 @@
 package mysql
 
 import (
-	_ "github.com/go-sql-driver/mysql"
-
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/store"

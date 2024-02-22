@@ -52,8 +52,8 @@ test: ## run the tests
 	@go test -coverprofile=coverage.out ./... 
 
 test-mysql: ## run the MySQL integration tests
-	@echo "Running tests..."
-	@go test -tags mysql -coverprofile=coverage.out ./... 
+	@echo "Running MySQL tests..."
+	@go test -tags mysql -coverprofile=mysql_coverage.out ./internal/storage ./internal/storage/mysql
 
 vet: fmt ## fmt, vet, and staticcheck
 	@echo "Running go vet and staticcheck..."
