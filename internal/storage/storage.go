@@ -1,42 +1,17 @@
-/*
-This is the implementation of the store.URLDataStore interface for sqlite.
-
-Use New() to make a new sqlite storage instance.
-  - You *must* call Open()
-  - The DB will be closed when the context passed to Open() is cancelled.
-  - Concurrent usage OK
-  - In-Memory DBs are supported
-  - The DB will be created if it doesn't exist
-*/
-package sqlite
+package storage
 
 import (
 	"context"
 	"database/sql"
-	_ "embed"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"log/slog"
 	nurl "net/url"
 	"time"
 
-	"log/slog"
-
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
-	"github.com/efixler/scrape/store/internal/database"
-
-	_ "github.com/mattn/go-sqlite3"
-)
-
-const (
-	qStore    = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?)`
-	qClear    = `DELETE FROM urls; DELETE FROM id_map`
-	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
-	qStoreId  = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
-	qClearId  = `DELETE FROM id_map where canonical_id = ?`
-	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
-	qDelete   = `DELETE FROM urls WHERE id = ?`
 )
 
 type stmtIndex int
@@ -44,110 +19,58 @@ type stmtIndex int
 const (
 	_ stmtIndex = iota
 	save
-	clear
-	lookupId
 	saveId
+	lookupId
 	fetch
-	clearId
 	delete
 )
 
-var (
-	ErrMappingNotFound    = errors.New("id mapping not found")
-	ErrStoreNotOpen       = errors.New("store not opened for this dsn")
-	ErrCantCreateDatabase = errors.New("can't create the database")
+const (
+	qSave     = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?);`
+	qSaveId   = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
+	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
+	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
+	qDelete   = `DELETE FROM urls WHERE id = ?`
+	// qClear    = `DELETE FROM urls; DELETE FROM id_map`
+	// qClearId  = `DELETE FROM id_map where canonical_id = ?`
+	// qDelete   = `DELETE FROM urls WHERE id = ?`
+
 )
 
-// Returns the factory function that can be used to instantiate a sqlite store
-// in the cases where either creation should be delayed or where the caller may
-// want to instantiate multiple stores with the same configuration.
-func Factory(options ...option) store.Factory {
-	return func() (store.URLDataStore, error) {
-		return New(options...)
-	}
+type SQLStorage struct {
+	*database.DBHandle[stmtIndex]
 }
 
-func New(options ...option) (store.URLDataStore, error) {
-	s := &Store{
-		DBHandle: database.DBHandle[stmtIndex]{
-			Driver: database.SQLite,
+func New(driver database.DriverName) *SQLStorage {
+	return &SQLStorage{
+		DBHandle: &database.DBHandle[stmtIndex]{
+			Driver: driver,
 		},
 	}
-	c := &config{}
-	Defaults()(c)
-	for _, opt := range options {
-		if err := opt(c); err != nil {
-			return nil, err
-		}
-	}
-	s.config = *c
-	s.DBHandle.DSNSource = s.config
-	return s, nil
-}
-
-type Store struct {
-	database.DBHandle[stmtIndex]
-	config config
-	stats  *Stats
-}
-
-// Opens the database, creating it if it doesn't exist.
-// The passed contexts will be used for query preparation, and to
-// close the database when the context is cancelled.
-func (s *Store) Open(ctx context.Context) error {
-	err := s.DBHandle.Open(ctx)
-	if err != nil {
-		return err
-	}
-	// SQLite will open even if the the DB file is not present, it will only fail later.
-	// So, if the db hasn't been opened, check for the file here.
-	// In Memory DBs must always be created
-	inMemory := s.config.IsInMemory()
-	needsCreate := inMemory || !exists(s.config.filename)
-	if needsCreate {
-		if err := s.Create(); err != nil {
-			return err
-		}
-	}
-	if inMemory {
-		// Unfortunately, SQLite in-memory DBs are bound to a single connection.
-		s.DB.SetMaxOpenConns(1)
-		s.DB.SetMaxIdleConns(1)
-		s.DB.SetConnMaxLifetime(-1)
-	}
-	s.Maintenance(24*time.Hour, maintain)
-	return nil
 }
 
 // Save the data for a URL. Will overwrite data where the URL is the same.
 // Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
-func (s *Store) Save(uptr *resource.WebPage) (uint64, error) {
-	uptr.AssertTimes() // modify the original with times if needed
-	requestedUrl := uptr.RequestedURL
-	if requestedUrl == nil {
-		requestedUrl = uptr.URL()
-	}
-	key := store.Key(uptr.URL()) // key is for the canonical URL
-	contentText := uptr.ContentText
+func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
+	uptr.AssertTimes()
+	key := store.Key(uptr.URL())
 	metadata, err := store.SerializeMetadata(uptr)
 	if err != nil {
 		return 0, err
 	}
-	expires := time.Now().Add(*uptr.TTL).Unix()
-
-	// (id, url, parsed_url, fetch_time, expires, metadata, content_text)
 	values := []any{
 		key,
 		uptr.URL().String(),
-		requestedUrl.String(),
+		uptr.RequestURL().String(),
 		uptr.FetchTime.Unix(),
-		expires,
+		uptr.ExpireTime().Unix(),
 		string(metadata),
-		contentText,
+		uptr.ContentText,
 	}
+
 	stmt, err := s.Statement(save, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
-		return db.PrepareContext(ctx, qStore)
+		return db.PrepareContext(ctx, qSave)
 	})
 	if err != nil {
 		return 0, err
@@ -156,28 +79,30 @@ func (s *Store) Save(uptr *resource.WebPage) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	// todo: this can fail silently
-	// todo: test case for this, including self-mapping when the canonical url is the same as the requested url
-	err_id_map := s.storeIdMap(uptr.RequestedURL, key)
-
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return 0, errors.Join(err, err_id_map)
+		return 0, err
 	}
-	if rows != 1 {
-		return 0, errors.Join(fmt.Errorf("expected 1 row affected, got %d", rows), err_id_map)
+	if (rows == 0) || (rows > 2) {
+		return 0, fmt.Errorf("expected 1 row affected, got %d", rows)
+	}
+	// TODO: Test case
+	// TODO: Clarify intent when canonical = requested
+	err = s.storeIdMap(uptr.RequestURL(), key)
+	if err != nil {
+		return 0, err
 	}
 	return key, nil
 }
 
-func (s Store) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
+func (s SQLStorage) storeIdMap(requested *nurl.URL, canonicalID uint64) error {
 	stmt, err := s.Statement(saveId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
-		return db.PrepareContext(ctx, qStoreId)
+		return db.PrepareContext(ctx, qSaveId)
 	})
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(s.Ctx, store.Key(parsedUrl), canonicalId)
+	_, err = stmt.ExecContext(s.Ctx, store.Key(requested), canonicalID)
 	if err != nil {
 		return err
 	}
@@ -191,11 +116,11 @@ func (s Store) storeIdMap(parsedUrl *nurl.URL, canonicalId uint64) error {
 // being different than the requested URL.
 //
 // In that case, the canonical version of the content will be returned, if we have it.
-func (s Store) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	requested_key := store.Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
-	case ErrMappingNotFound:
+	case store.ErrMappingNotFound:
 		slog.Debug("sqlite: No mapped key for resource, trying direct key", "url", url.String(), "requested_key", requested_key, "canonical_key", key)
 		key = requested_key
 	case nil:
@@ -255,7 +180,7 @@ func (s Store) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 }
 
 // Will search url_ids to see if there's a parent entry for this url.
-func (s Store) lookupId(requested_id uint64) (uint64, error) {
+func (s SQLStorage) lookupId(requested_id uint64) (uint64, error) {
 	stmt, err := s.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qLookupId)
 	})
@@ -268,7 +193,7 @@ func (s Store) lookupId(requested_id uint64) (uint64, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return 0, ErrMappingNotFound
+		return 0, store.ErrMappingNotFound
 	}
 	var lookupId uint64
 	err = rows.Scan(&lookupId)
@@ -280,7 +205,9 @@ func (s Store) lookupId(requested_id uint64) (uint64, error) {
 
 // Delete will only delete a url that matches the canonical URL.
 // TODO: Evaluate desired behavior here
-func (s *Store) delete(url *nurl.URL) (bool, error) {
+// TODO: Not accounting for lookup keys
+// NB: TTL management is handled by maintenance routines
+func (s SQLStorage) Delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
 	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)

@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/efixler/scrape/store"
 )
 
 const (
@@ -58,7 +60,7 @@ func assertPathTo(fqn string) error {
 		}
 	} else if !dh.IsDir() {
 		return errors.Join(
-			ErrCantCreateDatabase,
+			store.ErrCantCreateDatabase,
 			fmt.Errorf("path %s exists but is not a directory", dir),
 		)
 	}

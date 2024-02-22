@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store/sqlite"
 )
 
 //go:embed test_support/ars-2003724.html

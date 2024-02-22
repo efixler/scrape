@@ -6,9 +6,9 @@ import (
 	"regexp"
 
 	"github.com/efixler/envflags"
+	"github.com/efixler/scrape/internal/storage/mysql"
+	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/store"
-	"github.com/efixler/scrape/store/mysql"
-	"github.com/efixler/scrape/store/sqlite"
 )
 
 var (

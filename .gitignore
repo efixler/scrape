@@ -24,6 +24,8 @@
 go.work
 coverage.out
 coverage.html
+*.db-shm
+*.db-wal
 scrape_data/
 build/
 docker/

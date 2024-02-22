@@ -13,8 +13,8 @@ import (
 	"testing"
 
 	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store/sqlite"
 )
 
 var storeFactory = sqlite.Factory(sqlite.InMemoryDB())
