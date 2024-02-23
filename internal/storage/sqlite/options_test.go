@@ -61,23 +61,33 @@ func TestWithFileOption(t *testing.T) {
 
 	cwd, _ := os.Getwd()
 	tests := []data{
-		{"empty", "", filepath.Join(cwd, DefaultDatabase), true},
+		{"empty", "", filepath.Join(cwd, DefaultDatabase), false},
 		{"in memory", InMemoryDBName, InMemoryDBName, false},
 		{"relative", "foo.db", filepath.Join(cwd, "foo.db"), false},
 		{"absolute", "/tmp/foo.db", "/tmp/foo.db", false},
 	}
 	for _, test := range tests {
+		dir := filepath.Dir(test.expectedFilename)
+		_, err := os.Stat(dir) // :memory: gets resolved to .
+		cleanUp := os.IsNotExist(err)
+
 		c := &config{}
 		wopt := File(test.filename)
-		err := wopt(c)
+		err = wopt(c)
 		if err != nil {
-			t.Logf("Error: %s", err)
+			if !test.expectErr {
+				t.Fatalf("%s: unexpected error: %s", test.name, err)
+			}
+			continue
 		}
-		if err != nil && !test.expectErr {
-			t.Errorf("%s: unexpected error: %s", test.name, err)
+		if c.filename != test.expectedFilename {
+			t.Fatalf("%s: unexpected filename: %s", test.name, c.filename)
 		}
-		if err == nil && c.filename != test.expectedFilename {
-			t.Errorf("%s: unexpected filename: %s", test.name, c.filename)
+		if cleanUp {
+			file := filepath.Dir(test.expectedFilename)
+			if err = os.Remove(file); err != nil {
+				t.Fatalf("Error removing directory: %s", err)
+			}
 		}
 	}
 }

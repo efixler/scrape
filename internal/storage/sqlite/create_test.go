@@ -28,7 +28,11 @@ func TestCreate(t *testing.T) {
 		t.Errorf("Error opening (and creating) database: %v", err)
 	}
 	// TODO: Test schema here
-	defer os.Remove(fname)
+	defer func() {
+		os.Remove(fname)
+		os.Remove(fname + "-wal")
+		os.Remove(fname + "-shm")
+	}()
 	_, err = os.Stat(fname)
 	if os.IsNotExist(err) {
 		t.Errorf("Database file not created")
