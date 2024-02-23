@@ -331,11 +331,9 @@ Here are the configuration options for MySQL:
 | -db-user | SCRAPE_DB_USER | Username for mysql connections | `scrape_app` (default) |
 
 Create the MySQL database by running `scrape -create` with the applicable values above. For
-database creation a privileged user is required. 
-
-For normal operations, in `scrape` or `scrape-server`, the `scrape_app` user is expected.
-This user's necssary permissions are granted as part of database creation.
-
+database creation a privileged user is required. The database will be provisioned with two
+roles; `scrape_app` for app operations and a `scrape_admin` role with full privileges to the
+schema. Assign these roles to users as appropriate.
 
 ## Building and Developing
 
