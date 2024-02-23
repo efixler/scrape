@@ -24,7 +24,7 @@ DROP TABLE IF EXISTS `id_map`;
   );
   
   CREATE ROLE IF NOT EXISTS scrape_app;
-  GRANT SELECT, UPDATE, DELETE on {{.DBName}}.* to scrape_app;
+  GRANT SELECT, INSERT, UPDATE, DELETE on {{.DBName}}.* to scrape_app;
   CREATE ROLE IF NOT EXISTS scrape_admin;
   GRANT ALL ON {{.DBName}}.* to scrape_admin;
   
