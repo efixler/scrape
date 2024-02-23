@@ -20,23 +20,18 @@ Fast web scraping
   - [Building](#building)
   - [Using the Docker](#using-the-docker)
 - [Roadmap](#roadmap)
+- [Acknowledgements](#acknowledgements)
 
 ## Description
 `scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages at medium scale. 
 
- Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or a server with a REST API. The default SQLite storage backend is performance-optimized and can store to disk or in memory. Scraped resources are stored on a 30-day TTL, but you can clear the database at any time (in-memory DBs are wiped whenever the server process dies).
+ Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or as a server with a REST API. The default SQLite storage backend is performance-optimized and can store to disk or in memory. MySQL is also supported. Resources are stored with a configurable TTL. 
+
+ The `scrape` cli tool provides shell access to scraped content via command-line entry or CSV files, and also provides database management functionality. `scrape-server` provides web and API access to content metadata in one-offs or batches.
 
  RSS and Atom feeds are supported via an endpoint in `scrape-server`. Loading a feed returns the parsed results for all item links in the feed. 
 
  The `scrape` and `scrape-server` binaries should be buildable and runnable in any `cgo`-enabled environment where `SQLite3` is present. A docker build is also included.
-
-### Acknowledgements
-
-`scrape` is powered by:
--  [go-trafilatura](https://github.com/markusmobius/go-trafilatura) HTML parsing
--  [gofeed](https://github.com/mmcdole/gofeed) Atom and RSS parsing
--  [sqlite](https://www.sqlite.org/index.html) data storage
-
 
 ## Output Format
 JSON output is a superset of Trafilatura fields. Empty fields may be omitted in responses.
@@ -386,3 +381,13 @@ The `docker-run` make target will mount a local folder called `docker/data` and 
 - Explore alternate fetch/parse backends
 
 Feature request or bug? Post issues [here](https://github.com/efixler/scrape/issues).
+
+
+## Acknowledgements
+
+`scrape` is powered by:
+-  [go-trafilatura](https://github.com/markusmobius/go-trafilatura) HTML parsing
+-  [gofeed](https://github.com/mmcdole/gofeed) Atom and RSS parsing
+-  [sqlite](https://www.sqlite.org/index.html) data storage
+-  [go-sqlite3](https://github.com/mattn/go-sqlite3) SQLite client
+-  [go-mysql](https://github.com/go-sql-driver/mysql) MySQL client

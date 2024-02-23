@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
-	"html/template"
 	"testing"
+	"text/template"
 
 	"github.com/efixler/scrape/database"
 	_ "github.com/go-sql-driver/mysql"
