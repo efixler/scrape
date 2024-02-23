@@ -31,10 +31,8 @@ const (
 	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
 	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
 	qDelete   = `DELETE FROM urls WHERE id = ?`
-	// qClear    = `DELETE FROM urls; DELETE FROM id_map`
+	qClear    = `DELETE FROM urls; DELETE FROM id_map;`
 	// qClearId  = `DELETE FROM id_map where canonical_id = ?`
-	// qDelete   = `DELETE FROM urls WHERE id = ?`
-
 )
 
 type SQLStorage struct {
@@ -207,7 +205,7 @@ func (s SQLStorage) lookupId(requested_id uint64) (uint64, error) {
 // TODO: Evaluate desired behavior here
 // TODO: Not accounting for lookup keys
 // NB: TTL management is handled by maintenance routines
-func (s SQLStorage) Delete(url *nurl.URL) (bool, error) {
+func (s *SQLStorage) Delete(url *nurl.URL) (bool, error) {
 	key := store.Key(url)
 	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)
@@ -231,4 +229,10 @@ func (s SQLStorage) Delete(url *nurl.URL) (bool, error) {
 	default:
 		return false, fmt.Errorf("expected 0 or 1 row affected, got %d", rows)
 	}
+}
+
+// Clear will delete all content from the database
+func (s *SQLStorage) Clear() error {
+	_, err := s.DB.ExecContext(s.Ctx, qClear)
+	return err
 }

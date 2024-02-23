@@ -36,11 +36,13 @@ func main() {
 		slog.Error("Error initializing database connection", "err", err)
 		os.Exit(1)
 	}
-	dbFlags = nil
 	// NB: Can't create a db from scratch here bc the DSN contains a DB name.
 	// TODO: Either handle that case or use a schema migration tool like skeema.
 	if clear {
 		clearDatabase(dbFactory)
+		return
+	} else if dbFlags.Create {
+		createDatabase(dbFactory)
 		return
 	} else if maintain {
 		maintainDatabase(dbFactory)
@@ -137,6 +139,21 @@ func maintainDatabase(dbFactory store.Factory) {
 	slog.Warn("Database maintenance complete", "database", db)
 }
 
+func createDatabase(dbFactory store.Factory) {
+	db, ok := openDatabase(dbFactory).(store.Maintainable)
+	if !ok {
+		slog.Error("Creating database not available for this storage backend", "database", db)
+		os.Exit(1)
+	}
+	defer db.(store.URLDataStore).Close()
+	err := db.Create()
+	if err != nil {
+		slog.Error("Error creating database", "database", db, "err", err)
+		os.Exit(1)
+	}
+	slog.Warn("Database creation complete", "database", db)
+}
+
 func pingDatabase(dbFactory store.Factory) {
 	db := openDatabase(dbFactory)
 	defer db.Close()
@@ -183,7 +200,7 @@ func init() {
 	envflags.EnvPrefix = "SCRAPE_"
 	noContent = envflags.NewBool("NOTEXT", false)
 	noContent.AddTo(&flags, "notext", "Skip text content")
-	dbFlags = cmd.AddDatabaseFlags("DB", &flags)
+	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
 	csvUrlIndex = envflags.NewInt("CSV_COLUMN", 1)

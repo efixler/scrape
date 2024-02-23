@@ -52,9 +52,10 @@ type DatabaseFlags struct {
 	database *envflags.Value[DatabaseSpec]
 	username *envflags.Value[string]
 	password *envflags.Value[string]
+	Create   bool
 }
 
-func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet) *DatabaseFlags {
+func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, createFlag bool) *DatabaseFlags {
 	dbFlags := &DatabaseFlags{
 		database: NewDatabaseValue(baseEnv, DefaultDatabase),
 		username: envflags.NewString(baseEnv+"_USER", ""),
@@ -63,6 +64,9 @@ func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet) *DatabaseFlags {
 	dbFlags.database.AddTo(flags, "database", "Database type:path")
 	dbFlags.username.AddTo(flags, "db-user", "Database user")
 	dbFlags.password.AddTo(flags, "db-password", "Database password")
+	if createFlag {
+		flags.BoolVar(&dbFlags.Create, "create", false, "Create the database and exit")
+	}
 	return dbFlags
 }
 
@@ -71,17 +75,25 @@ func (f DatabaseFlags) String() DatabaseSpec {
 }
 
 func (f DatabaseFlags) Database() (store.Factory, error) {
-	return Database(f.database.Get(), f.username.Get(), f.password.Get())
+	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.Create)
 }
 
-func Database(spec DatabaseSpec, username string, password string) (store.Factory, error) {
+func database(spec DatabaseSpec, username string, password string, noSchema bool) (store.Factory, error) {
 	switch spec.Type {
 	case "sqlite3":
 		fallthrough
 	case "sqlite":
 		return sqlite.Factory(sqlite.File(spec.Path)), nil
 	case "mysql":
-		return mysql.Factory(mysql.NetAddress(spec.Path), mysql.Username(username), mysql.Password(password)), nil
+		options := []mysql.Option{
+			mysql.NetAddress(spec.Path),
+			mysql.Username(username),
+			mysql.Password(password),
+		}
+		if noSchema {
+			options = append(options, mysql.WithoutSchema())
+		}
+		return mysql.Factory(options...), nil
 	default:
 		return nil, errors.New("no implementation for " + spec.Type)
 	}

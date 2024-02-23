@@ -54,9 +54,8 @@ var mdata = `{
 	"content_text": "Martin Fowler"
   }`
 
-func TestStore(t *testing.T) {
-	s := db(t)
-	defer s.Close()
+// TODO: Fuzz this so every return is different
+func getWebPage(t *testing.T) *resource.WebPage {
 	var meta resource.WebPage
 	err := json.Unmarshal([]byte(mdata), &meta)
 	if err != nil {
@@ -67,10 +66,18 @@ func TestStore(t *testing.T) {
 		t.Errorf("Error parsing url: %v", err)
 	}
 	meta.RequestedURL = url
+	return &meta
+}
+
+func TestStore(t *testing.T) {
+	s := db(t)
+	defer s.Close()
+	meta := getWebPage(t)
 	cText := meta.ContentText
-	t.Logf("ContentText: %q", cText)
-	stored := meta // this is a copy
-	_, err = s.Save(&stored)
+
+	stored := *meta // this is a copy
+	url := meta.RequestedURL
+	_, err := s.Save(&stored)
 	if err != nil {
 		t.Fatalf("Error storing data: %v", err)
 	}
@@ -197,5 +204,30 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)
+	}
+}
+
+func TestClear(t *testing.T) {
+	s := db(t)
+	defer s.Close()
+	res := getWebPage(t)
+	_, err := s.Save(res)
+	if err != nil {
+		t.Fatalf("Error storing data: %v", err)
+	}
+	err = s.Clear()
+	if err != nil {
+		t.Errorf("Error clearing store: %v", err)
+	}
+	if rows, err := s.DB.QueryContext(s.Ctx, "SELECT COUNT(*) FROM urls"); err != nil {
+		t.Fatalf("Error counting rows after insert: %v", err)
+	} else {
+		defer rows.Close()
+		rows.Next()
+		var count int
+		rows.Scan(&count)
+		if count != 0 {
+			t.Errorf("Expected no rows, got %d", count)
+		}
 	}
 }

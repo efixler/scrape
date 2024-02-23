@@ -1,6 +1,7 @@
+-- {{.DBName}}
 BEGIN;
-CREATE DATABASE IF NOT EXISTS `scrape` DEFAULT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' ;
-USE scrape ;
+CREATE DATABASE IF NOT EXISTS `{{.DBName}}` DEFAULT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' ;
+USE {{.DBName}} ;
 
 DROP TABLE IF EXISTS `urls`;
 
@@ -23,9 +24,9 @@ DROP TABLE IF EXISTS `id_map`;
   );
   
   CREATE ROLE IF NOT EXISTS scrape_app;
-  GRANT SELECT, UPDATE, DELETE on scrape.* to scrape_app;
+  GRANT SELECT, UPDATE, DELETE on {{.DBName}}.* to scrape_app;
   CREATE ROLE IF NOT EXISTS scrape_admin;
-  GRANT ALL ON scrape.* to scrape_admin;
+  GRANT ALL ON {{.DBName}}.* to scrape_admin;
   
 COMMIT;
 SET AUTOCOMMIT = 1;

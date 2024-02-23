@@ -14,7 +14,7 @@ type Charset string
 type Location string
 type ConnectionType string
 type Collation string
-type option func(*Config) error
+type Option func(*Config) error
 
 const (
 	Utf8mb4         Charset        = "utf8mb4"
@@ -32,7 +32,7 @@ var (
 	DefaultWriteTimeout = 30 * time.Second
 )
 
-func NetAddress(addr string) option {
+func NetAddress(addr string) Option {
 	return func(c *Config) error {
 		if addr == "" {
 			return store.ErrorValueNotAllowed
@@ -52,7 +52,7 @@ func NetAddress(addr string) option {
 	}
 }
 
-func Username(username string) option {
+func Username(username string) Option {
 	return func(c *Config) error {
 		if username == "" {
 			return store.ErrorValueNotAllowed
@@ -62,14 +62,21 @@ func Username(username string) option {
 	}
 }
 
-func Password(password string) option {
+func Password(password string) Option {
 	return func(c *Config) error {
 		c.Passwd = password
 		return nil
 	}
 }
 
-func WithoutSchema() option {
+func Schema(name string) Option {
+	return func(c *Config) error {
+		c.DBName = name
+		return nil
+	}
+}
+
+func WithoutSchema() Option {
 	return func(c *Config) error {
 		c.DBName = ""
 		return nil
@@ -77,7 +84,7 @@ func WithoutSchema() option {
 }
 
 type Config struct {
-	*mysql.Config
+	mysql.Config
 }
 
 func defaultConfig() Config {
@@ -91,7 +98,7 @@ func defaultConfig() Config {
 	cfg.WriteTimeout = DefaultWriteTimeout
 	cfg.ParseTime = true
 	cfg.MultiStatements = true
-	return Config{cfg}
+	return Config{*cfg}
 }
 
 func (c Config) DSN() string {
@@ -99,7 +106,7 @@ func (c Config) DSN() string {
 }
 
 func (c Config) String() string {
-	cp := *c.Config
+	cp := c.Config
 	cp.Passwd = "*****"
 	return cp.FormatDSN()
 }

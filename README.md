@@ -15,6 +15,7 @@ Fast web scraping
   - [Web Interface](#web-interface)
   - [API](#api)
   - [Healthchecks](#healthchecks)
+- [Database Options](#database-options)
 - [Building and Developing](#building-and-developing)
   - [Building](#building)
   - [Using the Docker](#using-the-docker)
@@ -123,28 +124,38 @@ That's actually it. The database will be created if it doesn't exist already.
 ```
 scrape % ./scrape -h
 Usage: 
-        scrape [flags] :url [...urls]
+	scrape [flags] :url [...urls]
  
-    -h
-        Show this help message
+  -h	
+  	Show this help message
   -clear
-        Clear the database and exit
+    	Clear the database and exit
+  -create
+    	Create the database and exit
   -csv value
-        CSV file path
+    	CSV file path
   -csv-column value
-        The index of the column in the CSV that contains the URLs
-        Environment: SCRAPE_CSV_COLUMN (default 1)
+    	The index of the column in the CSV that contains the URLs
+    	Environment: SCRAPE_CSV_COLUMN (default 1)
   -database value
-        Database type:path
-        Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+    	Database type:path
+    	Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+  -db-password value
+    	Database password
+    	Environment: SCRAPE_DB_PASSWORD
+  -db-user value
+    	Database user
+    	Environment: SCRAPE_DB_USER
   -log-level value
-        Set the log level [debug|error|info|warn]
-        Environment: SCRAPE_LOG_LEVEL (default WARN)
+    	Set the log level [debug|error|info|warn]
+    	Environment: SCRAPE_LOG_LEVEL (default WARN)
   -maintain
-        Execute database maintenance and exit
+    	Execute database maintenance and exit
   -notext
-        Skip text content
-        Environment: SCRAPE_NOTEXT
+    	Skip text content
+    	Environment: SCRAPE_NOTEXT
+  -ping
+    	Ping the database and exit
 ```
 ## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
@@ -164,33 +175,39 @@ scrape-server [-port nnnn] [-h]
 
 Some options have environment variable equivalents. Invalid environment settings
 are ignored. Command line options override environment variables.
-
+	
 If environment variables are set, they'll override the defaults displayed in this 
 help message.
  
 Command line options:
 --------------------
 
-  -h
-        Show this help message
+  -h	
+  	Show this help message
   -database value
-        Database type:path
-        Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+    	Database type:path
+    	Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+  -db-password value
+    	Database password
+    	Environment: SCRAPE_DB_PASSWORD
+  -db-user value
+    	Database user
+    	Environment: SCRAPE_DB_USER
   -log-level value
-        Set the log level [debug|error|info|warn]
-        Environment: SCRAPE_LOG_LEVEL
+    	Set the log level [debug|error|info|warn]
+    	Environment: SCRAPE_LOG_LEVEL
   -port value
-        Port to run the server on
-        Environment: SCRAPE_PORT (default 8080)
+    	Port to run the server on
+    	Environment: SCRAPE_PORT (default 8080)
   -profile
-        Enable profiling at /debug/pprof
-        Environment: SCRAPE_PROFILE
+    	Enable profiling at /debug/pprof
+    	Environment: SCRAPE_PROFILE
   -ttl value
-        TTL for fetched resources
-        Environment: SCRAPE_TTL (default 720h0m0s)
+    	TTL for fetched resources
+    	Environment: SCRAPE_TTL (default 720h0m0s)
   -user-agent value
-        User agent to use for fetching
-        Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
+    	User agent to use for fetching
+    	Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
 ```
 
 Use caution when using the in-memory database: There are currently no constraints on database size.
@@ -280,6 +297,45 @@ database runtime info.
 
 This just returns a status `200` with the content `OK`
 
+## Database Options
+
+`scrape` supports SQLite or MySQL for data storage. Your choice depends on your requirements and environment.
+
+### SQLite
+
+SQLite is the default storage engine for `scrape`. There's no need for setup -- the database will autocreate if it doesn't exist. 
+
+SQLite is ideal when there's a 1:1 relationship between the service and its backing store, or if you're running the service on a workstation or a 'real' computer.
+
+If you deploy the Docker container to a cloud provider like GCP or AWS there will usually be a few hundred MB of disk storage associated with the container. Storage requirements typically translate to
+about 3000 url metadatas per 100MB. 
+
+When your container shuts down, previously stored data will be lost. This may or may not be a problem, depending on your application. Disk space can be monitored with the healthcheck.
+
+It is also possible to mount a block drive to a container for persistent storage independent of the 
+container lifecycle.
+
+To specify a path to a SQLite database using the command line `-database` switch or the equivalent `SCRAPE_DB` environment variable, use the form `sqlite:/path/to.db`.
+
+### MySQL
+
+MySQL will be a better choice for applications that run under higher volumes and/or where multiple
+service instances want to share a storage backend.
+
+Here are the configuration options for MySQL:
+
+| Flag | Environment | Description | Example | 
+| -------- | ------ | ----------- | -------- |
+| -database | SCRAPE_DB | mysql: + addr:port | `mysql:mysql.domain.co:3306` |
+| -db-password | SCRAPE_DB_PASSWORD | Password | lkajd901e109i^jhj% |
+| -db-user | SCRAPE_DB_USER | Username for mysql connections | `scrape_app` (default) |
+
+Create the MySQL database by running `scrape -create` with the applicable values above. For
+database creation a privileged user is required. 
+
+For normal operations, in `scrape` or `scrape-server`, the `scrape_app` user is expected.
+This user's necssary permissions are granted as part of database creation.
+
 
 ## Building and Developing
 
@@ -325,12 +381,10 @@ The `docker-run` make target will mount a local folder called `docker/data` and 
 - Outbound request pacing
 - Expose outbound request options (headers, timeouts, etc)
 - Headless fallback for pages that require Javascript
-- Clean up cmd/ files, intern-alize most packages
 - Update ServeMux usage for 1.22
-- Finish alternate mysql storage backend
 - Explore performance optimizations, e.g.
   - Batch request parallelization
   - zstd compression for stored resources
-- Explore alternate fetch/parse/storage backends
+- Explore alternate fetch/parse backends
 
 Feature request or bug? Post issues [here](https://github.com/efixler/scrape/issues).

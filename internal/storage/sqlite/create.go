@@ -95,10 +95,10 @@ func (s *Store) Maintain() error {
 	return err
 }
 
-// Clear() will drop all tables and recreate them.
-// This is a destructive operation.
-// Clear uses the same query as Create(), so it will also re-create the database
-func (s *Store) Clear() error {
-	_, err := s.DB.ExecContext(s.Ctx, createSQL)
-	return err
-}
+// // Clear() will drop all tables and recreate them.
+// // This is a destructive operation.
+// // Clear uses the same query as Create(), so it will also re-create the database
+// func (s *Store) Clear() error {
+// 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
+// 	return err
+// }

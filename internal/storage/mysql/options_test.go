@@ -117,3 +117,35 @@ func TestWithoutSchema(t *testing.T) {
 		t.Errorf("WithoutSchema: unexpected schema: %s", c.DBName)
 	}
 }
+
+func TestOverwriteParams(t *testing.T) {
+	t.Parallel()
+	c := defaultConfig()
+	Schema("foo")(&c)
+	d := c
+	Schema("bar")(&c)
+	if c.DBName != "bar" {
+		t.Errorf("Schema: unexpected schema: %s", c.DBName)
+	}
+	if d.DBName != "foo" {
+		t.Errorf("Schema: unexpected schema: %s", d.DBName)
+	}
+
+}
+
+func TestCreateSQLFromTemplate(t *testing.T) {
+	dbname := "tester"
+	db, err := New(Schema(dbname))
+	if err != nil {
+		t.Fatalf("Error creating database: %v", err)
+	}
+	query, err := db.(*Store).createSQL()
+	if err != nil {
+		t.Fatalf("Error creating SQL: %v", err)
+	}
+	// Use the header comment as a canary to see if
+	// the substitution worked
+	if !strings.HasPrefix(query, "-- "+dbname) {
+		t.Errorf("Query: unexpected query: %s", query)
+	}
+}

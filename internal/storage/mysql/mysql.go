@@ -6,13 +6,13 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
-func Factory(options ...option) store.Factory {
+func Factory(options ...Option) store.Factory {
 	return func() (store.URLDataStore, error) {
 		return New(options...)
 	}
 }
 
-func New(options ...option) (store.URLDataStore, error) {
+func New(options ...Option) (store.URLDataStore, error) {
 	store := &Store{
 		storage.New(database.MySQL),
 	}
