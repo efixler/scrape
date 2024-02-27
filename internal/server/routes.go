@@ -63,7 +63,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 // close and release any resources they have open.
 func NewScrapeServer(ctx context.Context, sf store.Factory) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(*trafilatura.DefaultOptions),
+		trafilatura.Factory(),
 		sf,
 	)
 	if err != nil {

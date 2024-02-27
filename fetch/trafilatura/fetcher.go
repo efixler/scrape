@@ -18,25 +18,12 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
-var (
-	DefaultUserAgent    = "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0"
-	DefaultTimeout      = 30 * time.Second
-	trafilaturaFallback = &trafilatura.FallbackConfig{}
-	DefaultOptions      = &Options{
-		FallbackConfig: trafilaturaFallback,
-		HttpClient:     &http.Client{},
-		Timeout:        DefaultTimeout,
-		Transport:      nil,
-		UserAgent:      fetch.DefaultUserAgent,
-	}
-)
-
-type Options struct {
+type Config struct {
 	FallbackConfig *trafilatura.FallbackConfig
 	HttpClient     *http.Client
 	UserAgent      string
 	Transport      http.RoundTripper
-	Timeout        time.Duration
+	Timeout        *time.Duration
 }
 
 type TrafilaturaFetcher struct {
@@ -46,41 +33,36 @@ type TrafilaturaFetcher struct {
 }
 
 // Factory function for new fetcher.
-func Factory(options Options) func() (fetch.URLFetcher, error) {
+func Factory(options ...option) func() (fetch.URLFetcher, error) {
 	// Implemented as a factory for some concurrency possbilities but
 	// we might not need this now (or at all)
 	return func() (fetch.URLFetcher, error) {
-		return NewTrafilaturaFetcher(options), nil
+		return New(options...)
 	}
 }
 
-func NewTrafilaturaFetcher(options Options) *TrafilaturaFetcher {
+func New(options ...option) (*TrafilaturaFetcher, error) {
+	conf := defaultOptions()
 
-	if options.FallbackConfig == nil {
-		options.FallbackConfig = DefaultOptions.FallbackConfig
+	for _, opt := range options {
+		if err := opt(&conf); err != nil {
+			return nil, err
+		}
 	}
-	if options.HttpClient == nil {
-		options.HttpClient = DefaultOptions.HttpClient
-	}
-	if options.UserAgent == "" {
-		options.UserAgent = DefaultOptions.UserAgent
-	}
+
 	fetcher := &TrafilaturaFetcher{
-		httpClient: options.HttpClient,
-		userAgent:  options.UserAgent,
+		httpClient: conf.HttpClient,
+		userAgent:  conf.UserAgent,
 	}
-	// if the httpClient has a timeout set, assume it's intentional and use it
-	// but make sure we never use a timeout of 0
-	if fetcher.httpClient.Timeout == 0 {
-		fetcher.httpClient.Timeout = options.Timeout
+
+	if conf.Timeout != nil {
+		fetcher.httpClient.Timeout = *conf.Timeout
 	}
-	if fetcher.httpClient.Timeout == 0 {
-		fetcher.httpClient.Timeout = DefaultTimeout
+
+	if conf.Transport != nil {
+		fetcher.httpClient.Transport = conf.Transport
 	}
-	if options.Transport != nil {
-		fetcher.httpClient.Transport = options.Transport
-	}
-	return fetcher
+	return fetcher, nil
 }
 
 func (f *TrafilaturaFetcher) Open(ctx context.Context) error {

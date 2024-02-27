@@ -32,9 +32,7 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	fOptions := *trafilatura.DefaultOptions
-	fOptions.HttpClient = client
-	fFactory := trafilatura.Factory(fOptions)
+	fFactory := trafilatura.Factory(trafilatura.WithClient(client))
 	sFactory := sqlite.Factory(sqlite.InMemoryDB())
 
 	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
@@ -155,9 +153,7 @@ func TestFetchUnstored(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	fOptions := *trafilatura.DefaultOptions
-	fOptions.HttpClient = client
-	fFactory := trafilatura.Factory(fOptions)
+	fFactory := trafilatura.Factory(trafilatura.WithClient(client))
 	sFactory := sqlite.Factory(sqlite.InMemoryDB())
 
 	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)

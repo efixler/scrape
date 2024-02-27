@@ -9,6 +9,7 @@ coverage.html
 scrape_data/
 build/
 docker/
+headless
 internal/testdata
 rest/
 samples/

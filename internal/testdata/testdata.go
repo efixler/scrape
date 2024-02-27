@@ -124,15 +124,7 @@ func init() {
 	flags.IntVar(&csvUrlIndex, "csv-column", 1, "The index of the column in the CSV that contains the URLs")
 	flags.IntVar(&maxURLs, "max", 100, "The maximum number of URLs to process")
 	flags.Parse(os.Args[1:])
-	client = &http.Client{
-		Timeout: 30 * time.Second,
-	}
-	t := &http.Transport{}
-	t.RegisterProtocol("file", http.NewFileTransport(http.Dir("./data")))
-	options := *trafilatura.DefaultOptions
-	options.HttpClient = client
-	options.Transport = t
-	fetcher = trafilatura.NewTrafilaturaFetcher(options)
+	fetcher, _ = trafilatura.New(trafilatura.WithFiles("./data"), trafilatura.WithTimeout(30*time.Second))
 }
 
 func usage() {

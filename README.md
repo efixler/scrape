@@ -119,38 +119,42 @@ That's actually it. The database will be created if it doesn't exist already.
 ```
 scrape % ./scrape -h
 Usage: 
-	scrape [flags] :url [...urls]
+        scrape [flags] :url [...urls]
+
+In addition to http[s] URLs, file:/// urls are supported, using the current working directory as the base path.
+
+Flags:
  
-  -h	
-  	Show this help message
+  -h
+        Show this help message
   -clear
-    	Clear the database and exit
+        Clear the database and exit
   -create
-    	Create the database and exit
+        Create the database and exit
   -csv value
-    	CSV file path
+        CSV file path
   -csv-column value
-    	The index of the column in the CSV that contains the URLs
-    	Environment: SCRAPE_CSV_COLUMN (default 1)
+        The index of the column in the CSV that contains the URLs
+        Environment: SCRAPE_CSV_COLUMN (default 1)
   -database value
-    	Database type:path
-    	Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+        Database type:path
+        Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
   -db-password value
-    	Database password
-    	Environment: SCRAPE_DB_PASSWORD
+        Database password
+        Environment: SCRAPE_DB_PASSWORD
   -db-user value
-    	Database user
-    	Environment: SCRAPE_DB_USER
+        Database user
+        Environment: SCRAPE_DB_USER
   -log-level value
-    	Set the log level [debug|error|info|warn]
-    	Environment: SCRAPE_LOG_LEVEL (default WARN)
+        Set the log level [debug|error|info|warn]
+        Environment: SCRAPE_LOG_LEVEL (default WARN)
   -maintain
-    	Execute database maintenance and exit
+        Execute database maintenance and exit
   -notext
-    	Skip text content
-    	Environment: SCRAPE_NOTEXT
+        Skip text content
+        Environment: SCRAPE_NOTEXT
   -ping
-    	Ping the database and exit
+        Ping the database and exit
 ```
 ## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
@@ -204,8 +208,6 @@ Command line options:
     	User agent to use for fetching
     	Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
 ```
-
-Use caution when using the in-memory database: There are currently no constraints on database size.
 
 ### Web Interface
 
@@ -310,7 +312,7 @@ When your container shuts down, previously stored data will be lost. This may or
 It is also possible to mount a block drive to a container for persistent storage independent of the 
 container lifecycle.
 
-To specify a path to a SQLite database using the command line `-database` switch or the equivalent `SCRAPE_DB` environment variable, use the form `sqlite:/path/to.db`.
+To specify a path to a SQLite database using the command line `-database` switch or the equivalent `SCRAPE_DB` environment variable, use the form `sqlite:/path/to.db`. The special form `sqlite::memory:` is supported for a transient, in-memory database.
 
 ### MySQL
 

@@ -181,7 +181,7 @@ func openDatabase(dbFactory store.Factory) store.URLDataStore {
 
 func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
 	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(*trafilatura.DefaultOptions),
+		trafilatura.Factory(trafilatura.WithFiles("./")),
 		dbFactory,
 	)
 	if err != nil {
@@ -225,9 +225,12 @@ func init() {
 func usage() {
 	fmt.Println(`Usage: 
 	scrape [flags] :url [...urls]
+
+In addition to http[s] URLs, file:/// urls are supported, using the current working directory as the base path.
+
+Flags:
  
   -h	
   	Show this help message`)
-
 	flags.PrintDefaults()
 }

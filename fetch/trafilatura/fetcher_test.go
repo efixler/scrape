@@ -24,9 +24,7 @@ func TestTargetURLErrors(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	topts := *DefaultOptions
-	topts.HttpClient = client
-	fetcher := NewTrafilaturaFetcher(topts)
+	fetcher, _ := New(WithClient(client))
 	type data struct {
 		url         string
 		expectedErr error
@@ -89,9 +87,7 @@ func TestClientFollowsRedirects(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	topts := *DefaultOptions
-	topts.HttpClient = client
-	fetcher := NewTrafilaturaFetcher(topts)
+	fetcher, _ := New(WithClient(client))
 	type data struct {
 		url         string
 		expectedErr error
@@ -127,9 +123,7 @@ func TestMetadataPopulatedSmokeTest(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	topts := *DefaultOptions
-	topts.HttpClient = client
-	fetcher := NewTrafilaturaFetcher(topts)
+	fetcher, _ := New(WithClient(client))
 	url := ts.URL + "/0e35649e7413c52ee4502525b548c645.html"
 	netURL, _ := nurl.Parse(url)
 	resource, err := fetcher.Fetch(netURL)
@@ -219,9 +213,7 @@ func TestAcceptContentTypes(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	topts := *DefaultOptions
-	topts.HttpClient = client
-	fetcher := NewTrafilaturaFetcher(topts)
+	fetcher, _ := New(WithClient(client))
 	type data struct {
 		url         string
 		expectedErr error
@@ -265,10 +257,7 @@ func TestFetchCancelsOnTimeout(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	options := *DefaultOptions
-	options.Timeout = timeout
-	options.HttpClient = client
-	fetcher := NewTrafilaturaFetcher(options)
+	fetcher, _ := New(WithClient(client), WithTimeout(timeout))
 	url, _ := nurl.Parse(ts.URL)
 	_, err := fetcher.Fetch(url)
 	if err == nil {
