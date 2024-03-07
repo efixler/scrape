@@ -106,6 +106,7 @@ func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, false)
+	_ = cmd.AddProxyFlags("headless", &flags)
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
 	ttl = envflags.NewDuration("TTL", resource.DefaultTTL)

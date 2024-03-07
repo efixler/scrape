@@ -21,9 +21,11 @@ type Proxy struct {
 func AddProxyFlags(proxyName string, flags *flag.FlagSet) *Proxy {
 	// TODO: prefix the env var and arg based on whether baseEnv is empty or not.
 	var baseEnv, baseArgName string
+	helpPrefix := "Default"
 	if proxyName != "" {
 		baseEnv = strings.ToUpper(proxyName) + "_"
 		baseArgName = strings.ToLower(proxyName) + "-"
+		helpPrefix = strings.ToUpper(string(proxyName[0])) + strings.ToLower(proxyName[1:])
 	}
 
 	proxy := &Proxy{
@@ -31,9 +33,9 @@ func AddProxyFlags(proxyName string, flags *flag.FlagSet) *Proxy {
 		username: envflags.NewString(baseEnv+"PROXY_USERNAME", ""),
 		password: envflags.NewString(baseEnv+"PROXY_PASSWORD", ""),
 	}
-	flags.Var(proxy.proxyURL, baseArgName+"proxy", "Proxy URL")
-	flags.Var(proxy.username, baseArgName+"proxy-username", "Proxy username")
-	flags.Var(proxy.password, baseArgName+"proxy-password", "Proxy password")
+	proxy.proxyURL.AddTo(flags, baseArgName+"proxy", helpPrefix+" proxy URL")
+	proxy.username.AddTo(flags, baseArgName+"proxy-username", helpPrefix+" proxy username")
+	proxy.password.AddTo(flags, baseArgName+"proxy-password", helpPrefix+" proxy password")
 	return proxy
 }
 

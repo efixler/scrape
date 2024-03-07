@@ -201,6 +201,10 @@ func init() {
 	noContent = envflags.NewBool("NOTEXT", false)
 	noContent.AddTo(&flags, "notext", "Skip text content")
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
+
+	// TODO: Add headless support
+	_ = cmd.AddProxyFlags("headless", &flags)
+
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
 	csvUrlIndex = envflags.NewInt("CSV_COLUMN", 1)
