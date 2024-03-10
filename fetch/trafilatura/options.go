@@ -14,10 +14,10 @@ var (
 	trafilaturaFallback = &trafilatura.FallbackConfig{}
 )
 
-type option func(*Config) error
+type Option func(*config) error
 
-func defaultOptions() Config {
-	return Config{
+func defaultOptions() config {
+	return config{
 		FallbackConfig: &trafilatura.FallbackConfig{},
 		HttpClient:     &http.Client{Timeout: DefaultTimeout},
 		Timeout:        nil,
@@ -26,30 +26,30 @@ func defaultOptions() Config {
 	}
 }
 
-func WithClient(client *http.Client) option {
-	return func(o *Config) error {
+func WithClient(client *http.Client) Option {
+	return func(o *config) error {
 		o.HttpClient = client
 		return nil
 	}
 }
 
 // WithTimeout sets the timeout for the HTTP client.
-func WithTimeout(timeout time.Duration) option {
-	return func(o *Config) error {
+func WithTimeout(timeout time.Duration) Option {
+	return func(o *config) error {
 		o.Timeout = &timeout
 		return nil
 	}
 }
 
-func WithUserAgent(ua string) option {
-	return func(o *Config) error {
+func WithUserAgent(ua string) Option {
+	return func(o *config) error {
 		o.UserAgent = ua
 		return nil
 	}
 }
 
-func WithFiles(path string) option {
-	return func(o *Config) error {
+func WithFiles(path string) Option {
+	return func(o *config) error {
 		t := &http.Transport{}
 		abs, err := filepath.Abs(path)
 		if err != nil {
@@ -61,8 +61,8 @@ func WithFiles(path string) option {
 	}
 }
 
-func WithTransport(transport http.RoundTripper) option {
-	return func(o *Config) error {
+func WithTransport(transport http.RoundTripper) Option {
+	return func(o *config) error {
 		o.Transport = transport
 		return nil
 	}

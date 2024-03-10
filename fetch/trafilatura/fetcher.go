@@ -18,7 +18,7 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
-type Config struct {
+type config struct {
 	FallbackConfig *trafilatura.FallbackConfig
 	HttpClient     *http.Client
 	UserAgent      string
@@ -33,7 +33,7 @@ type TrafilaturaFetcher struct {
 }
 
 // Factory function for new fetcher.
-func Factory(options ...option) func() (fetch.URLFetcher, error) {
+func Factory(options ...Option) func() (fetch.URLFetcher, error) {
 	// Implemented as a factory for some concurrency possbilities but
 	// we might not need this now (or at all)
 	return func() (fetch.URLFetcher, error) {
@@ -41,7 +41,7 @@ func Factory(options ...option) func() (fetch.URLFetcher, error) {
 	}
 }
 
-func New(options ...option) (*TrafilaturaFetcher, error) {
+func New(options ...Option) (*TrafilaturaFetcher, error) {
 	conf := defaultOptions()
 
 	for _, opt := range options {

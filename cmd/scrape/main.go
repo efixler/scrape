@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 
 	"github.com/efixler/envflags"
@@ -20,14 +21,16 @@ import (
 )
 
 var (
-	flags       flag.FlagSet
-	noContent   *envflags.Value[bool]
-	dbFlags     *cmd.DatabaseFlags
-	csvPath     *envflags.Value[string]
-	csvUrlIndex *envflags.Value[int]
-	clear       bool
-	maintain    bool
-	ping        bool
+	flags          flag.FlagSet
+	noContent      *envflags.Value[bool]
+	dbFlags        *cmd.DatabaseFlags
+	csvPath        *envflags.Value[string]
+	csvUrlIndex    *envflags.Value[int]
+	headlessConfig *cmd.ProxyConfig
+	headless       bool
+	clear          bool
+	maintain       bool
+	ping           bool
 )
 
 func main() {
@@ -36,8 +39,6 @@ func main() {
 		slog.Error("Error initializing database connection", "err", err)
 		os.Exit(1)
 	}
-	// NB: Can't create a db from scratch here bc the DSN contains a DB name.
-	// TODO: Either handle that case or use a schema migration tool like skeema.
 	if clear {
 		clearDatabase(dbFactory)
 		return
@@ -51,7 +52,7 @@ func main() {
 		pingDatabase(dbFactory)
 		return
 	}
-	fetcher, err := initFetcher(dbFactory)
+	fetcher, err := initFetcher(dbFactory, headless)
 	if err != nil {
 		slog.Error("Error initializing fetcher", "err", err)
 		os.Exit(1)
@@ -179,9 +180,22 @@ func openDatabase(dbFactory store.Factory) store.URLDataStore {
 	return db
 }
 
-func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
+func initFetcher(dbFactory store.Factory, headless bool) (*scrape.StorageBackedFetcher, error) {
+	tfopts := []trafilatura.Option{
+		trafilatura.WithFiles("./"),
+	}
+	if headless {
+		if headlessConfig.ProxyURL() == "" {
+			slog.Error("Headless mode requires a proxy URL")
+			os.Exit(1)
+		}
+		transport := headless.NewRoundTripper()
+
+		tfopts = append(tfopts, trafilatura.WithTransport(http.DefaultTransport))
+	}
+
 	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(trafilatura.WithFiles("./")),
+		trafilatura.Factory(tfopts...),
 		dbFactory,
 	)
 	if err != nil {
@@ -203,7 +217,7 @@ func init() {
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 
 	// TODO: Add headless support
-	_ = cmd.AddProxyFlags("headless", &flags)
+	headlessConfig = cmd.AddProxyFlags("headless", &flags)
 
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
@@ -211,6 +225,7 @@ func init() {
 	csvUrlIndex.AddTo(&flags, "csv-column", "The index of the column in the CSV that contains the URLs")
 
 	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
+	flags.BoolVar(&headless, "headless", false, "Use headless browser proxy for fetching")
 	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
 	flags.BoolVar(&ping, "ping", false, "Ping the database and exit")
 
