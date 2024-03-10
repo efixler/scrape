@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/http"
 	"os"
 
 	"github.com/efixler/envflags"
@@ -27,7 +26,6 @@ var (
 	csvPath        *envflags.Value[string]
 	csvUrlIndex    *envflags.Value[int]
 	headlessConfig *cmd.ProxyConfig
-	headless       bool
 	clear          bool
 	maintain       bool
 	ping           bool
@@ -52,7 +50,7 @@ func main() {
 		pingDatabase(dbFactory)
 		return
 	}
-	fetcher, err := initFetcher(dbFactory, headless)
+	fetcher, err := initFetcher(dbFactory)
 	if err != nil {
 		slog.Error("Error initializing fetcher", "err", err)
 		os.Exit(1)
@@ -180,18 +178,18 @@ func openDatabase(dbFactory store.Factory) store.URLDataStore {
 	return db
 }
 
-func initFetcher(dbFactory store.Factory, headless bool) (*scrape.StorageBackedFetcher, error) {
+func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
 	tfopts := []trafilatura.Option{
 		trafilatura.WithFiles("./"),
 	}
-	if headless {
+	if headlessConfig.Enabled() {
 		if headlessConfig.ProxyURL() == "" {
 			slog.Error("Headless mode requires a proxy URL")
 			os.Exit(1)
 		}
-		transport := headless.NewRoundTripper()
+		// transport := headless.NewRoundTripper()
 
-		tfopts = append(tfopts, trafilatura.WithTransport(http.DefaultTransport))
+		// tfopts = append(tfopts, trafilatura.WithTransport(http.DefaultTransport))
 	}
 
 	fetcher, err := scrape.NewStorageBackedFetcher(
@@ -217,7 +215,7 @@ func init() {
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 
 	// TODO: Add headless support
-	headlessConfig = cmd.AddProxyFlags("headless", &flags)
+	headlessConfig = cmd.AddProxyConfigFlags("headless", true, &flags)
 
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
@@ -225,7 +223,6 @@ func init() {
 	csvUrlIndex.AddTo(&flags, "csv-column", "The index of the column in the CSV that contains the URLs")
 
 	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
-	flags.BoolVar(&headless, "headless", false, "Use headless browser proxy for fetching")
 	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
 	flags.BoolVar(&ping, "ping", false, "Ping the database and exit")
 

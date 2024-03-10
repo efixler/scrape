@@ -14,24 +14,37 @@ type ProxyConfig struct {
 	password *envflags.Value[string]
 }
 
+func (p *ProxyConfig) addEnabledFlag(proxyName string, flags *flag.FlagSet) {
+	// --use-xxx-proxy
+	var argName, envName string
+	if proxyName == "" {
+		argName = "use-proxy"
+		envName = "PROXY_ENABLED"
+		proxyName = "default"
+	} else {
+		argName = "use-" + strings.ToLower(proxyName) + "-proxy"
+		envName = strings.ToUpper(proxyName) + "_PROXY_ENABLED"
+	}
+
+	p.enabled = envflags.NewBool(envName, false)
+	p.enabled.AddTo(flags, argName, "Use the "+proxyName+" proxy")
+}
+
 // Set up the command line args and environment variables for a proxy.
 // The assumption here is that the app ultimately supports at least two different proxies,
 // one for general usage and another for headless scraping. The general proxy should pass an
 // empty proxy name. Other proxies should pass a unique name, which will be used in constructing
 // the environment variable and command line argument names.
-func AddProxyFlags(proxyName string, flags *flag.FlagSet) *ProxyConfig {
-	// TODO: prefix the env var and arg based on whether baseEnv is empty or not.
-	var baseEnv, baseArgName, enableName string
+func AddProxyConfigFlags(proxyName string, withEnabledFlag bool, flags *flag.FlagSet) *ProxyConfig {
+	var baseEnv, baseArgName string
 	helpPrefix := "Default"
 	if proxyName != "" {
 		baseEnv = strings.ToUpper(proxyName) + "_"
-		enableName = strings.ToLower(proxyName)
 		baseArgName = strings.ToLower(proxyName) + "-"
 		helpPrefix = strings.ToUpper(string(proxyName[0])) + strings.ToLower(proxyName[1:])
 	}
 
 	proxy := &ProxyConfig{
-		enabled:  envflags.NewBool(baseEnv+enableName, false),
 		proxyURL: envflags.NewString(baseEnv+"PROXY", ""),
 		username: envflags.NewString(baseEnv+"PROXY_USERNAME", ""),
 		password: envflags.NewString(baseEnv+"PROXY_PASSWORD", ""),
@@ -39,10 +52,18 @@ func AddProxyFlags(proxyName string, flags *flag.FlagSet) *ProxyConfig {
 	proxy.proxyURL.AddTo(flags, baseArgName+"proxy", helpPrefix+" proxy URL")
 	proxy.username.AddTo(flags, baseArgName+"proxy-username", helpPrefix+" proxy username")
 	proxy.password.AddTo(flags, baseArgName+"proxy-password", helpPrefix+" proxy password")
+
+	if withEnabledFlag {
+		proxy.addEnabledFlag(proxyName, flags)
+	}
+
 	return proxy
 }
 
 func (p *ProxyConfig) Enabled() bool {
+	if p.enabled == nil {
+		return false
+	}
 	return p.enabled.Get()
 }
 
