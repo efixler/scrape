@@ -29,7 +29,7 @@ coverage.html
 scrape_data/
 build/
 docker/
-headless
+/headless
 internal/testdata/bad_files
 internal/testdata/data
 internal/testdata/samples

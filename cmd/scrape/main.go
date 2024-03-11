@@ -14,6 +14,7 @@ import (
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/cmd"
+	"github.com/efixler/scrape/internal/headless"
 	jstream "github.com/efixler/scrape/json"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
@@ -179,19 +180,22 @@ func openDatabase(dbFactory store.Factory) store.URLDataStore {
 }
 
 func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
-	tfopts := []trafilatura.Option{
-		trafilatura.WithFiles("./"),
-	}
+	tfopts := []trafilatura.Option{}
 	if headlessConfig.Enabled() {
 		if headlessConfig.ProxyURL() == "" {
 			slog.Error("Headless mode requires a proxy URL")
 			os.Exit(1)
 		}
-		// transport := headless.NewRoundTripper()
-
-		// tfopts = append(tfopts, trafilatura.WithTransport(http.DefaultTransport))
+		ht, err := headless.NewRoundTripper(
+			headless.Address(headlessConfig.ProxyURL()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		tfopts = append(tfopts, trafilatura.WithTransport(ht))
+	} else {
+		tfopts = append(tfopts, trafilatura.WithFiles("./"))
 	}
-
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(tfopts...),
 		dbFactory,
