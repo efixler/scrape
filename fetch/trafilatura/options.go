@@ -1,6 +1,7 @@
 package trafilatura
 
 import (
+	"errors"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -50,13 +51,18 @@ func WithUserAgent(ua string) Option {
 
 func WithFiles(path string) Option {
 	return func(o *config) error {
-		t := &http.Transport{}
+		if o.Transport == nil {
+			o.Transport = http.DefaultTransport
+		}
+		transport, ok := o.Transport.(*http.Transport)
+		if !ok {
+			return errors.New("cannot use WithFiles with non-http.Transport")
+		}
 		abs, err := filepath.Abs(path)
 		if err != nil {
 			return err
 		}
-		t.RegisterProtocol("file", http.NewFileTransport(http.Dir(abs)))
-		o.Transport = t
+		transport.RegisterProtocol("file", http.NewFileTransport(http.Dir(abs)))
 		return nil
 	}
 }
