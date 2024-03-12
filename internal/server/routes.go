@@ -175,7 +175,11 @@ func (h *scrapeServer) batchHandler() http.HandlerFunc {
 }
 
 func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
-	req, _ := r.Context().Value(payloadKey{}).(*BatchRequest)
+	req, ok := r.Context().Value(payloadKey{}).(*BatchRequest)
+	if !ok {
+		http.Error(w, "No batch request found", http.StatusInternalServerError)
+		return
+	}
 	// maybe should not be an error?
 	if len(req.Urls) == 0 {
 		http.Error(w, "No URLs provided", http.StatusUnprocessableEntity)
