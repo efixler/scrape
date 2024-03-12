@@ -1,19 +1,21 @@
 module github.com/efixler/scrape
 
-go 1.21
+go 1.22
 
 require (
-	github.com/efixler/envflags v0.0.0-20240216140549-ff3db8a313d6
+	github.com/efixler/envflags v0.0.0-20240216173636-8ba3a3ae2ac0
+	github.com/efixler/headless v0.0.0-20240311024509-01131a49ffae
 	github.com/go-shiori/go-readability v0.0.0-20240204090920-819593fddc6b
-	github.com/go-sql-driver/mysql v1.7.1
+	github.com/go-sql-driver/mysql v1.8.0
 	github.com/markusmobius/go-domdistiller v0.0.0-20230515154422-71af71939ff3
 	github.com/markusmobius/go-trafilatura v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.22
-	github.com/mmcdole/gofeed v1.2.1
+	github.com/mmcdole/gofeed v1.3.0
 )
 
 require (
-	github.com/PuerkitoBio/goquery v1.8.1 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/PuerkitoBio/goquery v1.9.1 // indirect
 	github.com/abadojack/whatlanggo v1.0.1 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/elliotchance/pie/v2 v2.8.0 // indirect
@@ -29,7 +31,7 @@ require (
 	github.com/markusmobius/go-htmldate v1.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mmcdole/goxpp v1.1.0 // indirect
+	github.com/mmcdole/goxpp v1.1.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
@@ -38,8 +40,8 @@ require (
 	github.com/tetratelabs/wazero v1.6.0 // indirect
 	github.com/wasilibs/go-re2 v1.4.1 // indirect
 	github.com/yosssi/gohtml v0.0.0-20201013000340-ee4748c638f4 // indirect
-	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225 // indirect
+	golang.org/x/net v0.22.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )

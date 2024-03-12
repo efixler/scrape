@@ -26,12 +26,13 @@ coverage.out
 coverage.html
 *.db-shm
 *.db-wal
-scrape_data/
-build/
-docker/
-headless
-internal/testdata/bad_files
-internal/testdata/data
-internal/testdata/samples
-internal/testdata/scraped
+/.rest
+/scrape_data/
+/build/
+/docker/
+/headless
+/internal/testdata/bad_files
+/internal/testdata/data
+/internal/testdata/samples
+/internal/testdata/scraped
 # cmd/scrape/test_data

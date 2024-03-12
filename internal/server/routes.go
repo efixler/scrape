@@ -30,19 +30,19 @@ func InitMux(
 	withProfiling bool,
 ) (http.Handler, error) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", handleHome)
+	mux.HandleFunc("GET /{$}", handleHome)
 	scrapeServer, err := NewScrapeServer(ctx, sf)
 	if err != nil {
 		return nil, err
 	}
 	mux.HandleFunc("/extract", scrapeServer.singleHandler)
-	mux.HandleFunc("/batch", scrapeServer.batchHandler)
+	mux.HandleFunc("POST /batch", scrapeServer.batchHandler())
 	mux.HandleFunc("/feed", scrapeServer.feedHandler)
 	if withProfiling {
 		initPProf(mux)
 	}
 	obs, _ := scrapeServer.Storage().(store.Observable)
-	mux.Handle("/.well-known/", healthchecks.Handler("/.well-known", obs))
+	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", obs))
 	return mux, nil
 }
 
@@ -151,21 +151,12 @@ type BatchRequest struct {
 	Urls []string `json:"urls"`
 }
 
-func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Only POST is supported", http.StatusMethodNotAllowed)
-		return
-	}
-	// TODO: Move this to a middleware
-	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
+func (h *scrapeServer) batchHandler() http.HandlerFunc {
+	return Chain(h.batch, MaxBytes(32768), DecodeJSONBody[BatchRequest]())
+}
 
-	var req BatchRequest
-	err := decoder.Decode(&req)
-	if !assertDecode(err, w) {
-		return
-	}
+func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
+	req, _ := r.Context().Value(batchRequestKey{}).(*BatchRequest)
 	// maybe should not be an error?
 	if len(req.Urls) == 0 {
 		http.Error(w, "No URLs provided", http.StatusUnprocessableEntity)
@@ -179,6 +170,7 @@ func (h *scrapeServer) batchHandler(w http.ResponseWriter, r *http.Request) {
 	if pp {
 		encoder.SetIndent("", "  ")
 	}
+	var err error
 	if batchFetcher, ok := h.urlFetcher.(fetch.BatchURLFetcher); ok {
 		rchan := batchFetcher.Batch(req.Urls, fetch.BatchOptions{})
 		for page := range rchan {
@@ -246,7 +238,7 @@ func (h *scrapeServer) feedHandler(w http.ResponseWriter, r *http.Request) {
 	links := resource.ItemLinks()
 
 	batchReq := mutateFeedRequestForBatch(r, links)
-	h.batchHandler(w, batchReq)
+	h.batch(w, batchReq)
 }
 
 func mutateFeedRequestForBatch(original *http.Request, urls []string) *http.Request {
@@ -270,9 +262,9 @@ func mutateFeedRequestForBatch(original *http.Request, urls []string) *http.Requ
 
 func initPProf(mux *http.ServeMux) {
 	// pprof
-	mux.HandleFunc("/debug/pprof/", http.HandlerFunc(pprof.Index))
-	mux.HandleFunc("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-	mux.HandleFunc("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	mux.HandleFunc("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	mux.HandleFunc("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+	mux.HandleFunc("GET /debug/pprof/", http.HandlerFunc(pprof.Index))
+	mux.HandleFunc("GET /debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	mux.HandleFunc("GET /debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	mux.HandleFunc("GET /debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	mux.HandleFunc("GET /debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 }

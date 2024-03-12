@@ -16,8 +16,8 @@ import (
 	"testing"
 
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/store"
-	"github.com/efixler/scrape/store/sqlite"
 )
 
 const (

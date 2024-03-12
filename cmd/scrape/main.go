@@ -14,20 +14,22 @@ import (
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/cmd"
+	"github.com/efixler/scrape/internal/headless"
 	jstream "github.com/efixler/scrape/json"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
 )
 
 var (
-	flags       flag.FlagSet
-	noContent   *envflags.Value[bool]
-	dbFlags     *cmd.DatabaseFlags
-	csvPath     *envflags.Value[string]
-	csvUrlIndex *envflags.Value[int]
-	clear       bool
-	maintain    bool
-	ping        bool
+	flags          flag.FlagSet
+	noContent      *envflags.Value[bool]
+	dbFlags        *cmd.DatabaseFlags
+	csvPath        *envflags.Value[string]
+	csvUrlIndex    *envflags.Value[int]
+	headlessConfig *cmd.ProxyConfig
+	clear          bool
+	maintain       bool
+	ping           bool
 )
 
 func main() {
@@ -36,8 +38,6 @@ func main() {
 		slog.Error("Error initializing database connection", "err", err)
 		os.Exit(1)
 	}
-	// NB: Can't create a db from scratch here bc the DSN contains a DB name.
-	// TODO: Either handle that case or use a schema migration tool like skeema.
 	if clear {
 		clearDatabase(dbFactory)
 		return
@@ -180,8 +180,24 @@ func openDatabase(dbFactory store.Factory) store.URLDataStore {
 }
 
 func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
+	tfopts := []trafilatura.Option{}
+	if headlessConfig.Enabled() {
+		if headlessConfig.ProxyURL() == "" {
+			slog.Error("Headless mode requires a proxy URL")
+			os.Exit(1)
+		}
+		ht, err := headless.NewRoundTripper(
+			headless.Address(headlessConfig.ProxyURL()),
+		)
+		if err != nil {
+			return nil, err
+		}
+		tfopts = append(tfopts, trafilatura.WithTransport(ht))
+	} else {
+		tfopts = append(tfopts, trafilatura.WithFiles("./"))
+	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(trafilatura.WithFiles("./")),
+		trafilatura.Factory(tfopts...),
 		dbFactory,
 	)
 	if err != nil {
@@ -203,7 +219,7 @@ func init() {
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 
 	// TODO: Add headless support
-	_ = cmd.AddProxyFlags("headless", &flags)
+	headlessConfig = cmd.AddProxyConfigFlags("headless", true, &flags)
 
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
