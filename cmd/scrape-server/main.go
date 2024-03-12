@@ -15,6 +15,7 @@ import (
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/internal/cmd"
+	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
 	"github.com/efixler/scrape/resource"
 )
@@ -24,13 +25,14 @@ const (
 )
 
 var (
-	flags     flag.FlagSet
-	port      *envflags.Value[int]
-	ttl       *envflags.Value[time.Duration]
-	userAgent *envflags.Value[string]
-	dbFlags   *cmd.DatabaseFlags
-	profile   *envflags.Value[bool]
-	logWriter io.Writer
+	flags         flag.FlagSet
+	port          *envflags.Value[int]
+	ttl           *envflags.Value[time.Duration]
+	userAgent     *envflags.Value[string]
+	dbFlags       *cmd.DatabaseFlags
+	headlessFlags *cmd.ProxyFlags
+	profile       *envflags.Value[bool]
+	logWriter     io.Writer
 )
 
 func main() {
@@ -43,10 +45,23 @@ func main() {
 		os.Exit(1)
 	}
 	dbFlags = nil
-	mux, err := server.InitMux(ctx, dbFactory, profile.Get())
+	var ht http.RoundTripper
+	if headlessFlags.ProxyURL() != "" {
+		if ht, err = headless.NewRoundTripper(
+			headless.Address(headlessFlags.ProxyURL()),
+		); err != nil {
+			slog.Error("scrape-server error creating headless round tripper", "error", err)
+			os.Exit(1)
+		}
+	}
+
+	mux, err := server.InitMux(ctx, dbFactory, ht)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
+	}
+	if profile.Get() {
+		server.EnableProfiling(mux)
 	}
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", port.Get()),
@@ -106,7 +121,7 @@ func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, false)
-	_ = cmd.AddProxyConfigFlags("headless", false, &flags)
+	headlessFlags = cmd.AddProxyFlags("headless", false, &flags)
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
 	ttl = envflags.NewDuration("TTL", resource.DefaultTTL)

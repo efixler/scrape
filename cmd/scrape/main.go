@@ -26,7 +26,7 @@ var (
 	dbFlags        *cmd.DatabaseFlags
 	csvPath        *envflags.Value[string]
 	csvUrlIndex    *envflags.Value[int]
-	headlessConfig *cmd.ProxyConfig
+	headlessConfig *cmd.ProxyFlags
 	clear          bool
 	maintain       bool
 	ping           bool
@@ -219,7 +219,7 @@ func init() {
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 
 	// TODO: Add headless support
-	headlessConfig = cmd.AddProxyConfigFlags("headless", true, &flags)
+	headlessConfig = cmd.AddProxyFlags("headless", true, &flags)
 
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")

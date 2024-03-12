@@ -145,7 +145,7 @@ func TestProxyConfigArgs(t *testing.T) {
 			os.Setenv(tt.env[i], tt.env[i+1])
 		}
 		flags := flag.NewFlagSet(tt.name, flag.ContinueOnError)
-		proxy := AddProxyConfigFlags(tt.proxyName, tt.addEnabledFlag, flags)
+		proxy := AddProxyFlags(tt.proxyName, tt.addEnabledFlag, flags)
 		flags.Parse(tt.args)
 		if fmt.Sprintf("%v", proxy.Enabled()) != tt.expected[0] {
 			t.Errorf("[%s]: Enabled() = %v, want %v", tt.name, proxy.Enabled(), false)

@@ -62,6 +62,29 @@ func (f StorageBackedFetcher) Open(ctx context.Context) error {
 	return nil
 }
 
+// WithAlternateURLFetcher returns new SBF using the same storage but a different url fetcher.
+// This is to support headless fetching, where we want to use a different underlying http client
+// but the same storage.
+// Call this _after_ Open() has been called. On the source fetcher. This function will Open() the passed
+// URLFetcher with passed context, which should be the same context that was passed to Open() on the source fetcher.
+// Do not call Open() on the returned fetcher.
+func (f *StorageBackedFetcher) WithAlternateURLFetcher(ctx context.Context, uf fetch.URLFetcher) (*StorageBackedFetcher, error) {
+	if f.closed {
+		return nil, errors.New("StorageBackedFetcher is closed")
+	}
+	clone := &StorageBackedFetcher{
+		Fetcher: uf,
+		Storage: f.Storage,
+		saving:  f.saving,
+	}
+	if err := clone.Fetcher.Open(ctx); err != nil {
+		return nil, err
+	}
+	// Don't patch in a function to close the context here, because we only really need this to close the DB, which is already
+	// hooked by the parent. We also share the parent's WaitGroup for async saves for this reason.
+	return clone, nil
+}
+
 func (f *StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	// Treat this as the entry point for the url and apply cleaning here.
 	originalURL := url.String()

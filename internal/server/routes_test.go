@@ -117,7 +117,7 @@ func TestWellknown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	mux, err := InitMux(ctx, storeFactory, false)
+	mux, err := InitMux(ctx, storeFactory, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestBatchReponseIsValid(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mux, err := InitMux(ctx, storeFactory, false)
+	mux, err := InitMux(ctx, storeFactory, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +210,7 @@ func TestExtractErrors(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mux, err := InitMux(ctx, storeFactory, false)
+	mux, err := InitMux(ctx, storeFactory, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

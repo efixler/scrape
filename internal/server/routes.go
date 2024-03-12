@@ -27,23 +27,25 @@ import (
 func InitMux(
 	ctx context.Context,
 	sf store.Factory,
-	withProfiling bool,
-) (http.Handler, error) {
+	headlessRoundTripper http.RoundTripper,
+) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", handleHome)
-	scrapeServer, err := NewScrapeServer(ctx, sf)
+	scrapeServer, err := NewScrapeServer(ctx, sf, headlessRoundTripper)
 	if err != nil {
 		return nil, err
 	}
-	mux.HandleFunc("/extract", scrapeServer.singleHandler)
+	mux.HandleFunc("GET /extract", scrapeServer.singleHandler())
+	mux.HandleFunc("POST /extract", scrapeServer.singleHandler())
 	mux.HandleFunc("POST /batch", scrapeServer.batchHandler())
 	mux.HandleFunc("/feed", scrapeServer.feedHandler)
-	if withProfiling {
-		initPProf(mux)
-	}
 	obs, _ := scrapeServer.Storage().(store.Observable)
 	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", obs))
 	return mux, nil
+}
+
+func EnableProfiling(mux *http.ServeMux) {
+	initPProf(mux)
 }
 
 //go:embed pages/index.html
@@ -61,7 +63,7 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 
 // When the context passed here is cancelled, the associated fetcher will
 // close and release any resources they have open.
-func NewScrapeServer(ctx context.Context, sf store.Factory) (*scrapeServer, error) {
+func NewScrapeServer(ctx context.Context, sf store.Factory, hrt http.RoundTripper) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(),
 		sf,
@@ -78,11 +80,30 @@ func NewScrapeServer(ctx context.Context, sf store.Factory) (*scrapeServer, erro
 	if err != nil {
 		return nil, err
 	}
+	if hrt != nil {
+		err = handler.makeHeadlessFetcher(ctx, hrt)
+		if err != nil {
+			slog.Error("Error creating headless fetcher, headless options are disabled", "error", err)
+		}
+	}
 	err = feedFetcher.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return handler, nil
+}
+
+func (s *scrapeServer) makeHeadlessFetcher(ctx context.Context, ht http.RoundTripper) error {
+	hf, err := trafilatura.New(trafilatura.WithTransport(ht))
+	if err != nil {
+		return err
+	}
+	if sbf, ok := s.urlFetcher.(*scrape.StorageBackedFetcher); ok {
+		s.headlessFetcher, err = sbf.WithAlternateURLFetcher(ctx, hf)
+	} else {
+		s.headlessFetcher = hf
+	}
+	return err
 }
 
 // The server struct is stateless but uses the same fetcher pair, across all
@@ -93,8 +114,9 @@ func NewScrapeServer(ctx context.Context, sf store.Factory) (*scrapeServer, erro
 // requests. Since httpClients pool and resuse connections this would make them
 // a little more efficient.
 type scrapeServer struct {
-	urlFetcher  fetch.URLFetcher
-	feedFetcher fetch.FeedFetcher
+	urlFetcher      fetch.URLFetcher
+	headlessFetcher fetch.URLFetcher
+	feedFetcher     fetch.FeedFetcher
 }
 
 // Convenience method to get the underlying storage from the fetcher
@@ -111,22 +133,19 @@ func (h *scrapeServer) Storage() store.URLDataStore {
 	return sbf.Storage
 }
 
-func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
-	url := r.FormValue("url")
-	if url == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("No URL provided"))
-		return
-	}
-	netUrl, err := nurl.Parse(url)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Invalid URL provided: %q, %s", url, err)))
-		return
-	}
-	// if we made it here we are going to return JSON
+type singleRequest struct {
+	URL         *nurl.URL `json:"url"`
+	PrettyPrint bool      `json:"pp,omitempty"`
+}
+
+func (h *scrapeServer) singleHandler() http.HandlerFunc {
+	return Chain(h.extract, ParseSingle())
+}
+
+func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
+	req, _ := r.Context().Value(payloadKey{}).(*singleRequest)
 	w.Header().Set("Content-Type", "application/json")
-	page, err := h.urlFetcher.Fetch(netUrl)
+	page, err := h.urlFetcher.Fetch(req.URL)
 	if err != nil {
 		if errors.Is(err, fetch.HttpError{}) {
 			switch err.(fetch.HttpError).StatusCode {
@@ -140,8 +159,8 @@ func (h *scrapeServer) singleHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	encoder := json.NewEncoder(w)
-	pp := r.FormValue("pp") == "1"
-	if pp {
+	encoder.SetEscapeHTML(false)
+	if req.PrettyPrint {
 		encoder.SetIndent("", "  ")
 	}
 	encoder.Encode(page)

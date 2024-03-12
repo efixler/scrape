@@ -7,14 +7,14 @@ import (
 	"github.com/efixler/envflags"
 )
 
-type ProxyConfig struct {
+type ProxyFlags struct {
 	enabled  *envflags.Value[bool]
 	proxyURL *envflags.Value[string]
 	username *envflags.Value[string]
 	password *envflags.Value[string]
 }
 
-func (p *ProxyConfig) addEnabledFlag(proxyName string, flags *flag.FlagSet) {
+func (p *ProxyFlags) addEnabledFlag(proxyName string, flags *flag.FlagSet) {
 	// --use-xxx-proxy
 	var argName, envName string
 	if proxyName == "" {
@@ -35,7 +35,7 @@ func (p *ProxyConfig) addEnabledFlag(proxyName string, flags *flag.FlagSet) {
 // one for general usage and another for headless scraping. The general proxy should pass an
 // empty proxy name. Other proxies should pass a unique name, which will be used in constructing
 // the environment variable and command line argument names.
-func AddProxyConfigFlags(proxyName string, withEnabledFlag bool, flags *flag.FlagSet) *ProxyConfig {
+func AddProxyFlags(proxyName string, withEnabledFlag bool, flags *flag.FlagSet) *ProxyFlags {
 	var baseEnv, baseArgName string
 	helpPrefix := "Default"
 	if proxyName != "" {
@@ -44,7 +44,7 @@ func AddProxyConfigFlags(proxyName string, withEnabledFlag bool, flags *flag.Fla
 		helpPrefix = strings.ToUpper(string(proxyName[0])) + strings.ToLower(proxyName[1:])
 	}
 
-	proxy := &ProxyConfig{
+	proxy := &ProxyFlags{
 		proxyURL: envflags.NewString(baseEnv+"PROXY", ""),
 		username: envflags.NewString(baseEnv+"PROXY_USERNAME", ""),
 		password: envflags.NewString(baseEnv+"PROXY_PASSWORD", ""),
@@ -60,21 +60,21 @@ func AddProxyConfigFlags(proxyName string, withEnabledFlag bool, flags *flag.Fla
 	return proxy
 }
 
-func (p *ProxyConfig) Enabled() bool {
+func (p *ProxyFlags) Enabled() bool {
 	if p.enabled == nil {
 		return false
 	}
 	return p.enabled.Get()
 }
 
-func (p *ProxyConfig) ProxyURL() string {
+func (p *ProxyFlags) ProxyURL() string {
 	return p.proxyURL.Get()
 }
 
-func (p *ProxyConfig) Username() string {
+func (p *ProxyFlags) Username() string {
 	return p.username.Get()
 }
 
-func (p *ProxyConfig) Password() string {
+func (p *ProxyFlags) Password() string {
 	return p.password.Get()
 }

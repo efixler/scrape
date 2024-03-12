@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	nurl "net/url"
 )
 
 type middleware func(http.HandlerFunc) http.HandlerFunc
@@ -28,6 +30,34 @@ func MaxBytes(n int64) middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			r.Body = http.MaxBytesReader(w, r.Body, n)
+			next(w, r)
+		}
+	}
+}
+
+// //cType := strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0])
+func ParseSingle() middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			url := r.FormValue("url")
+			if url == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("No URL provided"))
+				return
+			}
+			netUrl, err := nurl.ParseRequestURI(url)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(fmt.Sprintf("Invalid URL provided: %q, %s", url, err)))
+				return
+			}
+			slog.Debug("ParseSingle", "url", netUrl, "params", netUrl.Query(), "encoding", r.Header.Get("Content-Type"))
+			pp := r.FormValue("pp") == "1"
+			v := &singleRequest{
+				URL:         netUrl,
+				PrettyPrint: pp,
+			}
+			r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, v))
 			next(w, r)
 		}
 	}
