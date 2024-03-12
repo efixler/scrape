@@ -11,7 +11,7 @@ import (
 
 type middleware func(http.HandlerFunc) http.HandlerFunc
 
-type batchRequestKey struct{}
+type payloadKey struct{}
 
 func Chain(h http.HandlerFunc, m ...middleware) http.HandlerFunc {
 	if len(m) == 0 {
@@ -43,7 +43,7 @@ func DecodeJSONBody[T any]() middleware {
 			if !assertDecode(err, w) {
 				return
 			}
-			r = r.WithContext(context.WithValue(r.Context(), batchRequestKey{}, v))
+			r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, v))
 			next(w, r)
 		}
 	}
@@ -53,9 +53,10 @@ func assertDecode(err error, w http.ResponseWriter) bool {
 	if err != nil {
 		var syntaxErr *json.SyntaxError
 		var unmarshalErr *json.UnmarshalTypeError
+		var maxBytesError *http.MaxBytesError
 		switch {
-		case errors.Is(err, &http.MaxBytesError{}):
-			http.Error(w, "Invalid request: too big!", http.StatusRequestEntityTooLarge)
+		case errors.As(err, &maxBytesError):
+			http.Error(w, fmt.Sprintf("Invalid request %s", maxBytesError), http.StatusRequestEntityTooLarge)
 			return false
 		case errors.Is(err, io.ErrUnexpectedEOF):
 			http.Error(w, "Invalid JSON: unexpected end of JSON input", http.StatusBadRequest)

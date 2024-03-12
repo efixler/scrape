@@ -80,7 +80,7 @@ func TestDecodeJSONBody(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		m := DecodeJSONBody[payload]()
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			pp, ok := r.Context().Value(batchRequestKey{}).(*payload)
+			pp, ok := r.Context().Value(payloadKey{}).(*payload)
 			if !ok {
 				t.Fatalf("[%s] DecodeJSONBody, expected payload, got %v", tt.name, pp)
 			}
@@ -89,5 +89,19 @@ func TestDecodeJSONBody(t *testing.T) {
 		if response.StatusCode != tt.expectStatus {
 			t.Fatalf("[%s] DecodeJSONBody, expected status %d, got %d", tt.name, tt.expectStatus, response.StatusCode)
 		}
+	}
+}
+
+func Test413OnDecodeJSONBody(t *testing.T) {
+	t.Parallel()
+	type payload struct {
+		Urls []string `json:"urls"`
+	}
+	req := httptest.NewRequest("POST", "http://example.com", strings.NewReader(`{"urls":["http://example.com"]}`))
+	w := httptest.NewRecorder()
+	m := Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}), MaxBytes(1), DecodeJSONBody[payload]())
+	m(w, req)
+	if w.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("expected status %d, got %d", http.StatusRequestEntityTooLarge, w.Code)
 	}
 }

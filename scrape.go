@@ -18,13 +18,10 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
-var (
-	wg sync.WaitGroup
-)
-
 type StorageBackedFetcher struct {
 	Fetcher fetch.URLFetcher
 	Storage store.URLDataStore
+	saving  *sync.WaitGroup
 	closed  bool
 }
 
@@ -43,6 +40,7 @@ func NewStorageBackedFetcher(
 	return &StorageBackedFetcher{
 		Fetcher: fetcher,
 		Storage: storage,
+		saving:  new(sync.WaitGroup),
 	}, nil
 }
 
@@ -64,7 +62,7 @@ func (f StorageBackedFetcher) Open(ctx context.Context) error {
 	return nil
 }
 
-func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+func (f *StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	// Treat this as the entry point for the url and apply cleaning here.
 	originalURL := url.String()
 	url = resource.CleanURL(url)
@@ -80,9 +78,9 @@ func (f StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		if err != nil {
 			return res, err
 		}
-		wg.Add(1)
+		f.saving.Add(1)
 		go func() {
-			defer wg.Done()
+			defer f.saving.Done()
 			key, err := f.Storage.Save(res)
 			if err != nil {
 				slog.Error("Error storing %s: %s\n", "url", url, "key", key, "error", err)
@@ -128,6 +126,7 @@ func (f *StorageBackedFetcher) Close() error {
 	defer func() {
 		f.closed = true
 	}()
+	f.saving.Wait()
 	f.Fetcher.Close()
 	f.Storage.Close()
 	return nil
