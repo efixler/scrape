@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	nurl "net/url"
+	"strings"
 )
 
 type middleware func(http.HandlerFunc) http.HandlerFunc
@@ -29,34 +30,58 @@ func Chain(h http.HandlerFunc, m ...middleware) http.HandlerFunc {
 func MaxBytes(n int64) middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			r.Body = http.MaxBytesReader(w, r.Body, n)
+			if r.Method != http.MethodGet {
+				r.Body = http.MaxBytesReader(w, r.Body, n)
+			}
 			next(w, r)
 		}
 	}
 }
 
-// //cType := strings.TrimSpace(strings.Split(r.Header.Get("Content-Type"), ";")[0])
+// Anything that's not a GET and not a form is assumed to be JSON
+// This is imperfect but it allows for requests that don't send a content-type
+// header or inadvertently use text/plain
+func isJSON(r *http.Request) bool {
+	if r.Method == http.MethodGet {
+		return false
+	}
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+		return false
+	}
+	return true
+}
+
 func ParseSingle() middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			url := r.FormValue("url")
-			if url == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("No URL provided"))
-				return
-			}
-			netUrl, err := nurl.ParseRequestURI(url)
-			if err != nil {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte(fmt.Sprintf("Invalid URL provided: %q, %s", url, err)))
-				return
-			}
-			slog.Debug("ParseSingle", "url", netUrl, "params", netUrl.Query(), "encoding", r.Header.Get("Content-Type"))
 			pp := r.FormValue("pp") == "1"
-			v := &singleRequest{
-				URL:         netUrl,
-				PrettyPrint: pp,
+			v := new(singleURLRequest)
+			if isJSON(r) {
+				decoder := json.NewDecoder(r.Body)
+				decoder.DisallowUnknownFields()
+				err := decoder.Decode(v)
+				if !assertDecode(err, w) {
+					return
+				}
+			} else {
+				url := r.FormValue("url")
+				if url == "" {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte("No URL provided"))
+					return
+				}
+				netUrl, err := nurl.Parse(url)
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte(fmt.Sprintf("Invalid URL provided: %q, %s", url, err)))
+					return
+				}
+				v.URL = netUrl
 			}
+			if pp {
+				v.PrettyPrint = true
+			}
+			slog.Debug("ParseSingle", "url", v.URL, "pp", v.PrettyPrint, "encoding", r.Header.Get("Content-Type"))
 			r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, v))
 			next(w, r)
 		}

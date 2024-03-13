@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"log/slog"
 	nurl "net/url"
 )
 
@@ -23,6 +24,8 @@ func CleanURL(url *nurl.URL) *nurl.URL {
 	for _, p := range illegalParams {
 		v.Del(p)
 	}
+	slog.Debug("CleanURL", "url", url.String(), "rawQuery", url.RawQuery, "to", v.Encode())
 	url.RawQuery = v.Encode()
+	url.Fragment = ""
 	return url
 }

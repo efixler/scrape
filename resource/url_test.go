@@ -20,6 +20,7 @@ func TestCleanURL(t *testing.T) {
 		{"https://example.com?utm_source=foo&utm_medium=bar&utm_campaign=baz&utm_term=quux&utm_content=xyzzy", "https://example.com"},
 		{"https://example.com?utm_source=foo&utm_medium=bar&utm_campaign=baz&utm_term=quux&utm_content=xyzzy&foo=bar", "https://example.com?foo=bar"},
 		{"https://example.com?utm_source=foo&utm_medium=bar&utm_campaign=baz&utm_term=quux&utm_content=xyzzy&foo=bar&baz=quux", "https://example.com?baz=quux&foo=bar"},
+		{"https://example.com?utm_source=foo&utm_medium=bar&utm_campaign=baz&utm_term=quux&utm_content=xyzzy&foo=bar&baz=quux#fragment", "https://example.com?baz=quux&foo=bar"},
 	}
 	for _, test := range tests {
 		url, _ := nurl.Parse(test.url)

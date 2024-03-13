@@ -1,13 +1,11 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/http/pprof"
@@ -35,10 +33,13 @@ func InitMux(
 	if err != nil {
 		return nil, err
 	}
-	mux.HandleFunc("GET /extract", scrapeServer.singleHandler())
-	mux.HandleFunc("POST /extract", scrapeServer.singleHandler())
+	h := scrapeServer.singleHandler()
+	mux.HandleFunc("GET /extract", h)
+	mux.HandleFunc("POST /extract", h)
 	mux.HandleFunc("POST /batch", scrapeServer.batchHandler())
-	mux.HandleFunc("/feed", scrapeServer.feedHandler)
+	h = scrapeServer.feedHandler()
+	mux.HandleFunc("GET /feed", h)
+	mux.HandleFunc("POST /feed", h)
 	obs, _ := scrapeServer.Storage().(store.Observable)
 	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", obs))
 	return mux, nil
@@ -52,10 +53,6 @@ func EnableProfiling(mux *http.ServeMux) {
 var home []byte
 
 func handleHome(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(home)
@@ -129,21 +126,19 @@ func (h *scrapeServer) Storage() store.URLDataStore {
 	if !ok {
 		return nil
 	}
-
 	return sbf.Storage
 }
 
-type singleRequest struct {
-	URL         *nurl.URL `json:"url"`
-	PrettyPrint bool      `json:"pp,omitempty"`
-}
-
 func (h *scrapeServer) singleHandler() http.HandlerFunc {
-	return Chain(h.extract, ParseSingle())
+	return Chain(h.extract, MaxBytes(4096), ParseSingle())
 }
 
 func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
-	req, _ := r.Context().Value(payloadKey{}).(*singleRequest)
+	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+	if !ok {
+		http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	page, err := h.urlFetcher.Fetch(req.URL)
 	if err != nil {
@@ -164,10 +159,6 @@ func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
 		encoder.SetIndent("", "  ")
 	}
 	encoder.Encode(page)
-}
-
-type BatchRequest struct {
-	Urls []string `json:"urls"`
 }
 
 func (h *scrapeServer) batchHandler() http.HandlerFunc {
@@ -231,22 +222,17 @@ func (h *scrapeServer) synchronousBatch(urls []string, encoder *jstream.ArrayEnc
 	}
 }
 
-func (h *scrapeServer) feedHandler(w http.ResponseWriter, r *http.Request) {
-	url := r.FormValue("url")
-	if url == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("No URL provided"))
-		return
-	}
-	netUrl, err := nurl.Parse(url)
-	//TODO: Use the FetchHTTPError to pass status code and message here
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Invalid URL provided: %q, %s", url, err)))
-		return
-	}
+func (h *scrapeServer) feedHandler() http.HandlerFunc {
+	return Chain(h.feed, MaxBytes(4096), ParseSingle())
+}
 
-	resource, err := h.feedFetcher.Fetch(netUrl)
+func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
+	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+	if !ok {
+		http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
+		return
+	}
+	resource, err := h.feedFetcher.Fetch(req.URL)
 	if err != nil {
 		var httpErr fetch.HttpError
 		if errors.As(err, &httpErr) {
@@ -254,33 +240,14 @@ func (h *scrapeServer) feedHandler(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(httpErr.Message))
 		} else {
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			w.Write([]byte(fmt.Sprintf("Error fetching %s: %s", url, err)))
+			w.Write([]byte(fmt.Sprintf("Error fetching %s: %s", req.URL, err)))
 		}
 		return
 	}
 	links := resource.ItemLinks()
-
-	batchReq := mutateFeedRequestForBatch(r, links)
-	h.batch(w, batchReq)
-}
-
-func mutateFeedRequestForBatch(original *http.Request, urls []string) *http.Request {
-	r := new(http.Request)
-	*r = *original
-	//clear the form in the new request
-	r.Form = make(nurl.Values)
-	//only pass on the pretty print parameter if it's on
-	if original.FormValue("pp") == "1" {
-		r.Form.Set("pp", "1")
-	}
-	r.Method = http.MethodPost
-	var buffer = &bytes.Buffer{}
-	encoder := json.NewEncoder(buffer)
-	encoder.Encode(BatchRequest{Urls: urls})
-	r.Body = io.NopCloser(buffer)
-	r.ContentLength = int64(buffer.Len())
-	r.Header.Set("Content-Type", "application/json")
-	return r
+	v := BatchRequest{Urls: links}
+	r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, &v))
+	h.batch(w, r)
 }
 
 func initPProf(mux *http.ServeMux) {

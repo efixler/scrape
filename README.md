@@ -257,7 +257,7 @@ there's an error fetching or parsing the requested content.
 In all other cases, requests should return a 200 status code, and any errors received when fetching a resource
 will be included in the returned JSON payload.
 
-#### feed [GET]
+#### feed [GET, POST]
 
 Feed parses an RSS or Atom feed and returns the parsed results for each of the item links in the feed.
 
@@ -283,7 +283,7 @@ These params work for any endpoint
 
 ### Healthchecks 
 
-`scrape` currently supports two healthchecks
+`scrape` has two healthchecks:
 
 #### /.well-known/health
 
@@ -376,7 +376,6 @@ The `docker-run` make target will mount a local folder called `docker/data` and 
 - Outbound request pacing
 - Expose outbound request options (headers, timeouts, etc)
 - Headless fallback for pages that require Javascript
-- Update ServeMux usage for 1.22
 - Explore performance optimizations, e.g.
   - Batch request parallelization
   - zstd compression for stored resources
