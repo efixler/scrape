@@ -127,7 +127,7 @@ func TestParseSingleGet(t *testing.T) {
 	for _, tt := range tests {
 		req := httptest.NewRequest("GET", "http://example.com?url="+tt.url, nil)
 		recorder := httptest.NewRecorder()
-		m := ParseSingle()
+		m := parseSinglePayload()
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			pp, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
 			if !ok {
@@ -165,7 +165,7 @@ func TestParseSingleJSON(t *testing.T) {
 	for _, tt := range tests {
 		req := httptest.NewRequest("POST", "http://example.com", strings.NewReader(tt.body))
 		recorder := httptest.NewRecorder()
-		m := ParseSingle()
+		m := parseSinglePayload()
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			pp, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
 			if !ok {
@@ -201,7 +201,7 @@ func TestParseSinglePostForm(t *testing.T) {
 		req := httptest.NewRequest("POST", "http://example.com", strings.NewReader(tt.body))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
-		m := ParseSingle()
+		m := parseSinglePayload()
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			pp, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
 			if !ok {

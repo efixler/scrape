@@ -16,6 +16,8 @@ type middleware func(http.HandlerFunc) http.HandlerFunc
 
 type payloadKey struct{}
 
+// type fetcherKey struct{}
+
 func Chain(h http.HandlerFunc, m ...middleware) http.HandlerFunc {
 	if len(m) == 0 {
 		return h
@@ -38,6 +40,15 @@ func MaxBytes(n int64) middleware {
 	}
 }
 
+// func fetcher(f fetch.URLFetcher) middleware {
+// 	return func(next http.HandlerFunc) http.HandlerFunc {
+// 		return func(w http.ResponseWriter, r *http.Request) {
+// 			r = r.WithContext(context.WithValue(r.Context(), fetcherKey{}, f))
+// 			next(w, r)
+// 		}
+// 	}
+// }
+
 // Anything that's not a GET and not a form is assumed to be JSON
 // This is imperfect but it allows for requests that don't send a content-type
 // header or inadvertently use text/plain
@@ -51,7 +62,7 @@ func isJSON(r *http.Request) bool {
 	return true
 }
 
-func ParseSingle() middleware {
+func parseSinglePayload() middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			pp := r.FormValue("pp") == "1"

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	nurl "net/url"
 	"strconv"
@@ -17,55 +18,6 @@ import (
 )
 
 var storeFactory = sqlite.Factory(sqlite.InMemoryDB())
-
-// func TestMutateFeedRequestForBatch(t *testing.T) {
-// 	type data struct {
-// 		url         string
-// 		expectPP    string
-// 		expectOther map[string]string
-// 	}
-
-// 	tests := []data{
-// 		{"https://foo.com?pp=1&url=http://foo.bar&crunk=X", "1", map[string]string{"crunk": ""}},
-// 	}
-
-// 	for _, test := range tests {
-// 		var request = httptest.NewRequest("GET", test.url, nil)
-// 		var urls = []string{
-// 			"https://arstechnica.com/?p=1993801",
-// 			"https://arstechnica.com/?p=1993618",
-// 			"https://arstechnica.com/?p=1993507",
-// 			"https://arstechnica.com/?p=1993162",
-// 		}
-// 		mutated := mutateFeedRequestForBatch(request, urls)
-// 		if mutated.Header.Get("Content-Type") != "application/json" {
-// 			t.Errorf("Expected Content-Type 'application/json', got '%s'", mutated.Header.Get("Content-Type"))
-// 		}
-// 		decoder := json.NewDecoder(mutated.Body)
-// 		var batchRequest BatchRequest
-// 		err := decoder.Decode(&batchRequest)
-// 		if err != nil {
-// 			t.Errorf("Error decoding JSON: %s", err)
-// 		}
-// 		if len(batchRequest.Urls) != len(urls) {
-// 			t.Errorf("Expected %d urls, got %d", len(urls), len(batchRequest.Urls))
-// 		}
-// 		if !slices.Equal(batchRequest.Urls, urls) {
-// 			t.Errorf("Expected %v, got %v", urls, batchRequest.Urls)
-// 		}
-// 		if mutated.FormValue("pp") != test.expectPP {
-// 			t.Errorf("Expected PrettyPrint %v, got %v", request.FormValue("pp"), mutated.FormValue("pp"))
-// 		}
-// 		if mutated.FormValue("url") != "" {
-// 			t.Errorf("Expected url to be empty, got %v", mutated.FormValue("url"))
-// 		}
-// 		for k, v := range test.expectOther {
-// 			if mutated.FormValue(k) != v {
-// 				t.Errorf("Expected %s=%s, got %s=%s", k, v, k, mutated.FormValue(k))
-// 			}
-// 		}
-// 	}
-// }
 
 type mockFeedFetcher struct{}
 
@@ -225,6 +177,82 @@ func TestExtractErrors(t *testing.T) {
 		}
 		if resp.StatusCode != test.expectedStatus {
 			t.Errorf("Expected %d status code for test %d, got %d", test.expectedStatus, i, resp.StatusCode)
+		}
+	}
+}
+
+func TestHeadless503WhenUnavailable(t *testing.T) {
+	ss := &scrapeServer{headlessFetcher: nil}
+	handler := ss.singleHeadlessHandler()
+	req := httptest.NewRequest("GET", "http://foo.bar?url=http://example.com", nil)
+	w := httptest.NewRecorder()
+	handler(w, req)
+	resp := w.Result()
+	if resp.StatusCode != 503 {
+		t.Errorf("Expected 503, got %d", resp.StatusCode)
+	}
+}
+
+type mockUrlFetcher struct{}
+
+func (m *mockUrlFetcher) Open(ctx context.Context) error { return nil }
+func (m *mockUrlFetcher) Close() error                   { return nil }
+func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+	r := &resource.WebPage{
+		OriginalURL:  url.String(),
+		RequestedURL: url,
+		StatusCode:   200,
+		ContentText:  "Hello, world!",
+	}
+
+	return r, nil
+}
+
+func TestSingleHandler(t *testing.T) {
+	ss := &scrapeServer{
+		urlFetcher:      &mockUrlFetcher{},
+		headlessFetcher: &mockUrlFetcher{},
+	}
+	tests := []struct {
+		name    string
+		url     string
+		handler http.HandlerFunc
+	}{
+		{
+			name:    "client",
+			url:     "http://foo.bar",
+			handler: ss.singleHandler(),
+		},
+		{
+			name:    "headless",
+			url:     "http://example.com",
+			handler: ss.singleHeadlessHandler(),
+		},
+	}
+
+	for _, test := range tests {
+		req := httptest.NewRequest("GET", "http://foo.bar?url="+test.url, nil)
+		w := httptest.NewRecorder()
+		test.handler(w, req)
+		resp := w.Result()
+		if resp.StatusCode != 200 {
+			t.Errorf("[%s] Expected 200, got %d", test.name, resp.StatusCode)
+		}
+		decoder := json.NewDecoder(resp.Body)
+		decoder.DisallowUnknownFields()
+		var r resource.WebPage
+		err := decoder.Decode(&r)
+		if err != nil {
+			t.Fatalf("[%s] Error decoding JSON: %s", test.name, err)
+		}
+		if r.OriginalURL != test.url {
+			t.Errorf("[%s] Expected URL %s, got %s", test.name, test.url, r.OriginalURL)
+		}
+		if r.StatusCode != 200 {
+			t.Errorf("[%s] Expected status code 200, got %d", test.name, r.StatusCode)
+		}
+		if r.ContentText != "Hello, world!" {
+			t.Errorf("[%s] Expected 'Hello, world!', got '%s'", test.name, r.ContentText)
 		}
 	}
 }

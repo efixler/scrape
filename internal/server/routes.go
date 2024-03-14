@@ -36,6 +36,9 @@ func InitMux(
 	h := scrapeServer.singleHandler()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
+	h = scrapeServer.singleHeadlessHandler()
+	mux.HandleFunc("GET /extract/headless", h)
+	mux.HandleFunc("POST /extract/headless", h)
 	mux.HandleFunc("POST /batch", scrapeServer.batchHandler())
 	h = scrapeServer.feedHandler()
 	mux.HandleFunc("GET /feed", h)
@@ -56,6 +59,15 @@ func handleHome(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(home)
+}
+
+// The server struct is stateless but uses the same fetchers across all requests,
+// to optimize client and database connections. There's a general fetcher, and
+// special ones for headless scrapes and RSS/Atom feeds.
+type scrapeServer struct {
+	urlFetcher      fetch.URLFetcher
+	headlessFetcher fetch.URLFetcher
+	feedFetcher     fetch.FeedFetcher
 }
 
 // When the context passed here is cancelled, the associated fetcher will
@@ -90,30 +102,18 @@ func NewScrapeServer(ctx context.Context, sf store.Factory, hrt http.RoundTrippe
 	return handler, nil
 }
 
-func (s *scrapeServer) makeHeadlessFetcher(ctx context.Context, ht http.RoundTripper) error {
+func (s *scrapeServer) makeHeadlessFetcher(_ context.Context, ht http.RoundTripper) error {
 	hf, err := trafilatura.New(trafilatura.WithTransport(ht))
 	if err != nil {
 		return err
 	}
-	if sbf, ok := s.urlFetcher.(*scrape.StorageBackedFetcher); ok {
-		s.headlessFetcher, err = sbf.WithAlternateURLFetcher(ctx, hf)
-	} else {
-		s.headlessFetcher = hf
-	}
+	s.headlessFetcher = hf
+	// if sbf, ok := s.urlFetcher.(*scrape.StorageBackedFetcher); ok {
+	// 	s.headlessFetcher, err = sbf.WithAlternateURLFetcher(ctx, hf)
+	// } else {
+	// 	s.headlessFetcher = hf
+	// }
 	return err
-}
-
-// The server struct is stateless but uses the same fetcher pair, across all
-// requests. These both have some initializaton with and they are also both
-// concurrency safe, so if we want to paralellize batch requests we can still
-// use this same singelton struct across all requests.
-// TODO: The two fetchers should share the same httpClient for their outbound
-// requests. Since httpClients pool and resuse connections this would make them
-// a little more efficient.
-type scrapeServer struct {
-	urlFetcher      fetch.URLFetcher
-	headlessFetcher fetch.URLFetcher
-	feedFetcher     fetch.FeedFetcher
 }
 
 // Convenience method to get the underlying storage from the fetcher
@@ -130,7 +130,56 @@ func (h *scrapeServer) Storage() store.URLDataStore {
 }
 
 func (h *scrapeServer) singleHandler() http.HandlerFunc {
-	return Chain(h.extract, MaxBytes(4096), ParseSingle())
+	return Chain(h.extract, MaxBytes(4096), parseSinglePayload())
+}
+
+func (h *scrapeServer) singleHeadlessHandler() http.HandlerFunc {
+	return Chain(
+		extractWithFetcher(h.headlessFetcher),
+		MaxBytes(4096),
+		parseSinglePayload(),
+	)
+}
+
+// The nested handler here is the same as the one below, just enclosed around a fetcher.
+// This is here temporarily while experimenting with how to handle headless-variant requests.
+// The enclosed approach is tighter than using the context to carry the fetcher, but this won't
+// work for feed requests right now because of how they call h.batch at the end (which is malleable).
+// Right now headless-variant requests have their own endpoint; if we we to using a payload param
+// to choose headless, that'll drive moving a context-based solution for fetcher stashing.
+func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
+	if fetcher == nil {
+		return func(w http.ResponseWriter, r *http.Request) {
+			http.Error(w, http.StatusText(http.StatusServiceUnavailable), http.StatusServiceUnavailable)
+		}
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+		if !ok {
+			http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		page, err := fetcher.Fetch(req.URL)
+		if err != nil {
+			if errors.Is(err, fetch.HttpError{}) {
+				switch err.(fetch.HttpError).StatusCode {
+				case http.StatusUnsupportedMediaType:
+					fallthrough
+				case http.StatusGatewayTimeout:
+					w.WriteHeader(err.(fetch.HttpError).StatusCode)
+				}
+			} else {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+			}
+		}
+		encoder := json.NewEncoder(w)
+		encoder.SetEscapeHTML(false)
+		if req.PrettyPrint {
+			encoder.SetIndent("", "  ")
+		}
+		encoder.Encode(page)
+	}
 }
 
 func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
@@ -140,6 +189,8 @@ func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
+	// fetcher, _ := r.Context().Value(fetcherKey{}).(fetch.URLFetcher)
+
 	page, err := h.urlFetcher.Fetch(req.URL)
 	if err != nil {
 		if errors.Is(err, fetch.HttpError{}) {
@@ -223,7 +274,7 @@ func (h *scrapeServer) synchronousBatch(urls []string, encoder *jstream.ArrayEnc
 }
 
 func (h *scrapeServer) feedHandler() http.HandlerFunc {
-	return Chain(h.feed, MaxBytes(4096), ParseSingle())
+	return Chain(h.feed, MaxBytes(4096), parseSinglePayload())
 }
 
 func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
