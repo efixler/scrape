@@ -39,6 +39,8 @@ var mdata = `{
 	"title": "About Martin Fowler",
 	"author": "Martin Fowler",
 	"url": "https://martinfowler.com/aboutMe.html",
+	"requested_url": "https://martinfowler.com/aboutMe.html?bar=baz",
+	"original_url": "https://martinfowler.com/aboutMe.html#foo?bar=baz",
 	"hostname": "martinfowler.com",
 	"description": "Background to Martin Fowler and martinfowler.com",
 	"sitename": "martinfowler.com",
@@ -61,11 +63,6 @@ func getWebPage(t *testing.T) *resource.WebPage {
 	if err != nil {
 		t.Errorf("Error unmarshaling metadata: %v", err)
 	}
-	url, err := nurl.Parse("https://martinfowler.com/aboutMe.html#foo")
-	if err != nil {
-		t.Errorf("Error parsing url: %v", err)
-	}
-	meta.RequestedURL = url
 	return &meta
 }
 
@@ -77,16 +74,14 @@ func TestStore(t *testing.T) {
 
 	stored := *meta // this is a copy
 	url := meta.RequestedURL
-	_, err := s.Save(&stored)
+	canonicalId, err := s.Save(&stored)
 	if err != nil {
 		t.Fatalf("Error storing data: %v", err)
 	}
 	if stored.ContentText != cText {
 		t.Errorf("ContentText changed from %q to %q", cText, stored.ContentText)
 	}
-	//storedUrl := meta.URL()
 	fetched, err := s.Fetch(url)
-	// fetched, err := s.Fetch(storedUrl)
 	if err != nil {
 		t.Fatalf("Error fetching data: %v", err)
 	}
@@ -104,6 +99,9 @@ func TestStore(t *testing.T) {
 	}
 	if stored.RequestedURL.String() != fetched.RequestedURL.String() {
 		t.Errorf("Url changed from %q to %q", stored.RequestedURL.String(), fetched.RequestedURL.String())
+	}
+	if fetched.OriginalURL != "" {
+		t.Errorf("OriginalURL should be empty, got %q", stored.OriginalURL)
 	}
 	if stored.Title != fetched.Title {
 		t.Errorf("Title changed from %q to %q", stored.Title, fetched.Title)
@@ -147,6 +145,12 @@ func TestStore(t *testing.T) {
 	if stored.PageType != fetched.PageType {
 		t.Errorf("PageType changed from %q to %q", stored.PageType, fetched.PageType)
 	}
+
+	// check that the expected lookup between requested and canonical URLs is correct
+	if lid, err := s.lookupId(store.Key(url)); lid != canonicalId {
+		t.Errorf("Expected lookup id %d, got %d (err: %s)", canonicalId, lid, err)
+	}
+
 	// NB: Delete only works for canonical URLs
 	ok, err := s.Delete(url)
 	if err != nil {
@@ -229,5 +233,22 @@ func TestClear(t *testing.T) {
 		if count != 0 {
 			t.Errorf("Expected no rows, got %d", count)
 		}
+	}
+}
+
+func TestDelete(t *testing.T) {
+	s := db(t)
+	defer s.Close()
+	res := getWebPage(t)
+	_, err := s.Save(res)
+	if err != nil {
+		t.Fatalf("Error storing data: %v", err)
+	}
+	ok, err := s.Delete(res.URL())
+	if err != nil {
+		t.Errorf("Error deleting record: %v", err)
+	}
+	if !ok {
+		t.Errorf("Delete returned false, didn't delete record (url: %s)", res.URL())
 	}
 }

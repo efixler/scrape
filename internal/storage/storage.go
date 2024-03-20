@@ -48,6 +48,10 @@ func New(driver database.DriverName) *SQLStorage {
 }
 
 // Save the data for a URL. Will overwrite data where the URL is the same.
+// Save() will use the canonical url (.URL()) of the passed resource both for the key
+// and for the url field in the stored data. It will also store an id map entry
+// for the requested URL, back to the canonical URL. This mapping will also be stored in
+// cases where the two urls are the same.
 // Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
 func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
@@ -178,7 +182,7 @@ func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 }
 
 // Will search url_ids to see if there's a parent entry for this url.
-func (s SQLStorage) lookupId(requested_id uint64) (uint64, error) {
+func (s *SQLStorage) lookupId(requested_id uint64) (uint64, error) {
 	stmt, err := s.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qLookupId)
 	})
