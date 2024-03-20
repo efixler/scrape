@@ -56,7 +56,7 @@ func New(driver database.DriverName) *SQLStorage {
 // use for anything, so this interface may change)
 func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 	uptr.AssertTimes()
-	key := store.Key(uptr.URL())
+	key := Key(uptr.URL())
 	metadata, err := store.SerializeMetadata(uptr)
 	if err != nil {
 		return 0, err
@@ -88,8 +88,6 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 	if (rows == 0) || (rows > 2) {
 		return 0, fmt.Errorf("expected 1 row affected, got %d", rows)
 	}
-	// TODO: Test case
-	// TODO: Clarify intent when canonical = requested
 	err = s.storeIdMap(uptr.RequestURL(), key)
 	if err != nil {
 		return 0, err
@@ -104,7 +102,7 @@ func (s SQLStorage) storeIdMap(requested *nurl.URL, canonicalID uint64) error {
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(s.Ctx, store.Key(requested), canonicalID)
+	_, err = stmt.ExecContext(s.Ctx, Key(requested), canonicalID)
 	if err != nil {
 		return err
 	}
@@ -119,7 +117,7 @@ func (s SQLStorage) storeIdMap(requested *nurl.URL, canonicalID uint64) error {
 //
 // In that case, the canonical version of the content will be returned, if we have it.
 func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
-	requested_key := store.Key(url)
+	requested_key := Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
 	case store.ErrMappingNotFound:
@@ -210,7 +208,7 @@ func (s *SQLStorage) lookupId(requested_id uint64) (uint64, error) {
 // TODO: Not accounting for lookup keys
 // NB: TTL management is handled by maintenance routines
 func (s *SQLStorage) Delete(url *nurl.URL) (bool, error) {
-	key := store.Key(url)
+	key := Key(url)
 	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)
 	})

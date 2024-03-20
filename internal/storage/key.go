@@ -1,5 +1,5 @@
 // Key generation and related methods relevant to any storage backend.
-package store
+package storage
 
 import (
 	"fmt"

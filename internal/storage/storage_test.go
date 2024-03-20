@@ -147,7 +147,7 @@ func TestStore(t *testing.T) {
 	}
 
 	// check that the expected lookup between requested and canonical URLs is correct
-	if lid, err := s.lookupId(store.Key(url)); lid != canonicalId {
+	if lid, err := s.lookupId(Key(url)); lid != canonicalId {
 		t.Errorf("Expected lookup id %d, got %d (err: %s)", canonicalId, lid, err)
 	}
 
@@ -208,6 +208,25 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)
+	}
+}
+
+// We store self-referential lookups. This test confirms that they are stored.
+func TestCanonicalSelfLookupExists(t *testing.T) {
+	s := db(t)
+	defer s.Close()
+	url, _ := nurl.Parse("https://martinfowler.com/aboutMe.html")
+	key := Key(url)
+	err := s.storeIdMap(url, key) // stores a self-referential lookup
+	if err != nil {
+		t.Fatalf("Error storing id lookup: %v", err)
+	}
+	id, err := s.lookupId(key)
+	if err != nil {
+		t.Fatalf("Error looking up id: %v", err)
+	}
+	if id != key {
+		t.Errorf("Expected id %d, got %d", key, id)
 	}
 }
 
