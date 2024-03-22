@@ -11,7 +11,7 @@ import (
 	"net/http/pprof"
 	nurl "net/url"
 
-	jstream "github.com/efixler/scrape/json"
+	"github.com/efixler/jsonarray"
 
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch"
@@ -230,7 +230,7 @@ func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
 	// if we made it here we are going to return JSON
 	w.Header().Set("Content-Type", "application/json")
 
-	encoder := jstream.NewArrayEncoder[*resource.WebPage](w, false)
+	encoder := jsonarray.NewEncoder[*resource.WebPage](w, false)
 	pp := r.FormValue("pp") == "1"
 	if pp {
 		encoder.SetIndent("", "  ")
@@ -254,7 +254,7 @@ func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *scrapeServer) synchronousBatch(urls []string, encoder *jstream.ArrayEncoder[*resource.WebPage]) {
+func (h *scrapeServer) synchronousBatch(urls []string, encoder *jsonarray.Encoder[*resource.WebPage]) {
 	var page *resource.WebPage
 	for _, url := range urls {
 		if parsedUrl, err := nurl.Parse(url); err != nil {

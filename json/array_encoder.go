@@ -20,7 +20,7 @@ var (
 	noindent = []string{"", ""}
 )
 
-type ArrayEncoder[T any] struct {
+type Encoder[T any] struct {
 	w        io.Writer
 	flusher  func()
 	prefixer func() error
@@ -29,8 +29,8 @@ type ArrayEncoder[T any] struct {
 	comma    []byte
 }
 
-func NewArrayEncoder[T any](w io.Writer, hotPipe bool) *ArrayEncoder[T] {
-	ae := &ArrayEncoder[T]{
+func NewArrayEncoder[T any](w io.Writer, hotPipe bool) *Encoder[T] {
+	ae := &Encoder[T]{
 		w:       w,
 		flusher: func() {},
 		indent:  noindent,
@@ -49,7 +49,7 @@ func NewArrayEncoder[T any](w io.Writer, hotPipe bool) *ArrayEncoder[T] {
 	return ae
 }
 
-func (ae *ArrayEncoder[T]) SetIndent(prefix, indent string) {
+func (ae *Encoder[T]) SetIndent(prefix, indent string) {
 	if prefix == "" && indent == "" {
 		ae.indent = noindent
 	} else {
@@ -59,7 +59,7 @@ func (ae *ArrayEncoder[T]) SetIndent(prefix, indent string) {
 	ae.comma = append(comma, []byte(ae.indent[1])...)
 }
 
-func (ae *ArrayEncoder[T]) hasIndent() bool {
+func (ae *Encoder[T]) hasIndent() bool {
 	if len(ae.indent) < 2 || ((ae.indent[0] == "") && (ae.indent[1] == "")) {
 		return false
 	}
@@ -76,7 +76,7 @@ func (ae *ArrayEncoder[T]) hasIndent() bool {
 // It is assumed that writing is being done in a single goroutine.
 // If there's a chance of concurrent writes, lock the function invocation
 // with a mutex.
-func (ae *ArrayEncoder[T]) Encode(v T) error {
+func (ae *Encoder[T]) Encode(v T) error {
 	err := ae.prefixer()
 	if err != nil {
 		return err
@@ -104,14 +104,14 @@ func (ae *ArrayEncoder[T]) Encode(v T) error {
 	return err
 }
 
-func (ae *ArrayEncoder[T]) Finish() error {
+func (ae *Encoder[T]) Finish() error {
 	var buf bytes.Buffer
 	buf.Write(end)
 	_, err := ae.w.Write(end)
 	return err
 }
 
-func (ae *ArrayEncoder[T]) Reset() {
+func (ae *Encoder[T]) Reset() {
 	ae.prefixer = func() error {
 		ae.prefixer = func() error {
 			_, err := ae.w.Write(ae.comma)
