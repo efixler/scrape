@@ -10,12 +10,12 @@ import (
 	"os"
 
 	"github.com/efixler/envflags"
+	"github.com/efixler/jsonarray"
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
-	jstream "github.com/efixler/scrape/json"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
 )
@@ -63,7 +63,7 @@ func main() {
 		flags.Usage()
 		os.Exit(1)
 	}
-	encoder := jstream.NewArrayEncoder[*resource.WebPage](os.Stdout, false)
+	encoder := jsonarray.NewEncoder[*resource.WebPage](os.Stdout, false)
 
 	encoder.SetIndent("", "  ")
 	rchan := fetcher.Batch(args, fetch.BatchOptions{})
