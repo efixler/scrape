@@ -15,7 +15,7 @@ type materialDB struct {
 	DBHandle[string]
 }
 
-func newDB(driver DriverName, dsnSource DatabaseOptions) *materialDB {
+func newDB(driver DriverName, dsnSource DataSourceOptions) *materialDB {
 	return &materialDB{
 		DBHandle: DBHandle[string]{
 			Driver:    driver,
@@ -33,6 +33,9 @@ func (o dbOptions) DSN() string {
 }
 func (o dbOptions) String() string {
 	return string(o)
+}
+func (o dbOptions) QueryTimeout() time.Duration {
+	return 10 * time.Second
 }
 
 var inMemoryDSN = dbOptions(":memory:")

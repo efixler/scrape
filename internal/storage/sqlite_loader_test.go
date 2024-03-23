@@ -19,8 +19,7 @@ const (
 var createSQL string
 
 func db(t *testing.T) *SQLStorage {
-	db := New(database.SQLite)
-	db.DSNSource = dsn
+	db := New(database.SQLite, dsn)
 	err := db.Open(context.TODO())
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)

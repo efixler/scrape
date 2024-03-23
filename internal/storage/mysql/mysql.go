@@ -13,16 +13,16 @@ func Factory(options ...Option) store.Factory {
 }
 
 func New(options ...Option) (store.URLDataStore, error) {
-	store := &Store{
-		storage.New(database.MySQL),
-	}
+
 	config := defaultConfig()
 	for _, opt := range options {
 		if err := opt(&config); err != nil {
 			return nil, err
 		}
 	}
-	store.DSNSource = config
+	store := &Store{
+		storage.New(database.MySQL, config),
+	}
 	return store, nil
 }
 

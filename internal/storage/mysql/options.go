@@ -17,19 +17,17 @@ type Collation string
 type Option func(*Config) error
 
 const (
-	Utf8mb4         Charset        = "utf8mb4"
-	TCP             ConnectionType = "tcp"
-	Unix            ConnectionType = "unix"
-	DefaultPort                    = 3306
-	dbSchema                       = "scrape"
-	utf8mb4General  Collation      = "utf8mb4_general_ci"
-	utf8mb4Unicode9 Collation      = "utf8mb4_0900_ai_ci"
-)
-
-var (
-	DefaultTimeout      = 10 * time.Second
-	DefaultReadTimeout  = 30 * time.Second
-	DefaultWriteTimeout = 30 * time.Second
+	Utf8mb4             Charset        = "utf8mb4"
+	TCP                 ConnectionType = "tcp"
+	Unix                ConnectionType = "unix"
+	DefaultPort                        = 3306
+	dbSchema                           = "scrape"
+	utf8mb4General      Collation      = "utf8mb4_general_ci"
+	utf8mb4Unicode9     Collation      = "utf8mb4_0900_ai_ci"
+	DefaultTimeout                     = 30 * time.Second
+	DefaultReadTimeout                 = 30 * time.Second
+	DefaultWriteTimeout                = 30 * time.Second
+	DefaultQueryTimeout                = 60 * time.Second
 )
 
 func NetAddress(addr string) Option {
@@ -83,8 +81,16 @@ func WithoutSchema() Option {
 	}
 }
 
+func WithQueryTimeout(timeout time.Duration) Option {
+	return func(c *Config) error {
+		c.queryTimeout = timeout
+		return nil
+	}
+}
+
 type Config struct {
 	mysql.Config
+	queryTimeout time.Duration
 }
 
 func defaultConfig() Config {
@@ -93,16 +99,21 @@ func defaultConfig() Config {
 	cfg.DBName = dbSchema
 	cfg.Loc = time.UTC
 	cfg.Collation = string(utf8mb4Unicode9)
-	cfg.Timeout = DefaultTimeout
-	cfg.ReadTimeout = DefaultReadTimeout
-	cfg.WriteTimeout = DefaultWriteTimeout
+	cfg.Timeout = DefaultTimeout           // dial timeout
+	cfg.ReadTimeout = DefaultReadTimeout   // I/O read timeout
+	cfg.WriteTimeout = DefaultWriteTimeout // I/O write timeout
 	cfg.ParseTime = true
+
 	cfg.MultiStatements = true
-	return Config{*cfg}
+	return Config{*cfg, DefaultQueryTimeout}
 }
 
 func (c Config) DSN() string {
 	return c.Config.FormatDSN()
+}
+
+func (c Config) QueryTimeout() time.Duration {
+	return c.queryTimeout
 }
 
 func (c Config) String() string {
