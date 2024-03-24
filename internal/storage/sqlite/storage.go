@@ -50,6 +50,7 @@ func New(options ...option) (store.URLDataStore, error) {
 	}
 	s := &Store{
 		SQLStorage: storage.New(database.SQLite, c),
+		config:     *c,
 	}
 	return s, nil
 }

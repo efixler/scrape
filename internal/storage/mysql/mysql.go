@@ -6,6 +6,10 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
+type Store struct {
+	*storage.SQLStorage
+}
+
 func Factory(options ...Option) store.Factory {
 	return func() (store.URLDataStore, error) {
 		return New(options...)
@@ -24,8 +28,4 @@ func New(options ...Option) (store.URLDataStore, error) {
 		storage.New(database.MySQL, config),
 	}
 	return store, nil
-}
-
-type Store struct {
-	*storage.SQLStorage
 }
