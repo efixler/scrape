@@ -26,11 +26,12 @@ var (
 	MinMaintenanceInterval  = 1 * time.Minute
 )
 
-type DatabaseOptions interface {
+type DataSourceOptions interface {
 	// Loggable string representation of the options
 	fmt.Stringer
 	// Returns the DSN string for the options (not ever written to logs)
 	DSN() string
+	QueryTimeout() time.Duration
 }
 
 // StatementGenerator is a function that returns a prepared statement.
@@ -47,7 +48,7 @@ type DBHandle[T comparable] struct {
 	Ctx       context.Context
 	DB        *sql.DB
 	Driver    DriverName
-	DSNSource DatabaseOptions
+	DSNSource DataSourceOptions
 	stmts     map[T]*sql.Stmt
 	done      chan bool
 	closed    bool

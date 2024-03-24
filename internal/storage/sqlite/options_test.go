@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestInMemoryOption(t *testing.T) {
@@ -47,6 +48,9 @@ func TestDefaultsOption(t *testing.T) {
 	if c.synchronous != SyncOff {
 		t.Errorf("Unexpected synchronous: %s", c.synchronous)
 	}
+	if c.QueryTimeout() != DefaultQueryTimeout {
+		t.Errorf("Unexpected query timeout: %s, expected %s", c.QueryTimeout(), DefaultQueryTimeout)
+	}
 }
 
 func TestWithFileOption(t *testing.T) {
@@ -89,5 +93,19 @@ func TestWithFileOption(t *testing.T) {
 				t.Fatalf("Error removing directory: %s", err)
 			}
 		}
+	}
+}
+
+func TestWithQueryTimeout(t *testing.T) {
+	t.Parallel()
+	c := &config{}
+	Defaults()(c)
+	wopt := WithQueryTimeout(10 * time.Second)
+	err := wopt(c)
+	if err != nil {
+		t.Fatalf("Unexpected error setting query timeout: %s", err)
+	}
+	if c.QueryTimeout() != 10*time.Second {
+		t.Fatalf("Unexpected query timeout: %s", c.QueryTimeout())
 	}
 }

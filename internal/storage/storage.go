@@ -39,10 +39,11 @@ type SQLStorage struct {
 	*database.DBHandle[stmtIndex]
 }
 
-func New(driver database.DriverName) *SQLStorage {
+func New(driver database.DriverName, dsnOptions database.DataSourceOptions) *SQLStorage {
 	return &SQLStorage{
 		DBHandle: &database.DBHandle[stmtIndex]{
-			Driver: driver,
+			Driver:    driver,
+			DSNSource: dsnOptions,
 		},
 	}
 }

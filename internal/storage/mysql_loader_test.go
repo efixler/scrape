@@ -34,8 +34,7 @@ var (
 // a freshly created db. Since a 'USE' statement is included in the create.sql
 // subsequent queries will continue to use the test database.
 func db(t *testing.T) *SQLStorage {
-	db := New(database.MySQL)
-	db.DSNSource = dsn
+	db := New(database.MySQL, dsn)
 	err := db.Open(context.TODO())
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)

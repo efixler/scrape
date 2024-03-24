@@ -22,6 +22,15 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+// Store is the sqlite implementation of the store.URLDataStore interface.
+// It relies on storage.SQLStorage for most of the actual database operations,
+// and mainly handles configuration and initialization.
+type Store struct {
+	*storage.SQLStorage
+	config config
+	stats  *Stats
+}
+
 // Returns the factory function that can be used to instantiate a sqlite store
 // in the cases where either creation should be delayed or where the caller may
 // want to instantiate multiple stores with the same configuration.
@@ -32,9 +41,6 @@ func Factory(options ...option) store.Factory {
 }
 
 func New(options ...option) (store.URLDataStore, error) {
-	s := &Store{
-		SQLStorage: storage.New(database.SQLite),
-	}
 	c := &config{}
 	Defaults()(c)
 	for _, opt := range options {
@@ -42,15 +48,11 @@ func New(options ...option) (store.URLDataStore, error) {
 			return nil, err
 		}
 	}
-	s.config = *c
-	s.DBHandle.DSNSource = s.config
+	s := &Store{
+		SQLStorage: storage.New(database.SQLite, c),
+		config:     *c,
+	}
 	return s, nil
-}
-
-type Store struct {
-	*storage.SQLStorage
-	config config
-	stats  *Stats
 }
 
 // Opens the database, creating it if it doesn't exist.

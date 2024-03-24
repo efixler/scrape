@@ -11,6 +11,7 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
+// DataSourceOptions implementation for tests
 type dsnGen string
 
 var dsn = dsnGen(dbURL)
@@ -21,6 +22,10 @@ func (d dsnGen) String() string {
 
 func (d dsnGen) DSN() string {
 	return string(d)
+}
+
+func (d dsnGen) QueryTimeout() time.Duration {
+	return 10 * time.Second
 }
 
 func TestOpen(t *testing.T) {
