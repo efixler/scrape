@@ -15,6 +15,17 @@ type materialDB struct {
 	DBHandle[string]
 }
 
+func (m *materialDB) Open(ctx context.Context) error {
+	err := m.DBHandle.Open(ctx)
+	if err != nil {
+		return err
+	}
+	m.DB.SetMaxIdleConns(1)
+	m.DB.SetMaxOpenConns(1)
+	m.DB.SetConnMaxLifetime(-1)
+	return nil
+}
+
 func newDB(driver DriverName, dsnSource DataSourceOptions) *materialDB {
 	return &materialDB{
 		DBHandle: DBHandle[string]{
@@ -35,7 +46,7 @@ func (o dbOptions) String() string {
 	return string(o)
 }
 func (o dbOptions) QueryTimeout() time.Duration {
-	return 10 * time.Second
+	return 250 * time.Millisecond
 }
 
 var inMemoryDSN = dbOptions(":memory:")

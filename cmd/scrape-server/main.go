@@ -74,6 +74,7 @@ func main() {
 	go func() {
 		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("scrape-server shutting down", "error", err)
+			os.Exit(1)
 		}
 	}()
 	slog.Info("scrape-server started", "addr", s.Addr)
