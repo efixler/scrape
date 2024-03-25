@@ -46,6 +46,12 @@ type DBHandle[T comparable] struct {
 	mutex     *sync.Mutex
 }
 
+// Open the database handle with the given context. This handle will be closed if and
+// when this context is cancelled. The context will also be used to prepare statements and
+// as the basis for timeout-bound queries.
+// Open-ing the connection will also apply the DataSource settings to the underlying DB
+// connection *if* these settings are non-zero. Passing unset/zero values for these
+// will inherit the driver defaults.
 func (s *DBHandle[T]) Open(ctx context.Context) error {
 	if s.DB != nil {
 		return ErrDatabaseAlreadyOpen

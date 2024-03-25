@@ -139,7 +139,7 @@ func TestCreateSQLFromTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error creating database: %v", err)
 	}
-	query, err := db.(*Store).createSQL()
+	query, err := db.createSQL()
 	if err != nil {
 		t.Fatalf("Error creating SQL: %v", err)
 	}

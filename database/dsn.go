@@ -6,6 +6,10 @@ import (
 )
 
 // DataSource is an interface that defines the options for a database connection.
+// The DSN() method should return the DSN string for the connection. The String()
+// method will be used when logging information about the connection. If the real DSN()
+// contains a password or other privileged information, it should be masked in the
+// String() method.
 type DataSource interface {
 	// Loggable string representation of the options
 	fmt.Stringer
