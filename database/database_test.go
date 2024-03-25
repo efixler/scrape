@@ -20,9 +20,6 @@ func (m *materialDB) Open(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	m.DB.SetMaxIdleConns(1)
-	m.DB.SetMaxOpenConns(1)
-	m.DB.SetConnMaxLifetime(-1)
 	return nil
 }
 
@@ -48,7 +45,7 @@ func TestMaintenanceRunsAndsStops(t *testing.T) {
 		return nil
 	}
 	ctx, cancelF := context.WithCancel(context.TODO())
-	dbh := newDB(SQLite, NewDSN(":memory:"))
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -80,7 +77,7 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 		return errors.New("test error")
 	}
 	ctx, cancelF := context.WithCancel(context.Background())
-	dbh := newDB(SQLite, NewDSN(":memory:"))
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -104,7 +101,7 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 func TestDBClosedOnContextCancel(t *testing.T) {
 	t.Parallel()
 	ctx, cancelF := context.WithCancel(context.Background())
-	dbh := newDB(SQLite, NewDSN(":memory:"))
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -174,7 +171,7 @@ func TestDBCloseExpectations(t *testing.T) {
 
 func TestConnParams(t *testing.T) {
 	t.Parallel()
-	dbh := newDB(SQLite, NewDSN(":memory:"))
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
 	err := dbh.Open(context.Background())
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
