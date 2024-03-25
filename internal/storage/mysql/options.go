@@ -24,7 +24,7 @@ const (
 	dbSchema                              = "scrape"
 	utf8mb4General         Collation      = "utf8mb4_general_ci"
 	utf8mb4Unicode9        Collation      = "utf8mb4_0900_ai_ci"
-	DefaultMaxConnections                 = 16
+	DefaultMaxConnections                 = 32
 	DefaultConnMaxLifetime                = 1 * time.Hour
 	DefaultTimeout                        = 30 * time.Second
 	DefaultReadTimeout                    = 30 * time.Second

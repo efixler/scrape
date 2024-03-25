@@ -38,7 +38,7 @@ func randomString(len int) string {
 }
 
 func TestExecTimeout(t *testing.T) {
-	dsn := inMemoryDSN
+	dsn := NewDSN(":memory:", WithQueryTimeout(250*time.Millisecond))
 	dbh := newDB(SQLite, dsn)
 	ctx := context.TODO()
 	err := dbh.Open(ctx)
@@ -98,8 +98,7 @@ func TestExecTimeout(t *testing.T) {
 }
 
 func TestQuery(t *testing.T) {
-	dsn := inMemoryDSN
-	dbh := newDB(SQLite, dsn)
+	dbh := newDB(SQLite, NewDSN(":memory:", WithQueryTimeout(250*time.Millisecond)))
 	ctx := context.Background()
 	err := dbh.Open(ctx)
 	if err != nil {

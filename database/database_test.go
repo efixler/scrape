@@ -26,7 +26,7 @@ func (m *materialDB) Open(ctx context.Context) error {
 	return nil
 }
 
-func newDB(driver DriverName, dsnSource DataSourceOptions) *materialDB {
+func newDB(driver DriverName, dsnSource DataSource) *materialDB {
 	return &materialDB{
 		DBHandle: DBHandle[string]{
 			Driver:    driver,
@@ -35,27 +35,6 @@ func newDB(driver DriverName, dsnSource DataSourceOptions) *materialDB {
 		},
 	}
 }
-
-// a shim DatabaseOptions to be able to test a DBHandle without a real database
-type dbOptions string
-
-func (o dbOptions) DSN() string {
-	return string(o)
-}
-func (o dbOptions) String() string {
-	return string(o)
-}
-func (o dbOptions) QueryTimeout() time.Duration {
-	return 250 * time.Millisecond
-}
-func (o dbOptions) MaxConnections() int {
-	return 0
-}
-func (o dbOptions) ConnMaxLifetime() time.Duration {
-	return 0
-}
-
-var inMemoryDSN = dbOptions(":memory:")
 
 func TestMaintenanceRunsAndsStops(t *testing.T) {
 	t.Parallel()
@@ -69,7 +48,7 @@ func TestMaintenanceRunsAndsStops(t *testing.T) {
 		return nil
 	}
 	ctx, cancelF := context.WithCancel(context.TODO())
-	dbh := newDB(SQLite, inMemoryDSN)
+	dbh := newDB(SQLite, NewDSN(":memory:"))
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -101,7 +80,7 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 		return errors.New("test error")
 	}
 	ctx, cancelF := context.WithCancel(context.Background())
-	dbh := newDB(SQLite, inMemoryDSN)
+	dbh := newDB(SQLite, NewDSN(":memory:"))
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -125,7 +104,7 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 func TestDBClosedOnContextCancel(t *testing.T) {
 	t.Parallel()
 	ctx, cancelF := context.WithCancel(context.Background())
-	dbh := newDB(SQLite, inMemoryDSN)
+	dbh := newDB(SQLite, NewDSN(":memory:"))
 	err := dbh.Open(ctx)
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
@@ -149,7 +128,7 @@ func TestDBCloseExpectations(t *testing.T) {
 	mdbh := &mockDBHandleForCloseTest{
 		DBHandle[string]{
 			Driver:    SQLite,
-			DSNSource: inMemoryDSN,
+			DSNSource: NewDSN(":memory:"),
 			stmts:     make(map[string]*sql.Stmt, 8),
 		},
 		0,
@@ -190,5 +169,23 @@ func TestDBCloseExpectations(t *testing.T) {
 	}
 	if len(mdbh.DBHandle.stmts) != 0 {
 		t.Errorf("Expected stmts map to be empty, got %v", mdbh.DBHandle.stmts)
+	}
+}
+
+func TestConnParams(t *testing.T) {
+	t.Parallel()
+	dbh := newDB(SQLite, NewDSN(":memory:"))
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	if dbh.DB.Stats().MaxOpenConnections != 1 {
+		t.Errorf("Expected 1 MaxOpenConnections, got %d", dbh.DB.Stats().MaxOpenConnections)
+	}
+	if dbh.DB.Stats().MaxIdleClosed != 0 {
+		t.Errorf("Expected 0 MaxIdleClosed, got %d", dbh.DB.Stats().MaxIdleClosed)
+	}
+	if dbh.DB.Stats().MaxLifetimeClosed != 0 {
+		t.Errorf("Expected 0 MaxLifetimeClosed, got %d", dbh.DB.Stats().MaxLifetimeClosed)
 	}
 }

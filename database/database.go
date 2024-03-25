@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -26,16 +25,6 @@ var (
 	MinMaintenanceInterval  = 1 * time.Minute
 )
 
-type DataSourceOptions interface {
-	// Loggable string representation of the options
-	fmt.Stringer
-	// Returns the DSN string for the options (not ever written to logs)
-	DSN() string
-	QueryTimeout() time.Duration
-	MaxConnections() int
-	ConnMaxLifetime() time.Duration
-}
-
 // StatementGenerator is a function that returns a prepared statement.
 // The DBHandle holds a map of prepared statements, and will clean them up
 // when closing.
@@ -50,7 +39,7 @@ type DBHandle[T comparable] struct {
 	Ctx       context.Context
 	DB        *sql.DB
 	Driver    DriverName
-	DSNSource DataSourceOptions
+	DSNSource DataSource
 	stmts     map[T]*sql.Stmt
 	done      chan bool
 	closed    bool
