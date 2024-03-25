@@ -40,7 +40,7 @@ func Factory(options ...option) store.Factory {
 	}
 }
 
-func New(options ...option) (store.URLDataStore, error) {
+func New(options ...option) (*Store, error) {
 	c := &config{}
 	Defaults()(c)
 	for _, opt := range options {
@@ -66,18 +66,11 @@ func (s *Store) Open(ctx context.Context) error {
 	// SQLite will open even if the the DB file is not present, it will only fail later.
 	// So, if the db hasn't been opened, check for the file here.
 	// In Memory DBs must always be created
-	inMemory := s.config.IsInMemory()
-	needsCreate := inMemory || !exists(s.config.filename)
+	needsCreate := s.config.IsInMemory() || !exists(s.config.filename)
 	if needsCreate {
 		if err := s.Create(); err != nil {
 			return err
 		}
-	}
-	if inMemory {
-		// Unfortunately, SQLite in-memory DBs are bound to a single connection.
-		s.DB.SetMaxOpenConns(1)
-		s.DB.SetMaxIdleConns(1)
-		s.DB.SetConnMaxLifetime(-1)
 	}
 	s.Maintenance(24*time.Hour, maintain)
 	return nil

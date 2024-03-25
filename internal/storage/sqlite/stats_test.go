@@ -4,20 +4,13 @@ import (
 	"context"
 	"testing"
 	"time"
-
-	"github.com/efixler/scrape/store"
 )
 
 func TestStats(t *testing.T) {
-	s, err := New(InMemoryDB())
+	db, err := New(InMemoryDB())
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, ok := s.(store.Observable)
-	if !ok {
-		t.Errorf("Expected SqliteStore to implement Observable interface")
-	}
-	db := s.(*Store)
 	context, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err = db.Open(context)

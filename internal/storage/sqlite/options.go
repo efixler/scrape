@@ -37,6 +37,8 @@ func InMemoryDB() option {
 		c.journalMode = JournalModeOff
 		c.cacheSize = NormalCacheSize
 		c.synchronous = SyncNormal
+		c.maxConnections = 1 //in-memory DBs support 1 connection only
+		c.connMaxLifetime = -1
 		return nil
 	}
 }
@@ -93,13 +95,15 @@ func WithQueryTimeout(timeout time.Duration) option {
 }
 
 type config struct {
-	filename     string
-	busyTimeout  time.Duration // SQLite's busy timeout specifies the time to wait if a table is locked
-	queryTimeout time.Duration
-	journalMode  JournalMode
-	cacheSize    int
-	synchronous  SyncMode
-	accessMode   AccessMode
+	filename        string
+	busyTimeout     time.Duration // SQLite's busy timeout specifies the time to wait if a table is locked
+	queryTimeout    time.Duration
+	journalMode     JournalMode
+	cacheSize       int
+	synchronous     SyncMode
+	accessMode      AccessMode
+	maxConnections  int
+	connMaxLifetime time.Duration
 }
 
 func (o config) DSN() string {
@@ -120,6 +124,14 @@ func (o config) String() string {
 
 func (o config) QueryTimeout() time.Duration {
 	return o.queryTimeout
+}
+
+func (o config) MaxConnections() int {
+	return o.maxConnections
+}
+
+func (o config) ConnMaxLifetime() time.Duration {
+	return o.connMaxLifetime
 }
 
 func (o config) IsInMemory() bool {

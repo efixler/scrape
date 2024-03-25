@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -26,14 +25,6 @@ var (
 	MinMaintenanceInterval  = 1 * time.Minute
 )
 
-type DataSourceOptions interface {
-	// Loggable string representation of the options
-	fmt.Stringer
-	// Returns the DSN string for the options (not ever written to logs)
-	DSN() string
-	QueryTimeout() time.Duration
-}
-
 // StatementGenerator is a function that returns a prepared statement.
 // The DBHandle holds a map of prepared statements, and will clean them up
 // when closing.
@@ -48,13 +39,19 @@ type DBHandle[T comparable] struct {
 	Ctx       context.Context
 	DB        *sql.DB
 	Driver    DriverName
-	DSNSource DataSourceOptions
+	DSNSource DataSource
 	stmts     map[T]*sql.Stmt
 	done      chan bool
 	closed    bool
 	mutex     *sync.Mutex
 }
 
+// Open the database handle with the given context. This handle will be closed if and
+// when this context is cancelled. The context will also be used to prepare statements and
+// as the basis for timeout-bound queries.
+// Open-ing the connection will also apply the DataSource settings to the underlying DB
+// connection *if* these settings are non-zero. Passing unset/zero values for these
+// will inherit the driver defaults.
 func (s *DBHandle[T]) Open(ctx context.Context) error {
 	if s.DB != nil {
 		return ErrDatabaseAlreadyOpen
@@ -72,6 +69,14 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 	})
 	s.done = make(chan bool)
 	s.mutex = &sync.Mutex{}
+	if maxConns := s.DSNSource.MaxConnections(); maxConns != 0 {
+		s.DB.SetMaxOpenConns(maxConns)
+		s.DB.SetMaxIdleConns(maxConns)
+	}
+	if connMaxLifetime := s.DSNSource.ConnMaxLifetime(); connMaxLifetime != 0 {
+		s.DB.SetConnMaxLifetime(connMaxLifetime)
+	}
+
 	return nil
 }
 

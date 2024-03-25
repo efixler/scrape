@@ -16,7 +16,7 @@ func Factory(options ...Option) store.Factory {
 	}
 }
 
-func New(options ...Option) (store.URLDataStore, error) {
+func New(options ...Option) (*Store, error) {
 
 	config := defaultConfig()
 	for _, opt := range options {
