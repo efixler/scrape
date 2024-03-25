@@ -32,6 +32,8 @@ type DataSourceOptions interface {
 	// Returns the DSN string for the options (not ever written to logs)
 	DSN() string
 	QueryTimeout() time.Duration
+	MaxConnections() int
+	ConnMaxLifetime() time.Duration
 }
 
 // StatementGenerator is a function that returns a prepared statement.
@@ -72,6 +74,14 @@ func (s *DBHandle[T]) Open(ctx context.Context) error {
 	})
 	s.done = make(chan bool)
 	s.mutex = &sync.Mutex{}
+	if maxConns := s.DSNSource.MaxConnections(); maxConns != 0 {
+		s.DB.SetMaxOpenConns(maxConns)
+		s.DB.SetMaxIdleConns(maxConns)
+	}
+	if connMaxLifetime := s.DSNSource.ConnMaxLifetime(); connMaxLifetime != 0 {
+		s.DB.SetConnMaxLifetime(connMaxLifetime)
+	}
+
 	return nil
 }
 

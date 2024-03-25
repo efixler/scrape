@@ -17,17 +17,19 @@ type Collation string
 type Option func(*Config) error
 
 const (
-	Utf8mb4             Charset        = "utf8mb4"
-	TCP                 ConnectionType = "tcp"
-	Unix                ConnectionType = "unix"
-	DefaultPort                        = 3306
-	dbSchema                           = "scrape"
-	utf8mb4General      Collation      = "utf8mb4_general_ci"
-	utf8mb4Unicode9     Collation      = "utf8mb4_0900_ai_ci"
-	DefaultTimeout                     = 30 * time.Second
-	DefaultReadTimeout                 = 30 * time.Second
-	DefaultWriteTimeout                = 30 * time.Second
-	DefaultQueryTimeout                = 60 * time.Second
+	Utf8mb4                Charset        = "utf8mb4"
+	TCP                    ConnectionType = "tcp"
+	Unix                   ConnectionType = "unix"
+	DefaultPort                           = 3306
+	dbSchema                              = "scrape"
+	utf8mb4General         Collation      = "utf8mb4_general_ci"
+	utf8mb4Unicode9        Collation      = "utf8mb4_0900_ai_ci"
+	DefaultMaxConnections                 = 16
+	DefaultConnMaxLifetime                = 1 * time.Hour
+	DefaultTimeout                        = 30 * time.Second
+	DefaultReadTimeout                    = 30 * time.Second
+	DefaultWriteTimeout                   = 30 * time.Second
+	DefaultQueryTimeout                   = 60 * time.Second
 )
 
 func NetAddress(addr string) Option {
@@ -90,7 +92,9 @@ func WithQueryTimeout(timeout time.Duration) Option {
 
 type Config struct {
 	mysql.Config
-	queryTimeout time.Duration
+	queryTimeout    time.Duration
+	maxConns        int
+	connMaxLifetime time.Duration
 }
 
 func defaultConfig() Config {
@@ -103,9 +107,13 @@ func defaultConfig() Config {
 	cfg.ReadTimeout = DefaultReadTimeout   // I/O read timeout
 	cfg.WriteTimeout = DefaultWriteTimeout // I/O write timeout
 	cfg.ParseTime = true
-
 	cfg.MultiStatements = true
-	return Config{*cfg, DefaultQueryTimeout}
+	return Config{
+		Config:          *cfg,
+		queryTimeout:    DefaultQueryTimeout,
+		maxConns:        DefaultMaxConnections,
+		connMaxLifetime: DefaultConnMaxLifetime,
+	}
 }
 
 func (c Config) DSN() string {
@@ -114,6 +122,14 @@ func (c Config) DSN() string {
 
 func (c Config) QueryTimeout() time.Duration {
 	return c.queryTimeout
+}
+
+func (c Config) MaxConnections() int {
+	return c.maxConns
+}
+
+func (c Config) ConnMaxLifetime() time.Duration {
+	return c.connMaxLifetime
 }
 
 func (c Config) String() string {

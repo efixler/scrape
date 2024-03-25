@@ -48,6 +48,12 @@ func (o dbOptions) String() string {
 func (o dbOptions) QueryTimeout() time.Duration {
 	return 250 * time.Millisecond
 }
+func (o dbOptions) MaxConnections() int {
+	return 0
+}
+func (o dbOptions) ConnMaxLifetime() time.Duration {
+	return 0
+}
 
 var inMemoryDSN = dbOptions(":memory:")
 

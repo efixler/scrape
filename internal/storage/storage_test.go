@@ -28,6 +28,14 @@ func (d dsnGen) QueryTimeout() time.Duration {
 	return 10 * time.Second
 }
 
+func (d dsnGen) MaxConnections() int {
+	return 1
+}
+
+func (d dsnGen) ConnMaxLifetime() time.Duration {
+	return 0
+}
+
 func TestOpen(t *testing.T) {
 	db := db(t)
 	err := db.Ping()
