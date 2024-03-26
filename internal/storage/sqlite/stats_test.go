@@ -59,7 +59,7 @@ func TestEmptyStatsIsExpired(t *testing.T) {
 }
 
 func TestStatsIsExpired(t *testing.T) {
-	fetchTime := time.Now().Add(-1 * minStatsInterval)
+	fetchTime := time.Now().Add(-1 * (minStatsInterval + time.Millisecond))
 	stats := Stats{fetchTime: fetchTime}
 	if !stats.expired() {
 		t.Errorf("Expected stats to be expired")

@@ -107,8 +107,8 @@ func TestStore(t *testing.T) {
 	if stored.ContentText != fetched.ContentText {
 		t.Errorf("ContentText changed from %q to %q", stored.ContentText, fetched.ContentText)
 	}
-	if stored.URL().String() != fetched.URL().String() {
-		t.Errorf("Url changed from %q to %q", stored.URL(), fetched.URL())
+	if stored.CanonicalURL.String() != fetched.CanonicalURL.String() {
+		t.Errorf("Url changed from %q to %q", stored.CanonicalURL, fetched.CanonicalURL)
 	}
 	if stored.RequestedURL.String() != fetched.RequestedURL.String() {
 		t.Errorf("Url changed from %q to %q", stored.RequestedURL.String(), fetched.RequestedURL.String())
@@ -119,8 +119,8 @@ func TestStore(t *testing.T) {
 	if stored.Title != fetched.Title {
 		t.Errorf("Title changed from %q to %q", stored.Title, fetched.Title)
 	}
-	if stored.Author != fetched.Author {
-		t.Errorf("Author changed from %q to %q", stored.Author, fetched.Author)
+	if !slices.Equal(stored.Authors, fetched.Authors) {
+		t.Errorf("Author changed from %v to %v", stored.Authors, fetched.Authors)
 	}
 	if stored.Hostname != fetched.Hostname {
 		t.Errorf("Hostname changed from %q to %q", stored.Hostname, fetched.Hostname)
@@ -131,7 +131,7 @@ func TestStore(t *testing.T) {
 	if stored.Sitename != fetched.Sitename {
 		t.Errorf("Sitename changed from %q to %q", stored.Sitename, fetched.Sitename)
 	}
-	if stored.Date != fetched.Date {
+	if stored.Date.Compare(*fetched.Date) != 0 {
 		t.Errorf("Date changed from %q to %q", stored.Date, fetched.Date)
 	}
 	if !slices.Equal(stored.Categories, fetched.Categories) {
@@ -172,7 +172,7 @@ func TestStore(t *testing.T) {
 	if ok {
 		t.Errorf("Delete returned true, deleted non-canonical record (url: %s)", url)
 	}
-	ok, err = s.Delete(stored.URL())
+	ok, err = s.Delete(stored.CanonicalURL)
 	if err != nil {
 		t.Errorf("Error deleting record: %v", err)
 	} else if !ok {
@@ -209,8 +209,9 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 		t.Errorf("Error parsing url: %v", err)
 	}
 	meta.RequestedURL = url
-	ttl := time.Duration(0)
-	meta.TTL = &ttl
+	ttl := time.Duration(1)
+	meta.TTL = ttl
+	time.Sleep(1 * time.Millisecond)
 	_, err = s.Save(&meta)
 	if err != nil {
 		t.Errorf("Error storing data: %v", err)
@@ -276,11 +277,11 @@ func TestDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error storing data: %v", err)
 	}
-	ok, err := s.Delete(res.URL())
+	ok, err := s.Delete(res.CanonicalURL)
 	if err != nil {
 		t.Errorf("Error deleting record: %v", err)
 	}
 	if !ok {
-		t.Errorf("Delete returned false, didn't delete record (url: %s)", res.URL())
+		t.Errorf("Delete returned false, didn't delete record (url: %s)", res.CanonicalURL)
 	}
 }

@@ -7,7 +7,7 @@
     "status_code": 200,
     "title": "Our unbiased take on Mark Zuckerberg’s biased Apple Vision Pro review",
     "description": "CEO's Quest 3 comparison offers an interesting look at mixed-reality design trade-offs.",
-    "author": "Kyle Orland",
+    "authors": ["Kyle Orland"],
     "sitename": "Ars Technica",
     "date": "2024-02-15T00:00:00Z",
     "language": "en",

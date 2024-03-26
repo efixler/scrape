@@ -56,18 +56,32 @@ func New(driver database.DriverName, dsnOptions database.DataSource) *SQLStorage
 // Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
 func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
-	uptr.AssertTimes()
-	key := Key(uptr.URL())
-	metadata, err := store.SerializeMetadata(uptr)
+	if uptr.TTL == 0 {
+		uptr.TTL = resource.DefaultTTL
+	}
+	if (uptr.FetchTime == nil) || uptr.FetchTime.IsZero() {
+		now := time.Now().UTC().Truncate(time.Second)
+		uptr.FetchTime = &now
+	}
+	expireTime, _ := uptr.ExpireTime()
+	// uptr.AssertTimes()
+	key := Key(uptr.CanonicalURL)
+	uptr.SkipWhenMarshaling(
+		resource.CanonicalURL,
+		resource.ContentText,
+		resource.OriginalURL,
+		resource.FetchTime,
+	)
+	metadata, err := uptr.MarshalJSON()
 	if err != nil {
 		return 0, err
 	}
 	values := []any{
 		key,
-		uptr.URL().String(),
-		uptr.RequestURL().String(),
+		uptr.CanonicalURL.String(),
+		uptr.RequestedURL.String(),
 		uptr.FetchTime.Unix(),
-		uptr.ExpireTime().Unix(),
+		expireTime.Unix(),
 		string(metadata),
 		uptr.ContentText,
 	}
@@ -89,7 +103,7 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 	if (rows == 0) || (rows > 2) {
 		return 0, fmt.Errorf("expected 1 row affected, got %d", rows)
 	}
-	err = s.storeIdMap(uptr.RequestURL(), key)
+	err = s.storeIdMap(uptr.RequestedURL, key)
 	if err != nil {
 		return 0, err
 	}
@@ -161,22 +175,22 @@ func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	if time.Now().After(exptime) {
 		return nil, store.ErrorResourceNotFound
 	}
-	fetchTime := time.Unix(fetchEpoch, 0).UTC()
-	ttl := exptime.Sub(fetchTime)
-	page := &resource.WebPage{FetchTime: &fetchTime}
-	page.Metadata.URL = canonicalUrl
-	page.RequestedURL, err = nurl.Parse(parsedUrl)
-	if err != nil {
-		return nil, err
-	}
+	page := &resource.WebPage{}
 	err = json.Unmarshal([]byte(metadata), page)
 	if err != nil {
 		return nil, err
 	}
-	page.ContentText = contentText
-	page.TTL = &ttl
 
-	//fmt.Println(parsedUrl, fetchEpoch, expiryEpoch, metadata, contentText)
+	canonical, _ := nurl.Parse(canonicalUrl)
+	page.CanonicalURL = canonical
+	parsed, _ := nurl.Parse(parsedUrl)
+	page.RequestedURL = parsed
+	fetchTime := time.Unix(fetchEpoch, 0).UTC()
+	page.FetchTime = &fetchTime
+	// Calculate actual TTL from now to expiry
+	ttl := exptime.Sub(fetchTime)
+	page.TTL = ttl
+	page.ContentText = contentText
 	return page, nil
 }
 

@@ -99,12 +99,12 @@ func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
 // If there's an error fetching the page, in addition to the returned error,
 // the *resource.WebPage will contain partial data pertaining to the request.
 func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
-	fetchTime := time.Now().UTC().Truncate(time.Second)
 	var httpErr fetch.HttpError
-	rval := &resource.WebPage{
-		RequestedURL: url,
-		FetchTime:    &fetchTime,
-	}
+	rval := resource.NewWebPage(*url)
+	// rval := &resource.WebPage{
+	// 	RequestedURL: url,
+	// 	FetchTime:    &fetchTime,
+	// }
 	resp, err := f.doRequest(url.String())
 	if err != nil {
 		// if we get an httpError back from doRequest, trust it
@@ -155,8 +155,9 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		// "text and comments are not long enough: 0 0"
 		return rval, err
 	}
-	rval.Metadata = result.Metadata
-	rval.ContentText = result.ContentText
+	rval.MergeTrafilaturaResult(result)
+	// rval.Metadata = result.Metadata
+	// rval.ContentText = result.ContentText
 	return rval, nil
 }
 

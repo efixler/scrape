@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	nurl "net/url"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -97,13 +98,13 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 				test.Description,
 			)
 		}
-		if test.Author != reference.Author {
-			t.Errorf("Expected author %s for %s resource, got %s", reference.Author, label, test.Author)
+		if !slices.Equal(test.Authors, reference.Authors) {
+			t.Errorf("Expected author %s for %s resource, got %s", reference.Authors, label, test.Authors)
 		}
 		if test.Sitename != reference.Sitename {
 			t.Errorf("Expected sitename %s for %s resource, got %s", reference.Sitename, label, test.Sitename)
 		}
-		if test.Date != reference.Date {
+		if test.Date.Compare(*reference.Date) != 0 {
 			t.Errorf("Expected date %s for %s resource, got %s", reference.Date, label, test.Date)
 		}
 		if test.Language != reference.Language {
@@ -118,8 +119,8 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 		if test.PageType != reference.PageType {
 			t.Errorf("Expected page type %s for %s resource, got %s", reference.PageType, label, test.PageType)
 		}
-		if test.URL().String() != reference.URL().String() {
-			t.Errorf("Expected URL %s for %s resource, got %s", reference.URL().String(), label, test.URL().String())
+		if test.CanonicalURL.String() != reference.CanonicalURL.String() {
+			t.Errorf("Expected URL %s for %s resource, got %s", reference.CanonicalURL.String(), label, test.CanonicalURL.String())
 		}
 		if test.Hostname != reference.Hostname {
 			t.Errorf("Expected hostname %s for %s resource, got %s", reference.Hostname, label, test.Hostname)
