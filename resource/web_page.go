@@ -17,6 +17,7 @@ var (
 	ContentText  skippable = "content_text"
 	OriginalURL  skippable = "original_url"
 	FetchTime    skippable = "fetch_time"
+	TTL          skippable = "ttl"
 	ErrNoTTL               = errors.New("TTL not set")
 	DefaultTTL             = 30 * 24 * time.Hour
 )
@@ -37,7 +38,7 @@ type WebPage struct { // The page that was requested by the caller
 	RequestedURL *nurl.URL     `json:"-"` // The page that was actually fetched
 	CanonicalURL *nurl.URL     `json:"-"`
 	OriginalURL  string        `json:"original_url,omitempty"` // The canonical URL of the page
-	TTL          time.Duration `json:"ttl,omitempty"`          // Time to live for the resource
+	TTL          time.Duration `json:"-"`                      // Time to live for the resource
 	FetchTime    *time.Time    `json:"fetch_time,omitempty"`   // When the returned source was fetched
 	Hostname     string        `json:"hostname,omitempty"`     // Hostname of the page
 	StatusCode   int           `json:"status_code,omitempty"`  // HTTP status code
@@ -69,6 +70,10 @@ func (r WebPage) ExpireTime() (time.Time, error) {
 		t = &tt
 	}
 	return t.Add(r.TTL), nil
+}
+
+func (r *WebPage) ClearSkipWhenMarshaling() {
+	r.skipMap = nil
 }
 
 func (r *WebPage) SkipWhenMarshaling(skip ...skippable) {
@@ -139,6 +144,8 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 				ar.OriginalURL = ""
 			case FetchTime:
 				ar.FetchTime = nil
+			case TTL:
+				ar.TTL = 0
 			}
 		}
 	}

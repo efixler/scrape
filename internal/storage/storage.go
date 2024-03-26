@@ -76,6 +76,7 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer uptr.ClearSkipWhenMarshaling()
 	values := []any{
 		key,
 		uptr.CanonicalURL.String(),

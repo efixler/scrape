@@ -21,31 +21,30 @@ import (
 func basicWebPage() WebPage {
 	requestedUrl, _ := nurl.Parse("https://example.com/requested")
 	canonicalUrl, _ := nurl.Parse("https://example.com/canonical")
-	ttl := 30 * 24 * time.Hour
 	fetchTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	return WebPage{
 		RequestedURL: requestedUrl,
 		CanonicalURL: canonicalUrl,
 		OriginalURL:  "https://example.com/original",
-		TTL:          ttl,
-		FetchTime:    &fetchTime,
-		Hostname:     "example.com",
-		StatusCode:   200,
-		Error:        errors.New("an error occurred"),
-		Title:        "A title",
-		Description:  "A description",
-		Sitename:     "A sitename",
-		Authors:      []string{"author1", "author2"},
-		Date:         &fetchTime,
-		Categories:   []string{"cat1", "cat2"},
-		Tags:         []string{"tag1", "tag2"},
-		Language:     "en",
-		Image:        "https://example.com/image.jpg",
-		PageType:     "article",
-		License:      "CC-BY-SA",
-		ID:           "1234",
-		Fingerprint:  "fingerprint",
-		ContentText:  "This is the content text",
+		// TTL:          ttl, // skip ttl for now
+		FetchTime:   &fetchTime,
+		Hostname:    "example.com",
+		StatusCode:  200,
+		Error:       errors.New("an error occurred"),
+		Title:       "A title",
+		Description: "A description",
+		Sitename:    "A sitename",
+		Authors:     []string{"author1", "author2"},
+		Date:        &fetchTime,
+		Categories:  []string{"cat1", "cat2"},
+		Tags:        []string{"tag1", "tag2"},
+		Language:    "en",
+		Image:       "https://example.com/image.jpg",
+		PageType:    "article",
+		License:     "CC-BY-SA",
+		ID:          "1234",
+		Fingerprint: "fingerprint",
+		ContentText: "This is the content text",
 	}
 }
 
@@ -221,6 +220,7 @@ func isEqual(original, rt *WebPage) error {
 
 func TestExpireTime(t *testing.T) {
 	page := basicWebPage()
+	page.TTL = 24 * time.Hour
 	expireTime, err := page.ExpireTime()
 	if err != nil {
 		t.Fatalf("Error getting expire time: %s", err)
