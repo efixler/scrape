@@ -110,7 +110,7 @@ func (r *WebPage) MergeTrafilaturaResult(tr *trafilatura.ExtractResult) {
 func (r WebPage) MarshalJSON() ([]byte, error) {
 	type alias WebPage
 	ar := struct {
-		URL                string `json:"url,omitempty"`
+		URLString          string `json:"url,omitempty"`
 		RequestedURLString string `json:"requested_url,omitempty"`
 		ErrorString        string `json:"error,omitempty"`
 		*alias
@@ -118,7 +118,7 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 		alias: (*alias)(&r),
 	}
 	if r.CanonicalURL != nil {
-		ar.URL = r.CanonicalURL.String()
+		ar.URLString = r.CanonicalURL.String()
 	}
 	if r.RequestedURL != nil {
 		ar.RequestedURLString = r.RequestedURL.String()
@@ -137,7 +137,7 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 		for s := range r.skipMap {
 			switch s {
 			case CanonicalURL:
-				ar.URL = ""
+				ar.URLString = ""
 			case ContentText:
 				ar.ContentText = ""
 			case OriginalURL:
@@ -155,7 +155,7 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 func (r *WebPage) UnmarshalJSON(data []byte) error {
 	type alias WebPage
 	ar := struct {
-		URL                string `json:"url,omitempty"`
+		URLString          string `json:"url,omitempty"`
 		RequestedURLString string `json:"requested_url,omitempty"`
 		ErrorString        string `json:"error,omitempty"`
 		*alias
@@ -165,8 +165,8 @@ func (r *WebPage) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &ar); err != nil {
 		return err
 	}
-	if ar.URL != "" {
-		u, err := nurl.Parse(ar.URL)
+	if ar.URLString != "" {
+		u, err := nurl.Parse(ar.URLString)
 		if err != nil {
 			return err
 		}

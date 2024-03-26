@@ -100,11 +100,8 @@ func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
 // the *resource.WebPage will contain partial data pertaining to the request.
 func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	var httpErr fetch.HttpError
+	// FetchTime is inserted below
 	rval := resource.NewWebPage(*url)
-	// rval := &resource.WebPage{
-	// 	RequestedURL: url,
-	// 	FetchTime:    &fetchTime,
-	// }
 	resp, err := f.doRequest(url.String())
 	if err != nil {
 		// if we get an httpError back from doRequest, trust it
@@ -156,8 +153,6 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		return rval, err
 	}
 	rval.MergeTrafilaturaResult(result)
-	// rval.Metadata = result.Metadata
-	// rval.ContentText = result.ContentText
 	return rval, nil
 }
 
