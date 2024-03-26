@@ -1,3 +1,6 @@
+// Package store defines interfaces for types that handle
+// storage of web page metadata, along with definitions of
+// a few common errors.
 package store
 
 import (

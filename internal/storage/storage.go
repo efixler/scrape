@@ -49,7 +49,7 @@ func New(driver database.DriverName, dsnOptions database.DataSource) *SQLStorage
 }
 
 // Save the data for a URL. Will overwrite data where the URL is the same.
-// Save() will use the canonical url (.URL()) of the passed resource both for the key
+// Save() will use the canonical url of the passed resource both for the key
 // and for the url field in the stored data. It will also store an id map entry
 // for the requested URL, back to the canonical URL. This mapping will also be stored in
 // cases where the two urls are the same.
@@ -64,19 +64,18 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 		uptr.FetchTime = &now
 	}
 	expireTime, _ := uptr.ExpireTime()
-	// uptr.AssertTimes()
 	key := Key(uptr.CanonicalURL)
-	uptr.SkipWhenMarshaling(
+	ucopy := *uptr
+	ucopy.SkipWhenMarshaling(
 		resource.CanonicalURL,
 		resource.ContentText,
 		resource.OriginalURL,
 		resource.FetchTime,
 	)
-	metadata, err := uptr.MarshalJSON()
+	metadata, err := ucopy.MarshalJSON()
 	if err != nil {
 		return 0, err
 	}
-	defer uptr.ClearSkipWhenMarshaling()
 	values := []any{
 		key,
 		uptr.CanonicalURL.String(),
