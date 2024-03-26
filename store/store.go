@@ -1,7 +1,9 @@
+// Package store defines interfaces for types that handle
+// storage of web page metadata, along with definitions of
+// a few common errors.
 package store
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	nurl "net/url"
@@ -43,16 +45,4 @@ type Maintainable interface {
 // This interface is to expose a method to supply data to healthchecks.
 type Observable interface {
 	Stats() (any, error)
-}
-
-// Drops the fields that we don't store in the metadata blob in the db,
-// either because they get their own columns, or because we just don't store them.
-func SerializeMetadata(w *resource.WebPage) ([]byte, error) {
-	copy := *w
-	copy.ContentText = ""
-	copy.FetchTime = nil
-	copy.OriginalURL = ""
-	copy.RequestedURL = nil
-	copy.Metadata.URL = ""
-	return json.Marshal(copy)
 }

@@ -139,8 +139,11 @@ func TestMetadataPopulatedSmokeTest(t *testing.T) {
 	if resource.Title != "Smoke Test" {
 		t.Errorf("Expected title 'Smoke Test' for %s, got %s", url, resource.Title)
 	}
-	if resource.Author != "Joe Blow" {
-		t.Errorf("Expected author 'Joe Blow' for %s, got %s", url, resource.Author)
+	if len(resource.Authors) != 1 {
+		t.Errorf("Expected 1 author for %s, got %d", url, len(resource.Authors))
+	}
+	if resource.Authors[0] != "Joe Blow" {
+		t.Errorf("Expected author 'Joe Blow' for %s, got %s", url, resource.Authors[0])
 	}
 	if resource.Description != "This is a smoke test" {
 		t.Errorf("Expected description 'This is a smoke test' for %s, got %s", url, resource.Description)
@@ -158,15 +161,15 @@ func TestMetadataPopulatedSmokeTest(t *testing.T) {
 		t.Errorf("Expected page type 'article' for %s, got %s", url, resource.PageType)
 	}
 	referenceTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-	if resource.Date != referenceTime {
+	if resource.Date.Compare(referenceTime) != 0 {
 		t.Errorf("Expected date %s for %s, got %s", referenceTime, url, resource.Date)
 	}
 	if resource.Sitename != "smoke.scrape" {
 		t.Errorf("Expected site name 'smoke.scrape' for %s, got %s", url, resource.Sitename)
 	}
 	contentUrl, _ := nurl.Parse("http://smoke.scrape")
-	if resource.URL().String() != contentUrl.String() {
-		t.Errorf("Expected URL 'http://smoke.scrape' for %s, got %s", url, resource.URL().String())
+	if resource.CanonicalURL.String() != contentUrl.String() {
+		t.Errorf("Expected URL 'http://smoke.scrape' for %s, got %s", url, resource.CanonicalURL.String())
 	}
 	if resource.Image != "https://smoke.scrape/image.png" {
 		t.Errorf("Expected image 'https://smoke.scrape/image.png' for %s, got %s", url, resource.Image)

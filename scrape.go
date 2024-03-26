@@ -94,7 +94,6 @@ func (f *StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	if err != nil && !errors.Is(err, store.ErrorResourceNotFound) {
 		return nil, err
 	}
-
 	defer func() { res.OriginalURL = originalURL }()
 	if res == nil {
 		res, err = f.Fetcher.Fetch(url)

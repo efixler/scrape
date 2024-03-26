@@ -102,8 +102,8 @@ type config struct {
 	cacheSize       int
 	synchronous     SyncMode
 	accessMode      AccessMode
-	maxConnections  int
-	connMaxLifetime time.Duration
+	maxConnections  int           // 0 = use driver defaults
+	connMaxLifetime time.Duration // 0 = use driver defaults
 }
 
 func (o config) DSN() string {

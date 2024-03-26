@@ -38,25 +38,25 @@ JSON output is a superset of Trafilatura fields. Empty fields may be omitted in 
 
 | Field | Type | Description |
 | ----  | ---- | ------------|
-| `url` | URL | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |
-| `requested_url` | URL | The URL that was actually requested. (Some URL params (e.g. utm_*) may be stripped before the outbound request) |
-| `original_url` | String | Exactly the url that was in the inbound request |
+| `url` | String (URL) | The (canonical) URL for the page, as reported by the page itself. If the page doesn't supply that, this field will contain  the same value as RequestedURL |
+| `requested_url` | String (URL) | The URL that was actually requested. (Some URL params (e.g. utm_*) may be stripped before the outbound request) |
+| `original_url` | String (URL) | Exactly the url that was in the inbound request |
 | `fetch_time` | ISO8601 | The time that URL was retrieved |
 | `status_code` | Int | The status code returned by the target server when fetching this page |
 | `error` | String | Error message(s), if there were any, while processing this page |
 | `hostname` | Domain name | The domain serving this resource |
 | `date` | ISO8601 | The publish date of the page, in UTC time |
-| `sitename` | Text | Identifies the publisher. Can be domain, company name, or other text, IRL usage not consistent |
-| `title` | Text | The page's title | 
-| `author` | Text | Author, semicolon delimited for multiple authors |
-| `description` | Text | Page summary or excerpt |
-| `categories` | Array | Content categories, if supplied |
-| `tags` | Array | Tags, if supplied |
-| `language` | Text | 2-letter language code |
-| `page_type` | Text | If it's there it's usually "article" following the `og`` usage |
-| `image` | URL | Hero image link |
-| `license` | Text | Generally empty |
-| `content_text` | Text | The text of the page, with all HTML removed |
+| `sitename` | String | Identifies the publisher. Can be domain, company name, or other text, IRL usage not consistent |
+| `title` | String | The page's title | 
+| `authors` | []String | Authors |
+| `description` | String | Page summary or excerpt |
+| `categories` | []String | Content categories, if supplied |
+| `tags` | []String | Tags, if supplied |
+| `language` | String | 2-letter language code |
+| `page_type` | String | If it's there it's usually "article" following the `og`` usage |
+| `image` | String (URL) | Hero image link |
+| `license` | String | Generally empty |
+| `content_text` | String | The text of the page, with all HTML removed |
 
 Parsed field content is largely dependent on metadata included in the page. GIGO/YMMV.
 
@@ -72,7 +72,9 @@ Here's an example, with long fields truncated:
   "date": "2023-12-10T00:00:00Z",
   "sitename": "NASA",
   "title": "NASA’s Webb Stuns With New High-Definition Look at Exploded Star - NASA",
-  "author": "Steve Sabia",
+  "authors": [
+      "Steve Sabia"
+  ],
   "description": "Like a shiny, round ornament ready to be placed in the perfect spot on a holiday tree, supernova remnant Cassiopeia A (Cas A) gleams in a new image from",
   "categories": [
     "Astrophysics",
