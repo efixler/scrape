@@ -40,15 +40,6 @@ func MaxBytes(n int64) middleware {
 	}
 }
 
-// func fetcher(f fetch.URLFetcher) middleware {
-// 	return func(next http.HandlerFunc) http.HandlerFunc {
-// 		return func(w http.ResponseWriter, r *http.Request) {
-// 			r = r.WithContext(context.WithValue(r.Context(), fetcherKey{}, f))
-// 			next(w, r)
-// 		}
-// 	}
-// }
-
 // Anything that's not a GET and not a form is assumed to be JSON
 // This is imperfect but it allows for requests that don't send a content-type
 // header or inadvertently use text/plain

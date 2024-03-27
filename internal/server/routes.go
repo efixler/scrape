@@ -40,6 +40,7 @@ func InitMux(
 	mux.HandleFunc("GET /extract/headless", h)
 	mux.HandleFunc("POST /extract/headless", h)
 	mux.HandleFunc("POST /batch", scrapeServer.batchHandler())
+	mux.HandleFunc("DELETE /{$}", scrapeServer.deleteHandler())
 	h = scrapeServer.feedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
@@ -252,6 +253,33 @@ func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
 		// this error is probably too late to matter, so let's log here:
 		slog.Error("Error encoding batch response", "error", err)
 	}
+}
+
+func (h scrapeServer) deleteHandler() http.HandlerFunc {
+	return Chain(h.delete, MaxBytes(4096), parseSinglePayload())
+}
+
+func (h scrapeServer) delete(w http.ResponseWriter, r *http.Request) {
+	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+	if !ok {
+		http.Error(w, "Can't process delete request, no input data", http.StatusInternalServerError)
+		return
+	}
+	deleter, ok := h.urlFetcher.(*scrape.StorageBackedFetcher)
+	if !ok {
+		http.Error(w, "Can't delete in the current configuration", http.StatusNotImplemented)
+		return
+	}
+	deleted, err := deleter.Delete(req.URL)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !deleted {
+		http.Error(w, "Not found", http.StatusGone)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *scrapeServer) synchronousBatch(urls []string, encoder *jsonarray.Encoder[*resource.WebPage]) {

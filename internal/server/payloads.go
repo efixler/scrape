@@ -9,7 +9,6 @@ import (
 type BatchRequest struct {
 	Urls []string `json:"urls"`
 }
-
 type singleURLRequest struct {
 	URL         *nurl.URL `json:"url"`
 	PrettyPrint bool      `json:"pp,omitempty"`

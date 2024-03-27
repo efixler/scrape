@@ -256,3 +256,35 @@ func TestSingleHandler(t *testing.T) {
 		}
 	}
 }
+
+func TestDeleteHandler(t *testing.T) {
+	ss := &scrapeServer{urlFetcher: &mockUrlFetcher{}}
+	tests := []struct {
+		name           string
+		body           string
+		expectedResult int
+	}{
+		{
+			name:           "no body",
+			body:           "",
+			expectedResult: 400,
+		},
+		{
+			name:           "good body, bad handler",
+			body:           "{\"url\":\"http://foo.bar\"}",
+			expectedResult: 501,
+		},
+		// The handler is current bound to the concrete StorageBackedFetcher
+		// need to fix this so we can mock a handler that will actually do a delete
+	}
+
+	for _, test := range tests {
+		req := httptest.NewRequest("DELETE", "http://foo.bar", strings.NewReader(test.body))
+		w := httptest.NewRecorder()
+		ss.deleteHandler()(w, req)
+		resp := w.Result()
+		if resp.StatusCode != test.expectedResult {
+			t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
+		}
+	}
+}

@@ -236,14 +236,12 @@ func TestExpireTime(t *testing.T) {
 	}
 }
 
-func TestMergeTrafilaturaResult(t *testing.T) {
-	page := basicWebPage()
-	//page := &p
-	tr := trafilatura.ExtractResult{
+func basicTrafilaturaResult() trafilatura.ExtractResult {
+	return trafilatura.ExtractResult{
 		ContentText: "T content text",
 		Metadata: trafilatura.Metadata{
 			URL:         "https://trafilatura.com/canonical",
-			Title:       "A title",
+			Title:       "T title",
 			Author:      "author1;author2",
 			Hostname:    "trafilatura.com",
 			Description: "T description",
@@ -257,6 +255,11 @@ func TestMergeTrafilaturaResult(t *testing.T) {
 			License:     "T CC-BY-SA",
 		},
 	}
+}
+
+func TestMergeTrafilaturaResult(t *testing.T) {
+	page := basicWebPage()
+	tr := basicTrafilaturaResult()
 	page.MergeTrafilaturaResult(&tr)
 	if page.ContentText != tr.ContentText {
 		t.Errorf("ContentText mismatch: %s != %s", page.ContentText, tr.ContentText)
@@ -296,5 +299,19 @@ func TestMergeTrafilaturaResult(t *testing.T) {
 	}
 	if page.PageType != tr.Metadata.PageType {
 		t.Errorf("PageType mismatch: %s != %s", page.PageType, tr.Metadata.PageType)
+	}
+}
+
+func TestEmptyAuthorNotSaved(t *testing.T) {
+	page := basicWebPage()
+	page.Authors = nil
+	tr := basicTrafilaturaResult()
+	tr.Metadata.Author = ""
+	page.MergeTrafilaturaResult(&tr)
+	if page.Authors == nil {
+		t.Errorf("Authors was nil, expected empty array")
+	}
+	if len(page.Authors) != 0 {
+		t.Errorf("Empty author should not be saved: %q", page.Authors)
 	}
 }

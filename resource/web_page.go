@@ -87,11 +87,13 @@ func (r *WebPage) MergeTrafilaturaResult(tr *trafilatura.ExtractResult) {
 	r.ContentText = tr.ContentText
 	r.CanonicalURL, _ = nurl.Parse(tr.Metadata.URL)
 	r.Title = tr.Metadata.Title
+	r.Authors = make([]string, 0, 1)
 	authors := strings.Split(tr.Metadata.Author, ";")
-	for i, a := range authors {
-		authors[i] = strings.TrimSpace(a)
+	for _, a := range authors {
+		if trimmed := strings.TrimSpace(a); trimmed != "" {
+			r.Authors = append(r.Authors, trimmed)
+		}
 	}
-	r.Authors = authors
 	r.Hostname = tr.Metadata.Hostname
 	r.Description = tr.Metadata.Description
 	r.Sitename = tr.Metadata.Sitename

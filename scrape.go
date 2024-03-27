@@ -206,3 +206,7 @@ func (f *StorageBackedFetcher) loadBatch(
 		}
 	}
 }
+
+func (f StorageBackedFetcher) Delete(url *nurl.URL) (bool, error) {
+	return f.Storage.Delete(url)
+}

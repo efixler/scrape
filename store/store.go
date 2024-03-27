@@ -5,7 +5,6 @@ package store
 
 import (
 	"errors"
-	"fmt"
 	nurl "net/url"
 
 	"github.com/efixler/scrape/fetch"
@@ -31,7 +30,6 @@ type URLDataStore interface {
 	Save(*resource.WebPage) (uint64, error)
 	Ping() error
 	Delete(*nurl.URL) (bool, error)
-	fmt.Stringer
 }
 
 // This interface adds create/clear/maintain methods to the URLDataStore interface.
