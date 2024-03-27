@@ -12,7 +12,7 @@ CREATE TABLE `urls` (
   `fetch_time` BIGINT NOT NULL,
   `expires` BIGINT NOT NULL,
   `metadata` JSON NOT NULL,
-  `content_text` TEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' NULL,
+  `content_text` MEDIUMTEXT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' NULL,
   PRIMARY KEY (`id`));
 
 DROP TABLE IF EXISTS `id_map`;
