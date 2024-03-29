@@ -109,11 +109,6 @@ func (s *scrapeServer) makeHeadlessFetcher(_ context.Context, ht http.RoundTripp
 		return err
 	}
 	s.headlessFetcher = hf
-	// if sbf, ok := s.urlFetcher.(*scrape.StorageBackedFetcher); ok {
-	// 	s.headlessFetcher, err = sbf.WithAlternateURLFetcher(ctx, hf)
-	// } else {
-	// 	s.headlessFetcher = hf
-	// }
 	return err
 }
 
@@ -174,6 +169,7 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 			}
 		}
+		page.FetchMethod = resource.Headless
 		encoder := json.NewEncoder(w)
 		encoder.SetEscapeHTML(false)
 		if req.PrettyPrint {
