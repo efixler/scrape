@@ -12,14 +12,17 @@ import (
 
 type skippable string
 
-var (
+const (
 	CanonicalURL skippable = "canonical_url"
 	ContentText  skippable = "content_text"
 	OriginalURL  skippable = "original_url"
 	FetchTime    skippable = "fetch_time"
 	TTL          skippable = "ttl"
-	ErrNoTTL               = errors.New("TTL not set")
-	DefaultTTL             = 30 * 24 * time.Hour
+)
+
+var (
+	ErrNoTTL   = errors.New("TTL not set")
+	DefaultTTL = 30 * 24 * time.Hour
 )
 
 // experimental: the original WebPage struct embeds trafilatura.Metadata,
@@ -40,6 +43,7 @@ type WebPage struct { // The page that was requested by the caller
 	OriginalURL  string        `json:"original_url,omitempty"` // The canonical URL of the page
 	TTL          time.Duration `json:"-"`                      // Time to live for the resource
 	FetchTime    *time.Time    `json:"fetch_time,omitempty"`   // When the returned source was fetched
+	FetchMethod  FetchMethod   `json:"fetch_method,omitempty"` // Method used to fetch the page
 	Hostname     string        `json:"hostname,omitempty"`     // Hostname of the page
 	StatusCode   int           `json:"status_code,omitempty"`  // HTTP status code
 	Error        error         `json:"error,omitempty"`

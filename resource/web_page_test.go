@@ -45,6 +45,7 @@ func basicWebPage() WebPage {
 		ID:          "1234",
 		Fingerprint: "fingerprint",
 		ContentText: "This is the content text",
+		FetchMethod: Client,
 	}
 }
 
@@ -215,6 +216,9 @@ func isEqual(original, rt *WebPage) error {
 	if original.ContentText != rt.ContentText {
 		return fmt.Errorf("ContentText mismatch: %s != %s", original.ContentText, rt.ContentText)
 	}
+	if original.FetchMethod != rt.FetchMethod {
+		return fmt.Errorf("FetchMethod mismatch: %s != %s", original.FetchMethod, rt.FetchMethod)
+	}
 	return nil
 }
 
@@ -313,5 +317,48 @@ func TestEmptyAuthorNotSaved(t *testing.T) {
 	}
 	if len(page.Authors) != 0 {
 		t.Errorf("Empty author should not be saved: %q", page.Authors)
+	}
+}
+
+func TestFetchMethod(t *testing.T) {
+	tests := []struct {
+		name string
+		f    FetchMethod
+		want string
+	}{
+		{
+			name: "Client",
+			f:    Client,
+			want: "client",
+		},
+		{
+			name: "Headless",
+			f:    Headless,
+			want: "headless",
+		},
+		{
+			name: "Unknown",
+			f:    3,
+			want: "unknown",
+		},
+	}
+	for _, tt := range tests {
+		page := basicWebPage()
+		page.FetchMethod = tt.f
+		var byteBuffer = new(bytes.Buffer)
+		encoder := json.NewEncoder(byteBuffer)
+		encoder.SetIndent("", "  ")
+		encoder.Encode(page)
+		decoder := json.NewDecoder(byteBuffer)
+		var rt WebPage
+		err := decoder.Decode(&rt)
+		if err != nil {
+			t.Fatalf("Error decoding JSON: %s", err)
+		}
+
+		t.Logf("FetchMethod: %s", byteBuffer.String())
+		if got := page.FetchMethod.String(); got != tt.want {
+			t.Errorf("[%s] page.FetchMethod.String() = %v, want %v", tt.name, got, tt.want)
+		}
 	}
 }

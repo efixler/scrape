@@ -193,7 +193,9 @@ func TestHeadless503WhenUnavailable(t *testing.T) {
 	}
 }
 
-type mockUrlFetcher struct{}
+type mockUrlFetcher struct {
+	fetchMethod resource.FetchMethod
+}
 
 func (m *mockUrlFetcher) Open(ctx context.Context) error { return nil }
 func (m *mockUrlFetcher) Close() error                   { return nil }
@@ -203,6 +205,7 @@ func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		RequestedURL: url,
 		StatusCode:   200,
 		ContentText:  "Hello, world!",
+		FetchMethod:  m.fetchMethod,
 	}
 
 	return r, nil
@@ -211,22 +214,25 @@ func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 func TestSingleHandler(t *testing.T) {
 	ss := &scrapeServer{
 		urlFetcher:      &mockUrlFetcher{},
-		headlessFetcher: &mockUrlFetcher{},
+		headlessFetcher: &mockUrlFetcher{fetchMethod: resource.Headless},
 	}
 	tests := []struct {
-		name    string
-		url     string
-		handler http.HandlerFunc
+		name         string
+		url          string
+		handler      http.HandlerFunc
+		expectMethod resource.FetchMethod
 	}{
 		{
-			name:    "client",
-			url:     "http://foo.bar",
-			handler: ss.singleHandler(),
+			name:         "client",
+			url:          "http://foo.bar",
+			handler:      ss.singleHandler(),
+			expectMethod: resource.Client,
 		},
 		{
-			name:    "headless",
-			url:     "http://example.com",
-			handler: ss.singleHeadlessHandler(),
+			name:         "headless",
+			url:          "http://example.com",
+			handler:      ss.singleHeadlessHandler(),
+			expectMethod: resource.Headless,
 		},
 	}
 
@@ -254,6 +260,9 @@ func TestSingleHandler(t *testing.T) {
 		if r.ContentText != "Hello, world!" {
 			t.Errorf("[%s] Expected 'Hello, world!', got '%s'", test.name, r.ContentText)
 		}
+		if r.FetchMethod != test.expectMethod {
+			t.Errorf("[%s] Expected fetch method %s, got %s", test.name, test.expectMethod, r.FetchMethod)
+		}
 	}
 }
 
@@ -273,6 +282,11 @@ func TestDeleteHandler(t *testing.T) {
 			name:           "good body, bad handler",
 			body:           "{\"url\":\"http://foo.bar\"}",
 			expectedResult: 501,
+		},
+		{
+			name:           "bad body params",
+			body:           "{\"foobar\":\"bar\"}",
+			expectedResult: 400,
 		},
 		// The handler is current bound to the concrete StorageBackedFetcher
 		// need to fix this so we can mock a handler that will actually do a delete
