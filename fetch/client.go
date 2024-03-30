@@ -50,13 +50,13 @@ func (c defaultClient) Get(url string, headers http.Header) (*http.Response, err
 	if err != nil {
 		return nil, err
 	}
-	if headers != nil {
-		req.Header = make(http.Header)
+	if headers == nil {
+		headers = make(http.Header)
 	}
+	req.Header = headers
 	if req.Header.Get("User-Agent") == "" {
 		req.Header.Set("User-Agent", c.userAgent)
 	}
-	req.Header = headers
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
