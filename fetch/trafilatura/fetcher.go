@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log/slog"
 	"mime"
-	"net/http"
 	nurl "net/url"
 
 	"github.com/efixler/scrape/fetch"
@@ -16,7 +15,6 @@ import (
 )
 
 type TrafilaturaFetcher struct {
-	ctx      context.Context
 	client   fetch.Client
 	fallback trafilatura.FallbackConfig
 }
@@ -35,22 +33,15 @@ func New(client fetch.Client) (*TrafilaturaFetcher, error) {
 			return nil, err
 		}
 	}
-
 	fetcher := &TrafilaturaFetcher{
 		fallback: trafilatura.FallbackConfig{},
 		client:   client,
 	}
-
 	return fetcher, nil
 }
 
 func (f *TrafilaturaFetcher) Open(ctx context.Context) error {
-	f.ctx = ctx
 	return nil
-}
-
-func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
-	return f.client.Get(url, nil)
 }
 
 // Fetch a URL and return a WebPage resource.
@@ -63,7 +54,7 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	var httpErr fetch.HttpError
 	// FetchTime is inserted below
 	rval := resource.NewWebPage(*url)
-	resp, err := f.doRequest(url.String())
+	resp, err := f.client.Get(url.String(), nil)
 	if err != nil {
 		// if we get an httpError back from doRequest, trust it
 		if errors.As(err, &httpErr) {
