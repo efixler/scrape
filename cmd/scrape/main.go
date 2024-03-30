@@ -180,7 +180,7 @@ func openDatabase(dbFactory store.Factory) store.URLDataStore {
 }
 
 func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
-	tfopts := []trafilatura.Option{}
+	tfopts := []fetch.ClientOption{}
 	if headlessConfig.Enabled() {
 		if headlessConfig.ProxyURL() == "" {
 			slog.Error("Headless mode requires a proxy URL")
@@ -192,12 +192,16 @@ func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) 
 		if err != nil {
 			return nil, err
 		}
-		tfopts = append(tfopts, trafilatura.WithTransport(ht))
+		tfopts = append(tfopts, fetch.WithTransport(ht))
 	} else {
-		tfopts = append(tfopts, trafilatura.WithFiles("./"))
+		tfopts = append(tfopts, fetch.WithFiles("./"))
+	}
+	client, err := fetch.NewClient(tfopts...)
+	if err != nil {
+		return nil, fmt.Errorf("error creating default client: %s", err)
 	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(tfopts...),
+		trafilatura.Factory(client),
 		dbFactory,
 	)
 	if err != nil {

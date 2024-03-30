@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/resource"
@@ -33,7 +34,7 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	fFactory := trafilatura.Factory(trafilatura.WithClient(client))
+	fFactory := trafilatura.Factory(fetch.MustClient(fetch.WithHTTPClient(client)))
 	sFactory := sqlite.Factory(sqlite.InMemoryDB())
 
 	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
@@ -154,7 +155,7 @@ func TestFetchUnstored(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	fFactory := trafilatura.Factory(trafilatura.WithClient(client))
+	fFactory := trafilatura.Factory(fetch.MustClient(fetch.WithHTTPClient(client)))
 	sFactory := sqlite.Factory(sqlite.InMemoryDB())
 
 	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
