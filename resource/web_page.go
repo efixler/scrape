@@ -25,10 +25,6 @@ var (
 	DefaultTTL = 30 * 24 * time.Hour
 )
 
-// experimental: the original WebPage struct embeds trafilatura.Metadata,
-// which was a nice way to start but had led to some confusing code.
-// This struct is intended to replace that.
-
 func NewWebPage(url nurl.URL) *WebPage {
 	fetchTime := time.Now().UTC().Truncate(time.Second)
 	return &WebPage{
@@ -37,6 +33,8 @@ func NewWebPage(url nurl.URL) *WebPage {
 	}
 }
 
+// Represents a web page that was fetched, including metadata from the page itself,
+// text content, and information about the fetch operation.
 type WebPage struct { // The page that was requested by the caller
 	RequestedURL *nurl.URL     `json:"-"` // The page that was actually fetched
 	CanonicalURL *nurl.URL     `json:"-"`

@@ -3,13 +3,9 @@ package trafilatura
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"mime"
-	"net"
-	"net/http"
 	nurl "net/url"
-	"time"
 
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
@@ -18,78 +14,34 @@ import (
 	"github.com/markusmobius/go-trafilatura"
 )
 
-type config struct {
-	FallbackConfig *trafilatura.FallbackConfig
-	HttpClient     *http.Client
-	UserAgent      string
-	Transport      http.RoundTripper
-	Timeout        *time.Duration
-}
-
 type TrafilaturaFetcher struct {
-	httpClient *http.Client
-	ctx        context.Context
-	userAgent  string
+	client   fetch.Client
+	fallback trafilatura.FallbackConfig
 }
 
 // Factory function for new fetcher.
-func Factory(options ...Option) func() (fetch.URLFetcher, error) {
+func Factory(client fetch.Client) func() (fetch.URLFetcher, error) {
 	return func() (fetch.URLFetcher, error) {
-		return New(options...)
+		return New(client)
 	}
 }
 
-func New(options ...Option) (*TrafilaturaFetcher, error) {
-	conf := defaultOptions()
-
-	for _, opt := range options {
-		if err := opt(&conf); err != nil {
+func New(client fetch.Client) (*TrafilaturaFetcher, error) {
+	var err error
+	if client == nil {
+		if client, err = fetch.NewClient(); err != nil {
 			return nil, err
 		}
 	}
-
 	fetcher := &TrafilaturaFetcher{
-		httpClient: conf.HttpClient,
-		userAgent:  conf.UserAgent,
-	}
-
-	if conf.Timeout != nil {
-		fetcher.httpClient.Timeout = *conf.Timeout
-	}
-
-	if conf.Transport != nil {
-		fetcher.httpClient.Transport = conf.Transport
+		fallback: trafilatura.FallbackConfig{},
+		client:   client,
 	}
 	return fetcher, nil
 }
 
 func (f *TrafilaturaFetcher) Open(ctx context.Context) error {
-	f.ctx = ctx
 	return nil
-}
-
-func (f *TrafilaturaFetcher) doRequest(url string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", f.userAgent)
-	resp, err := f.httpClient.Do(req)
-	if err != nil {
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-			return nil, fetch.HttpError{
-				StatusCode: http.StatusGatewayTimeout,
-				Status:     http.StatusText(http.StatusGatewayTimeout),
-				Message: fmt.Sprintf(
-					"%s did not reply within %v seconds",
-					url,
-					f.httpClient.Timeout.Seconds(),
-				),
-			}
-		}
-		return resp, err
-	}
-	return resp, err
 }
 
 // Fetch a URL and return a WebPage resource.
@@ -102,7 +54,7 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	var httpErr fetch.HttpError
 	// FetchTime is inserted below
 	rval := resource.NewWebPage(*url)
-	resp, err := f.doRequest(url.String())
+	resp, err := f.client.Get(url.String(), nil)
 	if err != nil {
 		// if we get an httpError back from doRequest, trust it
 		if errors.As(err, &httpErr) {
@@ -139,7 +91,7 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		}
 	}
 	topts := trafilatura.Options{
-		FallbackCandidates: trafilaturaFallback,
+		FallbackCandidates: &f.fallback,
 		OriginalURL:        url,
 		IncludeImages:      true,
 	}

@@ -75,7 +75,7 @@ type scrapeServer struct {
 // close and release any resources they have open.
 func NewScrapeServer(ctx context.Context, sf store.Factory, hrt http.RoundTripper) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(),
+		trafilatura.Factory(nil),
 		sf,
 	)
 	if err != nil {
@@ -104,7 +104,7 @@ func NewScrapeServer(ctx context.Context, sf store.Factory, hrt http.RoundTrippe
 }
 
 func (s *scrapeServer) makeHeadlessFetcher(_ context.Context, ht http.RoundTripper) error {
-	hf, err := trafilatura.New(trafilatura.WithTransport(ht))
+	hf, err := trafilatura.New(fetch.MustClient(fetch.WithTransport(ht)))
 	if err != nil {
 		return err
 	}

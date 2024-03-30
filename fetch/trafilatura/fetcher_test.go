@@ -23,8 +23,7 @@ func TestTargetURLErrors(t *testing.T) {
 		w.Write([]byte(fmt.Sprintf("Err: %d", errCode)))
 	}))
 	defer ts.Close()
-	client := ts.Client()
-	fetcher, _ := New(WithClient(client))
+	fetcher, _ := New(fetch.MustClient(fetch.WithHTTPClient(ts.Client())))
 	type data struct {
 		url         string
 		expectedErr error
@@ -86,8 +85,7 @@ func TestClientFollowsRedirects(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	client := ts.Client()
-	fetcher, _ := New(WithClient(client))
+	fetcher, _ := New(fetch.MustClient(fetch.WithHTTPClient(ts.Client())))
 	type data struct {
 		url         string
 		expectedErr error
@@ -122,8 +120,7 @@ func TestMetadataPopulatedSmokeTest(t *testing.T) {
 		w.Write(smokeTestPage)
 	}))
 	defer ts.Close()
-	client := ts.Client()
-	fetcher, _ := New(WithClient(client))
+	fetcher, _ := New(fetch.MustClient(fetch.WithHTTPClient(ts.Client())))
 	url := ts.URL + "/0e35649e7413c52ee4502525b548c645.html"
 	netURL, _ := nurl.Parse(url)
 	resource, err := fetcher.Fetch(netURL)
@@ -215,8 +212,7 @@ func TestAcceptContentTypes(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	client := ts.Client()
-	fetcher, _ := New(WithClient(client))
+	fetcher, _ := New(fetch.MustClient(fetch.WithHTTPClient(ts.Client())))
 	type data struct {
 		url         string
 		expectedErr error
@@ -259,8 +255,7 @@ func TestFetchCancelsOnTimeout(t *testing.T) {
 		w.Write([]byte("<html><body>OK</body></html>"))
 	}))
 	defer ts.Close()
-	client := ts.Client()
-	fetcher, _ := New(WithClient(client), WithTimeout(timeout))
+	fetcher, _ := New(fetch.MustClient(fetch.WithHTTPClient(ts.Client()), fetch.WithTimeout(timeout)))
 	url, _ := nurl.Parse(ts.URL)
 	_, err := fetcher.Fetch(url)
 	if err == nil {
