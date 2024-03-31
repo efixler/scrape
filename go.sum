@@ -14,8 +14,8 @@ github.com/efixler/envflags v0.0.0-20240216173636-8ba3a3ae2ac0 h1:0Mtp62zJ0jY58b
 github.com/efixler/envflags v0.0.0-20240216173636-8ba3a3ae2ac0/go.mod h1:raY03IjmZ5RonoJ7HhBULK630UCrvufj0Z76qy382mM=
 github.com/efixler/headless v0.0.0-20240311024509-01131a49ffae h1:3pdRocnKZOuvi+awZK46PeuAo1RsevzbZw6rNt2J8JY=
 github.com/efixler/headless v0.0.0-20240311024509-01131a49ffae/go.mod h1:i0V+ZSl4oRyWCZ1/fMkmjAeHWk3Pm8RXpnahQIIZI2A=
-github.com/efixler/jsonarray v0.0.0-20240322021823-4753c0e682ba h1:EjJLAJuo4pQjsAUDqxeEMKoSYOp/vgdWbPsAhMs2RkA=
-github.com/efixler/jsonarray v0.0.0-20240322021823-4753c0e682ba/go.mod h1:nA0AsXBgUgASDwiHZLnGoaiz0p7sZzKxtaWkOWFYVXo=
+github.com/efixler/webutil v0.0.0-20240331165905-2fd0e608a9e9 h1:FDemzVSW21mQfO7A7Tq3mPW6SZeNB3VBzyYNPSI66T0=
+github.com/efixler/webutil v0.0.0-20240331165905-2fd0e608a9e9/go.mod h1:Z70Ta3UANu5ZWAr1xhJjzWokxd88RumZi/iBOReMp/s=
 github.com/elliotchance/pie/v2 v2.8.0 h1://QS43W8sEha8XV/fjngO5iMudN3XARJV5cpBayAcVY=
 github.com/elliotchance/pie/v2 v2.8.0/go.mod h1:18t0dgGFH006g4eVdDtWfgFZPQEgl10IoEO8YWEq3Og=
 github.com/forPelevin/gomoji v1.1.8 h1:JElzDdt0TyiUlecy6PfITDL6eGvIaxqYH1V52zrd0qQ=

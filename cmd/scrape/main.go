@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/efixler/envflags"
-	"github.com/efixler/jsonarray"
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
@@ -18,6 +17,7 @@ import (
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
+	"github.com/efixler/webutil/jsonarray"
 )
 
 var (

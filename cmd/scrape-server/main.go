@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/efixler/envflags"
@@ -18,6 +16,7 @@ import (
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
 	"github.com/efixler/scrape/resource"
+	"github.com/efixler/webutil/graceful"
 )
 
 const (
@@ -78,42 +77,12 @@ func main() {
 		}
 	}()
 	slog.Info("scrape-server started", "addr", s.Addr)
-	kill := make(chan os.Signal, 1)
-	signal.Notify(kill, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-kill
-	wchan := shutdownServer(s, cancel)
-	<-wchan
+	graceful.WaitForShutdown(s, cancel)
 	slog.Info("scrape-server bye!")
 	logFile, ok := (logWriter).(*os.File)
 	if ok {
 		logFile.Sync()
 	}
-}
-
-// Shutdown the server and then progate the shutdown to the mux
-// This will let the requests finish before shutting down the db
-// cf is the cancel function for the mux context, or, generically
-// speaking, a cancel function to queue up after the server is done
-// Caller should block on the returned channel.
-func shutdownServer(s *http.Server, cf context.CancelFunc) chan bool {
-	slog.Info("scrape-server shutting down")
-	wchan := make(chan bool)
-	// a large request set can take a while to finish,
-	// so we give the server a couple minutes to finish if it needs to
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	context.AfterFunc(ctx, func() {
-		cf()
-		// without a little bit of sleep here sometimes final log messages
-		// don't get flushed, even with the file sync above
-		time.Sleep(100 * time.Millisecond)
-		close(wchan)
-	})
-	defer cancel()
-	if err := s.Shutdown(ctx); err != nil {
-		slog.Error("scrape-server shutdown failed", "error", err)
-	}
-	slog.Info("scrape-server stopped")
-	return wchan
 }
 
 func init() {

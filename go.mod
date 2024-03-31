@@ -1,13 +1,15 @@
 module github.com/efixler/scrape
 
-go 1.22
+go 1.22.0
+
+toolchain go1.22.1
 
 replace github.com/efixler/scrape => ./
 
 require (
 	github.com/efixler/envflags v0.0.0-20240216173636-8ba3a3ae2ac0
 	github.com/efixler/headless v0.0.0-20240311024509-01131a49ffae
-	github.com/efixler/jsonarray v0.0.0-20240322021823-4753c0e682ba
+	github.com/efixler/webutil v0.0.0-20240331165905-2fd0e608a9e9
 	github.com/go-shiori/go-readability v0.0.0-20240204090920-819593fddc6b
 	github.com/go-sql-driver/mysql v1.8.0
 	github.com/markusmobius/go-domdistiller v0.0.0-20230515154422-71af71939ff3

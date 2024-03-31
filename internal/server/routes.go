@@ -11,7 +11,7 @@ import (
 	"net/http/pprof"
 	nurl "net/url"
 
-	"github.com/efixler/jsonarray"
+	"github.com/efixler/webutil/jsonarray"
 
 	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/fetch"
