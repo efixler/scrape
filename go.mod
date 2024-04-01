@@ -6,6 +6,8 @@ toolchain go1.22.1
 
 replace github.com/efixler/scrape => ./
 
+replace github.com/efixler/headless => ../headless
+
 require (
 	github.com/efixler/envflags v0.0.0-20240216173636-8ba3a3ae2ac0
 	github.com/efixler/headless v0.0.0-20240311024509-01131a49ffae

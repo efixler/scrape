@@ -12,8 +12,6 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/efixler/envflags v0.0.0-20240216173636-8ba3a3ae2ac0 h1:0Mtp62zJ0jY58bdJqty71UtJxM3u15kM2I2lI4bS07A=
 github.com/efixler/envflags v0.0.0-20240216173636-8ba3a3ae2ac0/go.mod h1:raY03IjmZ5RonoJ7HhBULK630UCrvufj0Z76qy382mM=
-github.com/efixler/headless v0.0.0-20240311024509-01131a49ffae h1:3pdRocnKZOuvi+awZK46PeuAo1RsevzbZw6rNt2J8JY=
-github.com/efixler/headless v0.0.0-20240311024509-01131a49ffae/go.mod h1:i0V+ZSl4oRyWCZ1/fMkmjAeHWk3Pm8RXpnahQIIZI2A=
 github.com/efixler/webutil v0.0.0-20240331165905-2fd0e608a9e9 h1:FDemzVSW21mQfO7A7Tq3mPW6SZeNB3VBzyYNPSI66T0=
 github.com/efixler/webutil v0.0.0-20240331165905-2fd0e608a9e9/go.mod h1:Z70Ta3UANu5ZWAr1xhJjzWokxd88RumZi/iBOReMp/s=
 github.com/elliotchance/pie/v2 v2.8.0 h1://QS43W8sEha8XV/fjngO5iMudN3XARJV5cpBayAcVY=
