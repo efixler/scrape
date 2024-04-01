@@ -24,14 +24,14 @@ const (
 )
 
 var (
-	flags         flag.FlagSet
-	port          *envflags.Value[int]
-	ttl           *envflags.Value[time.Duration]
-	userAgent     *envflags.Value[string]
-	dbFlags       *cmd.DatabaseFlags
-	headlessFlags *cmd.ProxyFlags
-	profile       *envflags.Value[bool]
-	logWriter     io.Writer
+	flags           flag.FlagSet
+	port            *envflags.Value[int]
+	ttl             *envflags.Value[time.Duration]
+	userAgent       *envflags.Value[string]
+	dbFlags         *cmd.DatabaseFlags
+	headlessEnabled bool
+	profile         *envflags.Value[bool]
+	logWriter       io.Writer
 )
 
 func main() {
@@ -44,17 +44,14 @@ func main() {
 		os.Exit(1)
 	}
 	dbFlags = nil
-	var ht http.RoundTripper
-	if headlessFlags.ProxyURL() != "" {
-		if ht, err = headless.NewRoundTripper(
-			headless.Address(headlessFlags.ProxyURL()),
-		); err != nil {
-			slog.Error("scrape-server error creating headless round tripper", "error", err)
-			os.Exit(1)
-		}
-	}
 
-	mux, err := server.InitMux(ctx, dbFactory, ht)
+	var headlessClient fetch.Client = nil
+	if headlessEnabled {
+		headlessClient = headless.MustChromeClient(ctx, 6)
+	}
+	// headlessClient = fetch.MustClient(fetch.WithUserAgent(userAgent.Get()))
+
+	mux, err := server.InitMux(ctx, dbFactory, headlessClient)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
@@ -91,15 +88,21 @@ func init() {
 	flags.Init("", flag.ExitOnError)
 	flags.Usage = usage
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, false)
-	headlessFlags = cmd.AddProxyFlags("headless", false, &flags)
+
+	flags.BoolVar(&headlessEnabled, "headless", false, "Use headless browser")
+
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
+
 	ttl = envflags.NewDuration("TTL", resource.DefaultTTL)
 	ttl.AddTo(&flags, "ttl", "TTL for fetched resources")
+
 	userAgent = envflags.NewString("USER_AGENT", fetch.DefaultUserAgent)
 	userAgent.AddTo(&flags, "user-agent", "User agent to use for fetching")
+
 	profile = envflags.NewBool("PROFILE", false)
 	profile.AddTo(&flags, "profile", "Enable profiling at /debug/pprof")
+
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelInfo)
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])

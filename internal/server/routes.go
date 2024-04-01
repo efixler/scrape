@@ -25,11 +25,11 @@ import (
 func InitMux(
 	ctx context.Context,
 	sf store.Factory,
-	headlessRoundTripper http.RoundTripper,
+	headlessClient fetch.Client,
 ) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", handleHome)
-	scrapeServer, err := NewScrapeServer(ctx, sf, headlessRoundTripper)
+	scrapeServer, err := NewScrapeServer(ctx, sf, headlessClient)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ type scrapeServer struct {
 
 // When the context passed here is cancelled, the associated fetcher will
 // close and release any resources they have open.
-func NewScrapeServer(ctx context.Context, sf store.Factory, hrt http.RoundTripper) (*scrapeServer, error) {
+func NewScrapeServer(ctx context.Context, sf store.Factory, headlessClient fetch.Client) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(nil),
 		sf,
@@ -90,8 +90,8 @@ func NewScrapeServer(ctx context.Context, sf store.Factory, hrt http.RoundTrippe
 	if err != nil {
 		return nil, err
 	}
-	if hrt != nil {
-		err = handler.makeHeadlessFetcher(ctx, hrt)
+	if headlessClient != nil {
+		err = handler.makeHeadlessFetcher(ctx, headlessClient)
 		if err != nil {
 			slog.Error("Error creating headless fetcher, headless options are disabled", "error", err)
 		}
@@ -103,8 +103,8 @@ func NewScrapeServer(ctx context.Context, sf store.Factory, hrt http.RoundTrippe
 	return handler, nil
 }
 
-func (s *scrapeServer) makeHeadlessFetcher(_ context.Context, ht http.RoundTripper) error {
-	hf, err := trafilatura.New(fetch.MustClient(fetch.WithTransport(ht)))
+func (s *scrapeServer) makeHeadlessFetcher(_ context.Context, headlessClient fetch.Client) error {
+	hf, err := trafilatura.New(headlessClient)
 	if err != nil {
 		return err
 	}

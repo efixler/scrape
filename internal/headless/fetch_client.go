@@ -1,9 +1,11 @@
 package headless
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/efixler/headless"
+	"github.com/efixler/headless/browser"
 	"github.com/efixler/scrape/fetch"
 )
 
@@ -11,7 +13,24 @@ type client struct {
 	browser headless.TabFactory
 }
 
-func NewClient(browser headless.TabFactory) (fetch.Client, error) {
+func MustChromeClient(ctx context.Context, maxConcurrent int) fetch.Client {
+	c, err := NewChromeClient(ctx, maxConcurrent)
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func NewChromeClient(ctx context.Context, maxConcurrent int) (fetch.Client, error) {
+	browser, err := browser.NewChrome(
+		ctx,
+		browser.MaxTabs(maxConcurrent),
+		browser.Headless(true),
+		browser.AsFirefox(),
+	)
+	if err != nil {
+		return nil, err
+	}
 	c := &client{
 		browser: browser,
 	}

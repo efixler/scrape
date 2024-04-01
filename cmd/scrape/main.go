@@ -21,15 +21,15 @@ import (
 )
 
 var (
-	flags          flag.FlagSet
-	noContent      *envflags.Value[bool]
-	dbFlags        *cmd.DatabaseFlags
-	csvPath        *envflags.Value[string]
-	csvUrlIndex    *envflags.Value[int]
-	headlessConfig *cmd.ProxyFlags
-	clear          bool
-	maintain       bool
-	ping           bool
+	flags           flag.FlagSet
+	noContent       *envflags.Value[bool]
+	dbFlags         *cmd.DatabaseFlags
+	csvPath         *envflags.Value[string]
+	csvUrlIndex     *envflags.Value[int]
+	headlessEnabled bool
+	clear           bool
+	maintain        bool
+	ping            bool
 )
 
 func main() {
@@ -180,25 +180,15 @@ func openDatabase(dbFactory store.Factory) store.URLDataStore {
 }
 
 func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
-	tfopts := []fetch.ClientOption{}
-	if headlessConfig.Enabled() {
-		if headlessConfig.ProxyURL() == "" {
-			slog.Error("Headless mode requires a proxy URL")
-			os.Exit(1)
-		}
-		ht, err := headless.NewRoundTripper(
-			headless.Address(headlessConfig.ProxyURL()),
-		)
+	var err error
+	var client fetch.Client
+	if headlessEnabled {
+		client, err = headless.NewChromeClient(context.TODO(), 1)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error creating headless client: %s", err)
 		}
-		tfopts = append(tfopts, fetch.WithTransport(ht))
 	} else {
-		tfopts = append(tfopts, fetch.WithFiles("./"))
-	}
-	client, err := fetch.NewClient(tfopts...)
-	if err != nil {
-		return nil, fmt.Errorf("error creating default client: %s", err)
+		client = fetch.MustClient(fetch.WithFiles("./"))
 	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(client),
@@ -222,8 +212,7 @@ func init() {
 	noContent.AddTo(&flags, "notext", "Skip text content")
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 
-	// TODO: Add headless support
-	headlessConfig = cmd.AddProxyFlags("headless", true, &flags)
+	flags.BoolVar(&headlessEnabled, "headless", false, "Use headless browser")
 
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
