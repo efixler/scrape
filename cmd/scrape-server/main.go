@@ -12,6 +12,7 @@ import (
 
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
@@ -38,20 +39,24 @@ func main() {
 	slog.Info("scrape-server starting up", "port", port.Get())
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
-	dbFactory, err := dbFlags.Database()
-	if err != nil {
-		slog.Error("scrape-server error creating database factory", "error", err, "dbSpec", dbFlags)
-		os.Exit(1)
-	}
+	dbFactory := dbFlags.MustDatabase()
 	dbFlags = nil
-
-	var headlessClient fetch.Client = nil
+	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get()))
+	defaultFetcherFactory := trafilatura.Factory(normalClient)
+	var headlessFetcher fetch.URLFetcher = nil
 	if headlessEnabled {
-		headlessClient = headless.MustChromeClient(ctx, 6)
+		headlessClient := headless.MustChromeClient(ctx, userAgent.Get(), 6)
+		headlessFetcher, _ = trafilatura.Factory(headlessClient)()
 	}
-	// headlessClient = fetch.MustClient(fetch.WithUserAgent(userAgent.Get()))
 
-	mux, err := server.InitMux(ctx, dbFactory, headlessClient)
+	ss, _ := server.NewScrapeServer(
+		ctx,
+		dbFactory,
+		defaultFetcherFactory,
+		headlessFetcher,
+	)
+
+	mux, err := server.InitMux(ss)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
@@ -76,8 +81,7 @@ func main() {
 	slog.Info("scrape-server started", "addr", s.Addr)
 	graceful.WaitForShutdown(s, cancel)
 	slog.Info("scrape-server bye!")
-	logFile, ok := (logWriter).(*os.File)
-	if ok {
+	if logFile, ok := (logWriter).(*os.File); ok {
 		logFile.Sync()
 	}
 }

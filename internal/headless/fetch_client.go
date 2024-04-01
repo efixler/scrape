@@ -13,20 +13,21 @@ type client struct {
 	browser headless.TabFactory
 }
 
-func MustChromeClient(ctx context.Context, maxConcurrent int) fetch.Client {
-	c, err := NewChromeClient(ctx, maxConcurrent)
+func MustChromeClient(ctx context.Context, userAgent string, maxConcurrent int) fetch.Client {
+	c, err := NewChromeClient(ctx, userAgent, maxConcurrent)
 	if err != nil {
 		panic(err)
 	}
 	return c
 }
 
-func NewChromeClient(ctx context.Context, maxConcurrent int) (fetch.Client, error) {
+func NewChromeClient(ctx context.Context, userAgent string, maxConcurrent int) (fetch.Client, error) {
 	browser, err := browser.NewChrome(
 		ctx,
 		browser.MaxTabs(maxConcurrent),
 		browser.Headless(true),
 		browser.AsFirefox(),
+		browser.UserAgentIfNotEmpty(userAgent),
 	)
 	if err != nil {
 		return nil, err

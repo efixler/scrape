@@ -3,6 +3,7 @@ package fetch
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -57,6 +58,7 @@ func (c defaultClient) Get(url string, headers http.Header) (*http.Response, err
 	if req.Header.Get("User-Agent") == "" {
 		req.Header.Set("User-Agent", c.userAgent)
 	}
+	slog.Debug("fetching", "url", url, "userAgent", c.userAgent)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
