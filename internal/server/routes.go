@@ -157,6 +157,7 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 					w.WriteHeader(err.(fetch.HttpError).StatusCode)
 				}
 			} else {
+				slog.Error("Unexpected error fetching", "url", req.URL, "error", err)
 				w.WriteHeader(http.StatusUnprocessableEntity)
 			}
 		}
@@ -189,6 +190,7 @@ func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(err.(fetch.HttpError).StatusCode)
 			}
 		} else {
+			slog.Error("Unexpected error fetching", "url", req.URL, "error", err)
 			w.WriteHeader(http.StatusUnprocessableEntity)
 		}
 	}
