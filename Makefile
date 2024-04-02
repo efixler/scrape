@@ -3,6 +3,8 @@ DOCKER_IMAGE_NAME := ${shell basename ${MODULE_NAME}}-bookworm-slim
 CWD := $(shell pwd)
 BUILD_DIR := build
 SCRAPE_PORT ?= 8080
+TAG_VERSION ?= v0.0.0
+TAG_MESSAGE ?= "Release version $(TAG_VERSION)"
 define GITHUB_ORG_USER
 $(shell git remote get-url origin | sed -n 's/.*github.com[:/]\([^/]*\)\/.*/\1/p' | tr '[:upper:]' '[:lower:]')
 endef
@@ -46,6 +48,20 @@ docker-run: ## run the local docker image, binding to port 8080, or the env valu
 fmt: 
 	@echo "Running go fmt..."
 	@go fmt ./...
+
+release-tag: ## create a release tag with TAG_VERSION and TAG_MESSAGE
+	@echo "Creating release tag $(TAG_VERSION) with message: $(TAG_MESSAGE)"
+	@if [ "$(TAG_VERSION)" = "v0.0.0" ]; then \
+        echo "Aborted. Release version cannot be 'v0.0.0'."; \
+        exit 1; \
+    fi
+	@read -p "Continue to push this release tag? (y/n): " answer; \
+    if [ "$$answer" != "y" ]; then \
+        echo "Aborted."; \
+        exit 1; \
+    fi
+	@git tag -a $(TAG_VERSION) -m $(TAG_MESSAGE)
+	@git push origin $(TAG_VERSION)
 
 test: ## run the tests
 	@echo "Running tests..."
