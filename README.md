@@ -147,6 +147,8 @@ Flags:
   -db-user value
         Database user
         Environment: SCRAPE_DB_USER
+  -headless
+        Use headless browser for extraction
   -log-level value
         Set the log level [debug|error|info|warn]
         Environment: SCRAPE_LOG_LEVEL (default WARN)
@@ -157,6 +159,9 @@ Flags:
         Environment: SCRAPE_NOTEXT
   -ping
         Ping the database and exit
+  -user-agent value
+        User agent to use for fetching
+        Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
 ```
 ## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
@@ -176,39 +181,41 @@ scrape-server [-port nnnn] [-h]
 
 Some options have environment variable equivalents. Invalid environment settings
 are ignored. Command line options override environment variables.
-	
+
 If environment variables are set, they'll override the defaults displayed in this 
 help message.
  
 Command line options:
 --------------------
 
-  -h	
-  	Show this help message
+  -h
+        Show this help message
   -database value
-    	Database type:path
-    	Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+        Database type:path
+        Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
   -db-password value
-    	Database password
-    	Environment: SCRAPE_DB_PASSWORD
+        Database password
+        Environment: SCRAPE_DB_PASSWORD
   -db-user value
-    	Database user
-    	Environment: SCRAPE_DB_USER
+        Database user
+        Environment: SCRAPE_DB_USER
+  -headless
+        Enable headless browser extraction functionality
   -log-level value
-    	Set the log level [debug|error|info|warn]
-    	Environment: SCRAPE_LOG_LEVEL
+        Set the log level [debug|error|info|warn]
+        Environment: SCRAPE_LOG_LEVEL
   -port value
-    	Port to run the server on
-    	Environment: SCRAPE_PORT (default 8080)
+        Port to run the server on
+        Environment: SCRAPE_PORT (default 8080)
   -profile
-    	Enable profiling at /debug/pprof
-    	Environment: SCRAPE_PROFILE
+        Enable profiling at /debug/pprof
+        Environment: SCRAPE_PROFILE
   -ttl value
-    	TTL for fetched resources
-    	Environment: SCRAPE_TTL (default 720h0m0s)
+        TTL for fetched resources
+        Environment: SCRAPE_TTL (default 720h0m0s)
   -user-agent value
-    	User agent to use for fetching
-    	Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
+        User agent for fetching
+        Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
 ```
 
 ### Web Interface
@@ -327,7 +334,7 @@ Here are the configuration options for MySQL:
 | -------- | ------ | ----------- | -------- |
 | -database | SCRAPE_DB | mysql: + addr:port | `mysql:mysql.domain.co:3306` |
 | -db-password | SCRAPE_DB_PASSWORD | Password | lkajd901e109i^jhj% |
-| -db-user | SCRAPE_DB_USER | Username for mysql connections | `scrape_app` (default) |
+| -db-user | SCRAPE_DB_USER | Username for mysql connections | `scrape_user` |
 
 Create the MySQL database by running `scrape -create` with the applicable values above. For
 database creation a privileged user is required. The database will be provisioned with two

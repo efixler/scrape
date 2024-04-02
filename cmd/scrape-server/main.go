@@ -94,7 +94,7 @@ func init() {
 	flags.Usage = usage
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, false)
 
-	flags.BoolVar(&headlessEnabled, "headless", false, "Use headless browser")
+	flags.BoolVar(&headlessEnabled, "headless", false, "Enable headless browser extraction functionality")
 
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
@@ -104,7 +104,7 @@ func init() {
 
 	defaultUA := ua.UserAgent(fetch.DefaultUserAgent)
 	userAgent = envflags.NewText("USER_AGENT", &defaultUA)
-	userAgent.AddTo(&flags, "user-agent", "User agent to use for fetching")
+	userAgent.AddTo(&flags, "user-agent", "User agent for fetching")
 
 	profile = envflags.NewBool("PROFILE", false)
 	profile.AddTo(&flags, "profile", "Enable profiling at /debug/pprof")

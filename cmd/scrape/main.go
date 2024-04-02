@@ -217,7 +217,7 @@ func init() {
 	noContent.AddTo(&flags, "notext", "Skip text content")
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 
-	flags.BoolVar(&headlessEnabled, "headless", false, "Use headless browser")
+	flags.BoolVar(&headlessEnabled, "headless", false, "Use headless browser for extraction")
 
 	dua := ua.UserAgent(fetch.DefaultUserAgent)
 	userAgent = envflags.NewText("USER_AGENT", &dua)

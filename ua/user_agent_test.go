@@ -11,6 +11,7 @@ func TestUserAgent(t *testing.T) {
 	tests := []data{
 		{"Firefox88", ":firefox:", Firefox88},
 		{"Safari537", ":safari:", Safari537},
+		{"Chrome123", ":chrome:", Chrome123},
 		{"Custom", "custom", UserAgent("custom")},
 	}
 	for _, test := range tests {
