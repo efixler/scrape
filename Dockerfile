@@ -16,12 +16,17 @@ WORKDIR /go/bin
 FROM debian:12-slim
 
 RUN apt -y update && apt -y upgrade
-RUN apt-get -y install sqlite3 ca-certificates curl
+RUN apt-get -y install \ 
+    sqlite3 \
+    ca-certificates \
+    curl \
+    chromium \
+    gnupg wget apt-transport-https
 RUN mkdir -p /scrape/bin
 COPY --from=builder /go/bin/* /scrape/bin/
 RUN mkdir -p /scrape_data
 VOLUME [ "/scrape_data" ]
-ENV SCRAPE_DB="sqlite:/scrape_data/scrape.db"
 EXPOSE 8080/tcp
 CMD ["cd", "/"]
+# The default sqlite db will be in /scrape_data/scrape.db
 ENTRYPOINT ["/scrape/bin/scrape-server"]
