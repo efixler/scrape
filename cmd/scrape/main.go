@@ -183,7 +183,7 @@ func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) 
 	var err error
 	var client fetch.Client
 	if headlessEnabled {
-		client, err = headless.NewChromeClient(context.TODO(), 1)
+		client, err = headless.NewChromeClient(context.TODO(), fetch.DefaultUserAgent, 1)
 		if err != nil {
 			return nil, fmt.Errorf("error creating headless client: %s", err)
 		}

@@ -23,16 +23,14 @@ import (
 )
 
 func InitMux(
-	ctx context.Context,
-	sf store.Factory,
-	headlessClient fetch.Client,
+	scrapeServer *scrapeServer,
 ) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", handleHome)
-	scrapeServer, err := NewScrapeServer(ctx, sf, headlessClient)
-	if err != nil {
-		return nil, err
-	}
+	// scrapeServer, err := NewScrapeServer(ctx, sf, headlessClient)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	h := scrapeServer.singleHandler()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
@@ -73,7 +71,13 @@ type scrapeServer struct {
 
 // When the context passed here is cancelled, the associated fetcher will
 // close and release any resources they have open.
-func NewScrapeServer(ctx context.Context, sf store.Factory, headlessClient fetch.Client) (*scrapeServer, error) {
+func NewScrapeServer(
+	ctx context.Context,
+	sf store.Factory,
+	clientFactory fetch.Factory,
+	headlessFetcher fetch.URLFetcher,
+	// headlessClient fetch.Client,
+) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(nil),
 		sf,
@@ -83,33 +87,20 @@ func NewScrapeServer(ctx context.Context, sf store.Factory, headlessClient fetch
 	}
 	feedFetcher := feed.NewFeedFetcher(feed.DefaultOptions)
 	handler := &scrapeServer{
-		urlFetcher:  urlFetcher,
-		feedFetcher: feedFetcher,
+		urlFetcher:      urlFetcher,
+		feedFetcher:     feedFetcher,
+		headlessFetcher: headlessFetcher,
 	}
-	err = urlFetcher.Open(ctx)
+	err = handler.urlFetcher.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if headlessClient != nil {
-		err = handler.makeHeadlessFetcher(ctx, headlessClient)
-		if err != nil {
-			slog.Error("Error creating headless fetcher, headless options are disabled", "error", err)
-		}
-	}
+
 	err = feedFetcher.Open(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return handler, nil
-}
-
-func (s *scrapeServer) makeHeadlessFetcher(_ context.Context, headlessClient fetch.Client) error {
-	hf, err := trafilatura.New(headlessClient)
-	if err != nil {
-		return err
-	}
-	s.headlessFetcher = hf
-	return err
 }
 
 // Convenience method to get the underlying storage from the fetcher

@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/resource"
 )
@@ -65,10 +66,10 @@ func TestFeedSourceErrors(t *testing.T) {
 
 func TestWellknown(t *testing.T) {
 	t.Parallel()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	//ctx, cancel := context.WithCancel(context.Background())
+	//defer cancel()
 
-	mux, err := InitMux(ctx, storeFactory, nil)
+	mux, err := InitMux(&scrapeServer{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +100,8 @@ func TestBatchReponseIsValid(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mux, err := InitMux(ctx, storeFactory, nil)
+	ss, _ := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
+	mux, err := InitMux(ss)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +163,8 @@ func TestExtractErrors(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mux, err := InitMux(ctx, storeFactory, nil)
+	ss, _ := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
+	mux, err := InitMux(ss)
 	if err != nil {
 		t.Fatal(err)
 	}

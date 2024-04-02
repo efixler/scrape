@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"regexp"
 
 	"github.com/efixler/envflags"
@@ -76,6 +77,14 @@ func (f DatabaseFlags) String() DatabaseSpec {
 
 func (f DatabaseFlags) Database() (store.Factory, error) {
 	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.Create)
+}
+
+func (f DatabaseFlags) MustDatabase() store.Factory {
+	dbF, err := f.Database()
+	if err != nil {
+		panic(fmt.Sprintf("error making database factory from flags: %v", err))
+	}
+	return dbF
 }
 
 func database(spec DatabaseSpec, username string, password string, noSchema bool) (store.Factory, error) {
