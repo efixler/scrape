@@ -94,6 +94,9 @@ func TestAddress(t *testing.T) {
 		if (err != nil) != test.expectError {
 			t.Fatalf("%s: unexpected error: %s", test.name, err)
 		} else if test.expectError {
+			if !errors.Is(err, store.ErrorValueNotAllowed) {
+				t.Errorf("%s: unexpected error: %s", test.name, err)
+			}
 			continue
 		}
 		elems := strings.SplitN(c.Addr, ":", 2)

@@ -36,7 +36,7 @@ const (
 func NetAddress(addr string) Option {
 	return func(c *Config) error {
 		if addr == "" {
-			return store.ErrorValueNotAllowed
+			return errors.Join(store.ErrorValueNotAllowed, errors.New("mysql address cannot be empty"))
 		}
 		elems := strings.SplitN(addr, ":", 2)
 		switch len(elems) {
@@ -44,7 +44,7 @@ func NetAddress(addr string) Option {
 			addr = fmt.Sprintf("%s:%d", elems[0], DefaultPort)
 		case 2:
 			if _, err := strconv.Atoi(elems[1]); err != nil {
-				return err
+				return errors.Join(store.ErrorValueNotAllowed, errors.New("mysql port must be a number"), err)
 			}
 		}
 		c.Net = string(TCP)
