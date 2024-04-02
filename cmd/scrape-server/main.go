@@ -17,6 +17,7 @@ import (
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
 	"github.com/efixler/scrape/resource"
+	"github.com/efixler/scrape/ua"
 	"github.com/efixler/webutil/graceful"
 )
 
@@ -28,7 +29,7 @@ var (
 	flags           flag.FlagSet
 	port            *envflags.Value[int]
 	ttl             *envflags.Value[time.Duration]
-	userAgent       *envflags.Value[string]
+	userAgent       *envflags.Value[*ua.UserAgent]
 	dbFlags         *cmd.DatabaseFlags
 	headlessEnabled bool
 	profile         *envflags.Value[bool]
@@ -41,11 +42,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	dbFactory := dbFlags.MustDatabase()
 	dbFlags = nil
-	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get()))
+	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
 	defaultFetcherFactory := trafilatura.Factory(normalClient)
 	var headlessFetcher fetch.URLFetcher = nil
 	if headlessEnabled {
-		headlessClient := headless.MustChromeClient(ctx, userAgent.Get(), 6)
+		headlessClient := headless.MustChromeClient(ctx, userAgent.Get().String(), 6)
 		headlessFetcher, _ = trafilatura.Factory(headlessClient)()
 	}
 
@@ -93,7 +94,7 @@ func init() {
 	flags.Usage = usage
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, false)
 
-	flags.BoolVar(&headlessEnabled, "headless", false, "Use headless browser")
+	flags.BoolVar(&headlessEnabled, "headless", false, "Enable headless browser extraction functionality")
 
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
@@ -101,8 +102,9 @@ func init() {
 	ttl = envflags.NewDuration("TTL", resource.DefaultTTL)
 	ttl.AddTo(&flags, "ttl", "TTL for fetched resources")
 
-	userAgent = envflags.NewString("USER_AGENT", fetch.DefaultUserAgent)
-	userAgent.AddTo(&flags, "user-agent", "User agent to use for fetching")
+	defaultUA := ua.UserAgent(fetch.DefaultUserAgent)
+	userAgent = envflags.NewText("USER_AGENT", &defaultUA)
+	userAgent.AddTo(&flags, "user-agent", "User agent for fetching")
 
 	profile = envflags.NewBool("PROFILE", false)
 	profile.AddTo(&flags, "profile", "Enable profiling at /debug/pprof")
