@@ -11,8 +11,11 @@ import (
 	"github.com/efixler/scrape/resource"
 )
 
+const (
+	DefaultUserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0"
+)
+
 var (
-	DefaultUserAgent          = "Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0"
 	ErrUnsupportedContentType = UnsupportedContentTypeError{
 		HttpError{
 			StatusCode: http.StatusUnsupportedMediaType,

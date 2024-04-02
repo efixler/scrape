@@ -17,6 +17,7 @@ import (
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/ua"
 	"github.com/efixler/webutil/jsonarray"
 )
 
@@ -24,6 +25,7 @@ var (
 	flags           flag.FlagSet
 	noContent       *envflags.Value[bool]
 	dbFlags         *cmd.DatabaseFlags
+	userAgent       *envflags.Value[*ua.UserAgent]
 	csvPath         *envflags.Value[string]
 	csvUrlIndex     *envflags.Value[int]
 	headlessEnabled bool
@@ -183,12 +185,15 @@ func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) 
 	var err error
 	var client fetch.Client
 	if headlessEnabled {
-		client, err = headless.NewChromeClient(context.TODO(), fetch.DefaultUserAgent, 1)
+		client, err = headless.NewChromeClient(context.TODO(), userAgent.Get().String(), 1)
 		if err != nil {
 			return nil, fmt.Errorf("error creating headless client: %s", err)
 		}
 	} else {
-		client = fetch.MustClient(fetch.WithFiles("./"))
+		client = fetch.MustClient(
+			fetch.WithFiles("./"),
+			fetch.WithUserAgent(userAgent.Get().String()),
+		)
 	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(client),
@@ -213,6 +218,10 @@ func init() {
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, true)
 
 	flags.BoolVar(&headlessEnabled, "headless", false, "Use headless browser")
+
+	dua := ua.UserAgent(fetch.DefaultUserAgent)
+	userAgent = envflags.NewText("USER_AGENT", &dua)
+	userAgent.AddTo(&flags, "user-agent", "User agent to use for fetching")
 
 	csvPath = envflags.NewString("", "")
 	csvPath.AddTo(&flags, "csv", "CSV file path")
