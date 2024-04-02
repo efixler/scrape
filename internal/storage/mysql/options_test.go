@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"testing"
@@ -41,7 +42,7 @@ func TestUsername(t *testing.T) {
 		if err == nil && c.User != test.username {
 			t.Errorf("Username - %s: unexpected username: %s", test.name, c.User)
 		}
-		if err != test.expectedErr {
+		if !errors.Is(err, test.expectedErr) {
 			t.Errorf("%s: unexpected error: %s", test.name, err)
 		}
 	}

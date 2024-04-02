@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -55,7 +56,7 @@ func NetAddress(addr string) Option {
 func Username(username string) Option {
 	return func(c *Config) error {
 		if username == "" {
-			return store.ErrorValueNotAllowed
+			return errors.Join(store.ErrorValueNotAllowed, errors.New("username cannot be empty"))
 		}
 		c.User = username
 		return nil
