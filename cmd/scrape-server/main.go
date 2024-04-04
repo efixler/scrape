@@ -68,8 +68,8 @@ func main() {
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", port.Get()),
 		Handler:        mux,
-		ReadTimeout:    5 * time.Second,
-		WriteTimeout:   10 * time.Second,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   30 * time.Second,
 		IdleTimeout:    60 * time.Second,
 		MaxHeaderBytes: 1 << 16,
 	}
