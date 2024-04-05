@@ -69,7 +69,7 @@ func main() {
 		Addr:           fmt.Sprintf(":%d", port.Get()),
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   30 * time.Second,
+		WriteTimeout:   60 * time.Second, // some feed/batch requests can be slow to complete
 		IdleTimeout:    60 * time.Second,
 		MaxHeaderBytes: 1 << 16,
 	}
