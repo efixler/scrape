@@ -49,8 +49,8 @@ fmt:
 	@echo "Running go fmt..."
 	@go fmt ./...
 
-release-tag: ## create a release tag with TAG_VERSION and TAG_MESSAGE
-	@echo "Creating release tag $(TAG_VERSION) with message: $(TAG_MESSAGE)"
+release-tag: latest-tag ## create a release tag with TAG_VERSION and TAG_MESSAGE
+	@echo "Creating release tag $(TAG_VERSION) with message: $(TAG_MESSAGE) (latest tag: $(TAG))..."
 	@if [ "$(TAG_VERSION)" = "v0.0.0" ]; then \
         echo "Aborted. Release version cannot be 'v0.0.0'."; \
         exit 1; \
@@ -62,6 +62,9 @@ release-tag: ## create a release tag with TAG_VERSION and TAG_MESSAGE
     fi
 	@git tag -a $(TAG_VERSION) -m $(TAG_MESSAGE)
 	@git push origin $(TAG_VERSION)
+
+latest-tag: 
+	$(eval TAG := $(shell git describe --abbrev=0 --tags $(shell git rev-list --tags --max-count=1))) 
 
 test: ## run the tests
 	@echo "Running tests..."
