@@ -5,6 +5,7 @@ import (
 )
 
 type Feed struct {
+	RequestedURL string `json:"requested_url,omitempty"`
 	gofeed.Feed
 }
 

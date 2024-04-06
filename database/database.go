@@ -194,3 +194,10 @@ func (s *DBHandle[T]) Close() error {
 	}
 	return nil
 }
+
+func (s *DBHandle[T]) Stats() (any, error) {
+	if s.DB == nil {
+		return nil, ErrDatabaseNotOpen
+	}
+	return s.DB.Stats(), nil
+}

@@ -18,6 +18,7 @@ type Stats struct {
 	UnusedPages   int              `json:"unused_pages"`
 	MaxPageCount  int              `json:"max_page_count"`
 	Filesystem    *FilesystemStats `json:"fs,omitempty"`
+	DBStats       any              `json:"db_stats,omitempty"`
 	fetchTime     time.Time
 }
 
@@ -69,6 +70,7 @@ func (s *Store) Stats() (any, error) {
 	s.stats.UnusedPages = unusedPages
 	s.stats.MaxPageCount = maxPageCount
 	s.stats.Filesystem = s.filesystemStats()
+	s.stats.DBStats, _ = s.SQLStorage.Stats()
 	s.stats.fetchTime = time.Now()
 	return s.stats, nil
 }

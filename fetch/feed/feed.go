@@ -76,7 +76,8 @@ func (f *FeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
 		return nil, err
 	}
 	return &resource.Feed{
-		Feed: *feed,
+		Feed:         *feed,
+		RequestedURL: url.String(),
 	}, nil
 }
 
