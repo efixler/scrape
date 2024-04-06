@@ -31,7 +31,7 @@ var (
 	ttl             *envflags.Value[time.Duration]
 	userAgent       *envflags.Value[*ua.UserAgent]
 	dbFlags         *cmd.DatabaseFlags
-	headlessEnabled bool
+	headlessEnabled *envflags.Value[bool]
 	profile         *envflags.Value[bool]
 	logWriter       io.Writer
 )
@@ -45,7 +45,7 @@ func main() {
 	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
 	defaultFetcherFactory := trafilatura.Factory(normalClient)
 	var headlessFetcher fetch.URLFetcher = nil
-	if headlessEnabled {
+	if headlessEnabled.Get() {
 		headlessClient := headless.MustChromeClient(ctx, userAgent.Get().String(), 6)
 		headlessFetcher, _ = trafilatura.Factory(headlessClient)()
 	}
@@ -69,7 +69,7 @@ func main() {
 		Addr:           fmt.Sprintf(":%d", port.Get()),
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   60 * time.Second, // some feed/batch requests can be slow to complete
+		WriteTimeout:   120 * time.Second, // some feed/batch requests can be slow to complete
 		IdleTimeout:    60 * time.Second,
 		MaxHeaderBytes: 1 << 16,
 	}
@@ -94,7 +94,8 @@ func init() {
 	flags.Usage = usage
 	dbFlags = cmd.AddDatabaseFlags("DB", &flags, false)
 
-	flags.BoolVar(&headlessEnabled, "headless", false, "Enable headless browser extraction functionality")
+	headlessEnabled = envflags.NewBool("ENABLE_HEADLESS", false)
+	headlessEnabled.AddTo(&flags, "enable-headless", "Enable headless browser extraction functionality")
 
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")

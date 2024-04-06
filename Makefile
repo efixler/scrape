@@ -4,14 +4,8 @@ CWD := $(shell pwd)
 BUILD_DIR := build
 SCRAPE_PORT ?= 8080
 TAG_VERSION ?= v0.0.0
-TAG_MESSAGE ?= "Release version $(TAG_VERSION)"
-define GITHUB_ORG_USER
-$(shell git remote get-url origin | sed -n 's/.*github.com[:/]\([^/]*\)\/.*/\1/p' | tr '[:upper:]' '[:lower:]')
-endef
 CONTAINER_REGISTRY ?= docker.io
-define PUSH_TAG
-$(CONTAINER_REGISTRY)/$(GITHUB_ORG_USER)/$(DOCKER_IMAGE_NAME):latest
-endef
+
 
 .DEFAULT_GOAL := build
 
@@ -30,8 +24,7 @@ docker-build: ## build a docker image on the current platform, for local use
 	@echo "Building $(DOCKER_IMAGE_NAME)..." 
 	@docker build -t $(DOCKER_IMAGE_NAME) .
 
-docker-push: ## push an amd64/arm64 docker to Docker Hub or to a registry specified by CONTAINER_REGISTRY
-	@echo "Pushing '$(PUSH_TAG)'..."
+docker-push: push-tag ## push an amd64/arm64 docker to Docker Hub or to a registry specified by CONTAINER_REGISTRY
 	@read -p "Do you want to push an amd64/arm64 image to '$(PUSH_TAG)'? (y/N) " answer; \
 	if [ "$$answer" != "y" ]; then \
 		echo "Aborted."; \
@@ -41,6 +34,10 @@ docker-push: ## push an amd64/arm64 docker to Docker Hub or to a registry specif
 	@docker buildx create --use
 	@docker buildx build --push --platform linux/amd64,linux/arm64 -t $(PUSH_TAG) . 
 
+push-tag: latest-release-tag 
+	$(eval GITHUB_ORG := $(shell git remote get-url origin | sed -n 's/.*github.com[:/]\([^/]*\)\/.*/\1/p' | tr '[:upper:]' '[:lower:]'))
+	$(eval PUSH_TAG=$(CONTAINER_REGISTRY)/$(GITHUB_ORG)/$(DOCKER_IMAGE_NAME):$(RELEASE_TAG))
+
 docker-run: ## run the local docker image, binding to port 8080, or the env value of SCRAPE_PORT
 	@echo "Running $(DOCKER_IMAGE_NAME)..."
 	@docker run -d -ti -p 127.0.0.1:$(SCRAPE_PORT):8080  --volume=$(CWD)/docker/data:/scrape_data --rm scrape-bookworm-slim:latest
@@ -49,8 +46,9 @@ fmt:
 	@echo "Running go fmt..."
 	@go fmt ./...
 
-release-tag: latest-tag ## create a release tag with TAG_VERSION and TAG_MESSAGE
-	@echo "Creating release tag $(TAG_VERSION) with message: $(TAG_MESSAGE) (latest tag: $(TAG))..."
+release-tag: latest-release-tag ## create a release tag with TAG_VERSION and TAG_MESSAGE
+	$(eval TAG_MESSAGE ?= "Release version $(TAG_VERSION)")
+	@echo "Creating release tag $(TAG_VERSION) with message: $(TAG_MESSAGE) (latest tag: $(RELEASE_TAG))..."
 	@if [ "$(TAG_VERSION)" = "v0.0.0" ]; then \
         echo "Aborted. Release version cannot be 'v0.0.0'."; \
         exit 1; \
@@ -63,8 +61,8 @@ release-tag: latest-tag ## create a release tag with TAG_VERSION and TAG_MESSAGE
 	@git tag -a $(TAG_VERSION) -m $(TAG_MESSAGE)
 	@git push origin $(TAG_VERSION)
 
-latest-tag: 
-	$(eval TAG := $(shell git describe --abbrev=0 --tags $(shell git rev-list --tags --max-count=1))) 
+latest-release-tag: 
+	$(eval RELEASE_TAG := $(shell git describe --abbrev=0 --tags $(shell git rev-list --tags --max-count=1))) 
 
 test: ## run the tests
 	@echo "Running tests..."
