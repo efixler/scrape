@@ -11,9 +11,7 @@ BEGIN TRANSACTION;
 
 -- Table: id_map
 
-DROP TABLE IF EXISTS id_map;
-
-CREATE TABLE id_map (
+CREATE TABLE IF NOT EXISTS id_map (
     requested_id INTEGER PRIMARY KEY ON CONFLICT REPLACE
                          NOT NULL,
     canonical_id INTEGER NOT NULL
@@ -23,9 +21,7 @@ STRICT;
 
 
 -- Table: urls
-DROP TABLE IF EXISTS urls;
-
-CREATE TABLE urls (
+CREATE TABLE IF NOT EXISTS urls (
     id           INTEGER PRIMARY KEY ON CONFLICT REPLACE
                          NOT NULL,
     url          TEXT    NOT NULL
@@ -39,5 +35,13 @@ CREATE TABLE urls (
 WITHOUT ROWID,
 STRICT;
 
+ALTER TABLE urls ADD column fetch_method NOT NULL INTEGER DEFAULT 0;
+
+CREATE INDEX fetch_method_expires_index ON urls (
+    expires DESC,
+    fetch_method ASC
+);
+
 COMMIT TRANSACTION;
 PRAGMA wal_checkpoint(RESTART);
+
