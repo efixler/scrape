@@ -1,5 +1,4 @@
 --
--- File generated with SQLiteStudio v3.4.4 on Thu Dec 14 22:50:06 2023
 --
 -- Text encoding used: UTF-8
 --
@@ -35,9 +34,14 @@ CREATE TABLE IF NOT EXISTS urls (
 WITHOUT ROWID,
 STRICT;
 
-ALTER TABLE urls ADD column fetch_method NOT NULL INTEGER DEFAULT 0;
 
-CREATE INDEX fetch_method_expires_index ON urls (
+-- Following two statements are added to support tracking headless
+-- fetched state (or other alternate fetch methods)
+-- The following cannot be executed idempotently
+-- TODO: Goose migrations
+ALTER TABLE urls ADD column fetch_method INTEGER NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS fetch_method_expires_index ON urls (
     expires DESC,
     fetch_method ASC
 );

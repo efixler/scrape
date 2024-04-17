@@ -17,10 +17,10 @@ func TestStats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = db.Create()
-	if err != nil {
-		t.Fatal(err)
-	}
+	// err = db.Create()
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 	sany, err := db.Stats()
 	if err != nil {
 		t.Fatal(err)

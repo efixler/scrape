@@ -16,7 +16,7 @@ func testStore() *Store {
 		Password(""),
 		NetAddress("localhost:3306"),
 	)
-	return db.(*Store)
+	return db // .(*Store)
 }
 
 func TestCreate(t *testing.T) {
