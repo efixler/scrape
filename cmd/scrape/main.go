@@ -1,3 +1,12 @@
+// Use the `scrape` command line tool to fetch and
+// extract metadata from urls and to set up and maintain
+// the `scrape` database.
+//
+// The basic invocation form is:
+//
+// > scrape https://example.com/path
+//
+// Run `scrape -h` for complete help and command line options.
 package main
 
 import (

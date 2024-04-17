@@ -1,3 +1,9 @@
+// scrape-server launches the `scrape` url fetching and metadata service.
+//
+// When run without any arguments, the service will start on port 8080
+// and use a local SQLite database.
+//
+// For full documentation on launch options invoke `scrape-server` with the -h flag.
 package main
 
 import (
