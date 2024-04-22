@@ -138,16 +138,6 @@ func TestForMigration(t *testing.T) {
 			t.Errorf("ForMigration: expected target schema %q, got %q", test.expectedTarget, c.TargetSchema)
 		}
 	}
-
-	// c := defaultConfig()
-	// ForMigration()(&c)
-	// if c.DBName != "" {
-	// 	t.Errorf("ForMigration: unexpected schema: %s", c.DBName)
-	// }
-	// if c.targetSchema != defaultSchema {
-	// 	t.Errorf("ForMigration: expected target schema %q, got %q", defaultSchema, c.targetSchema)
-	// }
-
 }
 
 func TestOverwriteParams(t *testing.T) {
