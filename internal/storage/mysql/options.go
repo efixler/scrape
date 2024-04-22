@@ -22,7 +22,7 @@ const (
 	TCP                    ConnectionType = "tcp"
 	Unix                   ConnectionType = "unix"
 	DefaultPort                           = 3306
-	dbSchema                              = "scrape"
+	defaultSchema                         = "scrape"
 	utf8mb4General         Collation      = "utf8mb4_general_ci"
 	utf8mb4Unicode9        Collation      = "utf8mb4_0900_ai_ci"
 	DefaultMaxConnections                 = 32
@@ -73,12 +73,14 @@ func Password(password string) Option {
 func Schema(name string) Option {
 	return func(c *Config) error {
 		c.DBName = name
+		c.TargetSchema = name
 		return nil
 	}
 }
 
-func WithoutSchema() Option {
+func ForMigration() Option {
 	return func(c *Config) error {
+		c.TargetSchema = c.DBName
 		c.DBName = ""
 		return nil
 	}
@@ -93,6 +95,7 @@ func WithQueryTimeout(timeout time.Duration) Option {
 
 type Config struct {
 	mysql.Config
+	TargetSchema    string // here for schema-less conns, e.g. for create
 	queryTimeout    time.Duration
 	maxConns        int
 	connMaxLifetime time.Duration
@@ -101,7 +104,7 @@ type Config struct {
 func defaultConfig() Config {
 	cfg := mysql.NewConfig()
 	cfg.Net = string(TCP)
-	cfg.DBName = dbSchema
+	cfg.DBName = defaultSchema
 	cfg.Loc = time.UTC
 	cfg.Collation = string(utf8mb4Unicode9)
 	cfg.Timeout = DefaultTimeout           // dial timeout

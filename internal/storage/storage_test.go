@@ -37,14 +37,10 @@ func (d dsnGen) ConnMaxLifetime() time.Duration {
 }
 
 func TestOpen(t *testing.T) {
-	db := db(t)
+	db := getTestDatabase(t)
 	err := db.Ping()
 	if err != nil {
 		t.Errorf("Error pinging database: %v", err)
-	}
-	err = db.Close()
-	if err != nil {
-		t.Errorf("Error closing database: %v", err)
 	}
 }
 
@@ -80,8 +76,7 @@ func getWebPage(t *testing.T) *resource.WebPage {
 }
 
 func TestStore(t *testing.T) {
-	s := db(t)
-	defer s.Close()
+	s := getTestDatabase(t)
 	meta := getWebPage(t)
 	cText := meta.ContentText
 
@@ -181,8 +176,7 @@ func TestStore(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceNotExists(t *testing.T) {
-	s := db(t)
-	defer s.Close()
+	s := getTestDatabase(t)
 	url, err := nurl.Parse("https://martinfowler.com/aboutYou")
 	if err != nil {
 		t.Errorf("Error parsing url: %v", err)
@@ -197,8 +191,7 @@ func TestReturnValuesWhenResourceNotExists(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
-	s := db(t)
-	defer s.Close()
+	s := getTestDatabase(t)
 	var meta resource.WebPage
 	err := json.Unmarshal([]byte(mdata), &meta)
 	if err != nil {
@@ -227,8 +220,7 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 
 // We store self-referential lookups. This test confirms that they are stored.
 func TestCanonicalSelfLookupExists(t *testing.T) {
-	s := db(t)
-	defer s.Close()
+	s := getTestDatabase(t)
 	url, _ := nurl.Parse("https://martinfowler.com/aboutMe.html")
 	key := Key(url)
 	err := s.storeIdMap(url, key) // stores a self-referential lookup
@@ -245,8 +237,7 @@ func TestCanonicalSelfLookupExists(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	s := db(t)
-	defer s.Close()
+	s := getTestDatabase(t)
 	res := getWebPage(t)
 	_, err := s.Save(res)
 	if err != nil {
@@ -270,8 +261,7 @@ func TestClear(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	s := db(t)
-	defer s.Close()
+	s := getTestDatabase(t)
 	res := getWebPage(t)
 	_, err := s.Save(res)
 	if err != nil {

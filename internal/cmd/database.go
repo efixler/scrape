@@ -105,7 +105,7 @@ func database(spec DatabaseSpec, username string, password string, noSchema bool
 			mysql.Password(password),
 		}
 		if noSchema {
-			options = append(options, mysql.WithoutSchema())
+			options = append(options, mysql.ForMigration())
 		}
 		return mysql.Factory(options...), nil
 	default:

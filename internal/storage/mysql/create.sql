@@ -1,7 +1,7 @@
--- {{.DBName}}
+-- {{.TargetSchema}}
 BEGIN;
-CREATE DATABASE IF NOT EXISTS `{{.DBName}}` DEFAULT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' ;
-USE {{.DBName}} ;
+CREATE DATABASE IF NOT EXISTS `{{.TargetSchema}}` DEFAULT CHARACTER SET 'utf8mb4' COLLATE 'utf8mb4_0900_ai_ci' ;
+USE {{.TargetSchema}} ;
 
 CREATE TABLE IF NOT EXISTS `urls` (
   `id` BIGINT UNSIGNED NOT NULL,
@@ -34,9 +34,9 @@ CREATE INDEX fetch_method_expires_index ON urls (
 
 
 CREATE ROLE IF NOT EXISTS scrape_app;
-GRANT SELECT, INSERT, UPDATE, DELETE on {{.DBName}}.* to scrape_app;
+GRANT SELECT, INSERT, UPDATE, DELETE on {{.TargetSchema}}.* to scrape_app;
 CREATE ROLE IF NOT EXISTS scrape_admin;
-GRANT ALL ON {{.DBName}}.* to scrape_admin;
+GRANT ALL ON {{.TargetSchema}}.* to scrape_admin;
   
 COMMIT;
 SET AUTOCOMMIT = 1;
