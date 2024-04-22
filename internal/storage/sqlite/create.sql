@@ -1,5 +1,4 @@
 --
--- File generated with SQLiteStudio v3.4.4 on Thu Dec 14 22:50:06 2023
 --
 -- Text encoding used: UTF-8
 --
@@ -11,9 +10,7 @@ BEGIN TRANSACTION;
 
 -- Table: id_map
 
-DROP TABLE IF EXISTS id_map;
-
-CREATE TABLE id_map (
+CREATE TABLE IF NOT EXISTS id_map (
     requested_id INTEGER PRIMARY KEY ON CONFLICT REPLACE
                          NOT NULL,
     canonical_id INTEGER NOT NULL
@@ -23,9 +20,7 @@ STRICT;
 
 
 -- Table: urls
-DROP TABLE IF EXISTS urls;
-
-CREATE TABLE urls (
+CREATE TABLE IF NOT EXISTS urls (
     id           INTEGER PRIMARY KEY ON CONFLICT REPLACE
                          NOT NULL,
     url          TEXT    NOT NULL
@@ -39,5 +34,18 @@ CREATE TABLE urls (
 WITHOUT ROWID,
 STRICT;
 
+
+-- Following two statements are added to support tracking headless
+-- fetched state (or other alternate fetch methods)
+-- The following cannot be executed idempotently
+-- TODO: Goose migrations
+ALTER TABLE urls ADD column fetch_method INTEGER NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS fetch_method_expires_index ON urls (
+    expires DESC,
+    fetch_method ASC
+);
+
 COMMIT TRANSACTION;
 PRAGMA wal_checkpoint(RESTART);
+

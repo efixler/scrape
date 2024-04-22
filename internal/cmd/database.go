@@ -53,10 +53,10 @@ type DatabaseFlags struct {
 	database *envflags.Value[DatabaseSpec]
 	username *envflags.Value[string]
 	password *envflags.Value[string]
-	Create   bool
+	Migrate  bool
 }
 
-func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, createFlag bool) *DatabaseFlags {
+func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, migrateFlag bool) *DatabaseFlags {
 	dbFlags := &DatabaseFlags{
 		database: NewDatabaseValue(baseEnv, DefaultDatabase),
 		username: envflags.NewString(baseEnv+"_USER", ""),
@@ -65,8 +65,13 @@ func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, createFlag bool) *Dat
 	dbFlags.database.AddTo(flags, "database", "Database type:path")
 	dbFlags.username.AddTo(flags, "db-user", "Database user")
 	dbFlags.password.AddTo(flags, "db-password", "Database password")
-	if createFlag {
-		flags.BoolVar(&dbFlags.Create, "create", false, "Create the database and exit")
+	if migrateFlag {
+		flags.BoolVar(
+			&dbFlags.Migrate,
+			"migrate",
+			false,
+			"Migrate the database to the latest version (creating if necessary)",
+		)
 	}
 	return dbFlags
 }
@@ -76,7 +81,7 @@ func (f DatabaseFlags) String() DatabaseSpec {
 }
 
 func (f DatabaseFlags) Database() (store.Factory, error) {
-	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.Create)
+	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.Migrate)
 }
 
 func (f DatabaseFlags) MustDatabase() store.Factory {
@@ -100,7 +105,7 @@ func database(spec DatabaseSpec, username string, password string, noSchema bool
 			mysql.Password(password),
 		}
 		if noSchema {
-			options = append(options, mysql.WithoutSchema())
+			options = append(options, mysql.ForMigration())
 		}
 		return mysql.Factory(options...), nil
 	default:

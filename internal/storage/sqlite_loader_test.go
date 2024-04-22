@@ -18,12 +18,16 @@ const (
 //go:embed sqlite/create.sql
 var createSQL string
 
-func db(t *testing.T) *SQLStorage {
+func getTestDatabase(t *testing.T) *SQLStorage {
 	db := New(database.SQLite, dsn)
 	err := db.Open(context.TODO())
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)
 	}
+	t.Cleanup(func() {
+		t.Logf("Cleaning up SQLite test database")
+		db.Close()
+	})
 	_, err = db.DB.Exec(createSQL)
 	if err != nil {
 		t.Fatalf("Error creating database: %v", err)

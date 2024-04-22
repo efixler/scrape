@@ -20,8 +20,8 @@ func (s *Store) createSQL() (string, error) {
 	// The connection we need to use for create must be schema-less so
 	// that we can create the database, so we need to override that with
 	// the default schema here.
-	if conf.DBName == "" {
-		conf.DBName = dbSchema
+	if conf.TargetSchema == "" {
+		return "", errors.New("can't create database, empty target schema")
 	}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, conf); err != nil {

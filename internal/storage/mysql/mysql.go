@@ -17,7 +17,6 @@ func Factory(options ...Option) store.Factory {
 }
 
 func New(options ...Option) (*Store, error) {
-
 	config := defaultConfig()
 	for _, opt := range options {
 		if err := opt(&config); err != nil {

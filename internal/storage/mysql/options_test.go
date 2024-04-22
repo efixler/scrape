@@ -113,12 +113,30 @@ func TestAddress(t *testing.T) {
 	}
 }
 
-func TestWithoutSchema(t *testing.T) {
+func TestForMigration(t *testing.T) {
 	t.Parallel()
-	c := defaultConfig()
-	WithoutSchema()(&c)
-	if c.DBName != "" {
-		t.Errorf("WithoutSchema: unexpected schema: %s", c.DBName)
+	tests := []struct {
+		name           string
+		schema         string
+		expectedTarget string
+	}{
+		{"default", "", defaultSchema},
+		{"explicit default", defaultSchema, defaultSchema},
+		{"override", "scrape_test", "scrape_test"},
+	}
+
+	for _, test := range tests {
+		c := defaultConfig()
+		if test.schema != "" {
+			Schema(test.schema)(&c)
+		}
+		ForMigration()(&c)
+		if c.DBName != "" {
+			t.Errorf("Expected empty dsn schema, got %q", c.DBName)
+		}
+		if c.TargetSchema != test.expectedTarget {
+			t.Errorf("ForMigration: expected target schema %q, got %q", test.expectedTarget, c.TargetSchema)
+		}
 	}
 }
 

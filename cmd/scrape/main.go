@@ -52,7 +52,7 @@ func main() {
 	if clear {
 		clearDatabase(dbFactory)
 		return
-	} else if dbFlags.Create {
+	} else if dbFlags.Migrate {
 		createDatabase(dbFactory)
 		return
 	} else if maintain {
