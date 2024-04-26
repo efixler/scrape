@@ -58,7 +58,7 @@ release-tag: latest-release-tag ## create a release tag at the next patch versio
         echo "Aborted."; \
         exit 1; \
     fi
-	@git tag -a $(TAG_VERSION) -m $(TAG_MESSAGE)
+	@git tag -a $(TAG_VERSION) -m '$(TAG_MESSAGE)'
 	@git push origin $(TAG_VERSION)
 
 latest-release-tag: 
