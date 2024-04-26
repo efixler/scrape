@@ -3,7 +3,6 @@ DOCKER_IMAGE_NAME := ${shell basename ${MODULE_NAME}}-bookworm-slim
 CWD := $(shell pwd)
 BUILD_DIR := build
 SCRAPE_PORT ?= 8080
-TAG_VERSION ?= v0.0.0
 CONTAINER_REGISTRY ?= docker.io
 
 
@@ -46,9 +45,10 @@ fmt:
 	@echo "Running go fmt..."
 	@go fmt ./...
 
-release-tag: latest-release-tag ## create a release tag with TAG_VERSION and TAG_MESSAGE
+release-tag: latest-release-tag ## create a release tag at the next patch version. Customize with TAG_MESSAGE and/or TAG_VERSION
+	$(eval TAG_VERSION ?= $(shell echo $(RELEASE_TAG) | awk -F. '{print $$1"."$$2"."$$3+1}'))
 	$(eval TAG_MESSAGE ?= "Release version $(TAG_VERSION)")
-	@echo "Creating release tag $(TAG_VERSION) with message: $(TAG_MESSAGE) (latest tag: $(RELEASE_TAG))..."
+	@echo "Creating release tag $(TAG_VERSION) with message: \"$(TAG_MESSAGE)\""
 	@if [ "$(TAG_VERSION)" = "v0.0.0" ]; then \
         echo "Aborted. Release version cannot be 'v0.0.0'."; \
         exit 1; \
@@ -62,7 +62,8 @@ release-tag: latest-release-tag ## create a release tag with TAG_VERSION and TAG
 	@git push origin $(TAG_VERSION)
 
 latest-release-tag: 
-	$(eval RELEASE_TAG := $(shell git describe --abbrev=0 --tags $(shell git rev-list --tags --max-count=1))) 
+	$(eval RELEASE_TAG := $(shell git describe --abbrev=0 --tags $(shell git rev-list --tags --max-count=1) 2>/dev/null || echo "v0.0.0"))
+	@echo "Latest release tag: $(RELEASE_TAG)"
 
 test: ## run the tests
 	@echo "Running tests..."
