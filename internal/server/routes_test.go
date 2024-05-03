@@ -197,7 +197,7 @@ func TestHeadless503WhenUnavailable(t *testing.T) {
 }
 
 type mockUrlFetcher struct {
-	fetchMethod resource.FetchMethod
+	fetchMethod resource.FetchClient
 }
 
 func (m *mockUrlFetcher) Open(ctx context.Context) error { return nil }
@@ -223,7 +223,7 @@ func TestSingleHandler(t *testing.T) {
 		name         string
 		url          string
 		handler      http.HandlerFunc
-		expectMethod resource.FetchMethod
+		expectMethod resource.FetchClient
 	}{
 		{
 			name:         "client",

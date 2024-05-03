@@ -5,15 +5,15 @@ import (
 	"fmt"
 )
 
-type FetchMethod int
+type FetchClient int
 
 const (
-	Unspecified FetchMethod = iota
+	Unspecified FetchClient = iota
 	DefaultClient
 	HeadlessChrome
 )
 
-var fetchMethods = map[FetchMethod]string{
+var fetchMethods = map[FetchClient]string{
 	Unspecified:    "Unspecified",
 	DefaultClient:  "DefaultClient",
 	HeadlessChrome: "HeadlessChrome",
@@ -21,7 +21,7 @@ var fetchMethods = map[FetchMethod]string{
 
 var ErrNoSuchFetchMethod = errors.New("no such FetchMethod")
 
-func (f FetchMethod) String() string {
+func (f FetchClient) String() string {
 	if val, ok := fetchMethods[f]; ok {
 		return val
 	} else {
@@ -29,7 +29,7 @@ func (f FetchMethod) String() string {
 	}
 }
 
-func (f *FetchMethod) UnmarshalText(data []byte) error {
+func (f *FetchClient) UnmarshalText(data []byte) error {
 	for k, v := range fetchMethods {
 		if v == string(data) {
 			*f = k
@@ -42,7 +42,7 @@ func (f *FetchMethod) UnmarshalText(data []byte) error {
 	)
 }
 
-func (f FetchMethod) MarshalText() ([]byte, error) {
+func (f FetchClient) MarshalText() ([]byte, error) {
 	if val, ok := fetchMethods[f]; ok {
 		return []byte(val), nil
 	} else {

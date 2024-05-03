@@ -95,7 +95,7 @@ func TestMarshalDateZero(t *testing.T) {
 
 func TestSkipWhenMarshalling(t *testing.T) {
 	page := basicWebPage()
-	page.SkipWhenMarshaling(CanonicalURL, ContentText, FetchTime, OriginalURL)
+	page.SkipWhenMarshaling(CanonicalURL, ContentText, FetchTime, FetchMethod, OriginalURL)
 	var byteBuffer = new(bytes.Buffer)
 	encoder := json.NewEncoder(byteBuffer)
 	encoder.SetIndent("", "  ")
@@ -118,6 +118,9 @@ func TestSkipWhenMarshalling(t *testing.T) {
 	if rt.FetchTime != nil {
 		t.Errorf("Round trip FetchTime expected nil, got %v", rt.FetchTime)
 	}
+	if rt.FetchMethod != Unspecified {
+		t.Errorf("Round trip FetchMethod expected Unspecified, got %v", rt.FetchMethod)
+	}
 	page.SkipWhenMarshaling()
 	byteBuffer.Reset()
 	encoder.Encode(page)
@@ -134,6 +137,9 @@ func TestSkipWhenMarshalling(t *testing.T) {
 	}
 	if rt.FetchTime.Compare(*page.FetchTime) != 0 {
 		t.Errorf("Round trip FetchTime expected %s, got %s", page.FetchTime, rt.FetchTime)
+	}
+	if rt.FetchMethod != page.FetchMethod {
+		t.Errorf("Round trip FetchMethod expected %v, got %v", page.FetchMethod, rt.FetchMethod)
 	}
 	if rt.OriginalURL != page.OriginalURL {
 		t.Errorf("Round trip OriginalURL expected %s, got %s", page.OriginalURL, rt.OriginalURL)
@@ -323,7 +329,7 @@ func TestEmptyAuthorNotSaved(t *testing.T) {
 func TestFetchMethod(t *testing.T) {
 	tests := []struct {
 		name string
-		f    FetchMethod
+		f    FetchClient
 		want string
 	}{
 		{

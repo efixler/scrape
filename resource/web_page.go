@@ -17,6 +17,7 @@ const (
 	ContentText  skippable = "content_text"
 	OriginalURL  skippable = "original_url"
 	FetchTime    skippable = "fetch_time"
+	FetchMethod  skippable = "fetch_method"
 	TTL          skippable = "ttl"
 )
 
@@ -41,7 +42,7 @@ type WebPage struct { // The page that was requested by the caller
 	OriginalURL  string        `json:"original_url,omitempty"` // The canonical URL of the page
 	TTL          time.Duration `json:"-"`                      // Time to live for the resource
 	FetchTime    *time.Time    `json:"fetch_time,omitempty"`   // When the returned source was fetched
-	FetchMethod  FetchMethod   `json:"fetch_method,omitempty"` // Method used to fetch the page
+	FetchMethod  FetchClient   `json:"fetch_method,omitempty"` // Method used to fetch the page
 	Hostname     string        `json:"hostname,omitempty"`     // Hostname of the page
 	StatusCode   int           `json:"status_code,omitempty"`  // HTTP status code
 	Error        error         `json:"error,omitempty"`
@@ -148,6 +149,8 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 				ar.OriginalURL = ""
 			case FetchTime:
 				ar.FetchTime = nil
+			case FetchMethod:
+				ar.FetchMethod = Unspecified
 			case TTL:
 				ar.TTL = 0
 			}
