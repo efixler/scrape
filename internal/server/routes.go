@@ -161,7 +161,7 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 				w.WriteHeader(http.StatusUnprocessableEntity)
 			}
 		}
-		page.FetchMethod = resource.Headless
+		page.FetchMethod = resource.HeadlessChrome
 		encoder := json.NewEncoder(w)
 		encoder.SetEscapeHTML(false)
 		if req.PrettyPrint {

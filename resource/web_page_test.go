@@ -45,7 +45,7 @@ func basicWebPage() WebPage {
 		ID:          "1234",
 		Fingerprint: "fingerprint",
 		ContentText: "This is the content text",
-		FetchMethod: Client,
+		FetchMethod: DefaultClient,
 	}
 }
 
@@ -328,18 +328,18 @@ func TestFetchMethod(t *testing.T) {
 	}{
 		{
 			name: "Client",
-			f:    Client,
-			want: "client",
+			f:    DefaultClient,
+			want: "DefaultClient",
 		},
 		{
 			name: "Headless",
-			f:    Headless,
-			want: "headless",
+			f:    HeadlessChrome,
+			want: "HeadlessChrome",
 		},
 		{
 			name: "Unknown",
-			f:    3,
-			want: "unknown",
+			f:    0,
+			want: "Unspecified",
 		},
 	}
 	for _, tt := range tests {
@@ -348,15 +348,16 @@ func TestFetchMethod(t *testing.T) {
 		var byteBuffer = new(bytes.Buffer)
 		encoder := json.NewEncoder(byteBuffer)
 		encoder.SetIndent("", "  ")
-		encoder.Encode(page)
+		err := encoder.Encode(page)
+		if err != nil {
+			t.Fatalf("error encoding JSON: %v", err)
+		}
 		decoder := json.NewDecoder(byteBuffer)
 		var rt WebPage
-		err := decoder.Decode(&rt)
+		err = decoder.Decode(&rt)
 		if err != nil {
 			t.Fatalf("Error decoding JSON: %s", err)
 		}
-
-		t.Logf("FetchMethod: %s", byteBuffer.String())
 		if got := page.FetchMethod.String(); got != tt.want {
 			t.Errorf("[%s] page.FetchMethod.String() = %v, want %v", tt.name, got, tt.want)
 		}
