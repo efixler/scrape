@@ -11,7 +11,6 @@ import (
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
 	"github.com/markusmobius/go-trafilatura"
-	//tft "github.com/markusmobius/go-trafilatura"
 )
 
 func basicTrafilaturaResult() trafilatura.ExtractResult {
