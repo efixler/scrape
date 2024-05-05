@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"mime"
 	nurl "net/url"
+	"strings"
 
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
@@ -104,8 +105,37 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		// "text and comments are not long enough: 0 0"
 		return rval, err
 	}
-	rval.MergeTrafilaturaResult(result)
+	f.applyExtractResult(result, rval)
 	return rval, nil
+}
+
+func (f *TrafilaturaFetcher) applyExtractResult(
+	tr *trafilatura.ExtractResult,
+	r *resource.WebPage,
+) {
+	r.ContentText = tr.ContentText
+	r.CanonicalURL, _ = nurl.Parse(tr.Metadata.URL)
+	r.Title = tr.Metadata.Title
+	r.Authors = make([]string, 0, 1)
+	authors := strings.Split(tr.Metadata.Author, ";")
+	for _, a := range authors {
+		if trimmed := strings.TrimSpace(a); trimmed != "" {
+			r.Authors = append(r.Authors, trimmed)
+		}
+	}
+	r.Hostname = tr.Metadata.Hostname
+	r.Description = tr.Metadata.Description
+	r.Sitename = tr.Metadata.Sitename
+	if !tr.Metadata.Date.IsZero() {
+		r.Date = &tr.Metadata.Date
+	}
+	r.Categories = tr.Metadata.Categories
+	r.Tags = tr.Metadata.Tags
+	r.License = tr.Metadata.License
+	r.Language = tr.Metadata.Language
+	r.Image = tr.Metadata.Image
+	r.PageType = tr.Metadata.PageType
+	r.FetchMethod = f.client.Identifier()
 }
 
 func (f *TrafilaturaFetcher) Close() error {

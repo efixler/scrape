@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"path/filepath"
 	"time"
+
+	"github.com/efixler/scrape/resource"
 )
 
 const (
@@ -16,6 +18,7 @@ const (
 
 type Client interface {
 	Get(url string, headers http.Header) (*http.Response, error)
+	Identifier() resource.FetchClient
 }
 
 type ClientOption func(*defaultClient) error
@@ -44,6 +47,10 @@ func NewClient(options ...ClientOption) (Client, error) {
 type defaultClient struct {
 	userAgent  string
 	httpClient *http.Client
+}
+
+func (c defaultClient) Identifier() resource.FetchClient {
+	return resource.DefaultClient
 }
 
 func (c defaultClient) Get(url string, headers http.Header) (*http.Response, error) {
