@@ -89,9 +89,9 @@ func (r WebPage) MarshalJSON() ([]byte, error) {
 		URLString          string `json:"url,omitempty"`
 		RequestedURLString string `json:"requested_url,omitempty"`
 		ErrorString        string `json:"error,omitempty"`
-		*alias
+		alias
 	}{
-		alias: (*alias)(&r),
+		alias: (alias)(r),
 	}
 	if r.CanonicalURL != nil {
 		ar.URLString = r.CanonicalURL.String()

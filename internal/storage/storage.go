@@ -26,10 +26,10 @@ const (
 )
 
 const (
-	qSave     = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text) VALUES (?, ?, ?, ?, ?, ?, ?);`
+	qSave     = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text, fetch_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
 	qSaveId   = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
 	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
-	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text FROM urls WHERE id = ?`
+	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text, fetch_method FROM urls WHERE id = ?`
 	qDelete   = `DELETE FROM urls WHERE id = ?`
 	qClear    = `DELETE FROM urls; DELETE FROM id_map;`
 	// qClearId  = `DELETE FROM id_map where canonical_id = ?`
@@ -65,12 +65,16 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 	}
 	expireTime, _ := uptr.ExpireTime()
 	key := Key(uptr.CanonicalURL)
+	// We need the copy here becauase uptr might be getting returned
+	// to a client concurrently and the skipMap can be applied inadvertently
+	// in both places
 	ucopy := *uptr
 	ucopy.SkipWhenMarshaling(
 		resource.CanonicalURL,
 		resource.ContentText,
 		resource.OriginalURL,
 		resource.FetchTime,
+		resource.FetchMethod,
 	)
 	metadata, err := ucopy.MarshalJSON()
 	if err != nil {
@@ -84,6 +88,7 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 		expireTime.Unix(),
 		string(metadata),
 		uptr.ContentText,
+		int(uptr.FetchMethod),
 	}
 
 	stmt, err := s.Statement(save, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
@@ -166,8 +171,9 @@ func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		expiryEpoch  int64
 		metadata     string
 		contentText  string
+		fetchMethod  resource.FetchClient
 	)
-	err = rows.Scan(&canonicalUrl, &parsedUrl, &fetchEpoch, &expiryEpoch, &metadata, &contentText)
+	err = rows.Scan(&canonicalUrl, &parsedUrl, &fetchEpoch, &expiryEpoch, &metadata, &contentText, &fetchMethod)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +197,7 @@ func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	ttl := exptime.Sub(fetchTime)
 	page.TTL = ttl
 	page.ContentText = contentText
+	page.FetchMethod = fetchMethod
 	return page, nil
 }
 

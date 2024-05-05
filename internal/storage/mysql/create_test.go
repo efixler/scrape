@@ -21,7 +21,7 @@ func testDatabaseForCreate(t *testing.T) *Store {
 	// todo: enable alternate names when also creating
 	// the database.
 	t.Cleanup(func() {
-		if _, err := db.Exec("DROP DATABASE IF EXISTS scrape_test;"); err != nil {
+		if _, err := db.DB.Exec("DROP DATABASE IF EXISTS scrape_test;"); err != nil {
 			t.Logf("error dropping test mysql database: %q", err)
 		}
 		if err := db.Close(); err != nil {
@@ -32,6 +32,7 @@ func testDatabaseForCreate(t *testing.T) *Store {
 }
 
 func TestCreate(t *testing.T) {
+	// t.Skip("skipping mysql create test")
 	db := testDatabaseForCreate(t)
 	err := db.Open(context.Background())
 	if err != nil {

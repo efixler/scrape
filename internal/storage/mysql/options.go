@@ -112,6 +112,7 @@ func defaultConfig() Config {
 	cfg.WriteTimeout = DefaultWriteTimeout // I/O write timeout
 	cfg.ParseTime = true
 	cfg.MultiStatements = true
+	cfg.Params = map[string]string{"autocommit": "true"}
 	return Config{
 		Config:          *cfg,
 		queryTimeout:    DefaultQueryTimeout,
