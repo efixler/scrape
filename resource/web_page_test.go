@@ -9,11 +9,8 @@ import (
 	nurl "net/url"
 	"os"
 	"slices"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/markusmobius/go-trafilatura"
 )
 
 // Returns a WebPage will all fields filled out. The caller can override
@@ -45,7 +42,7 @@ func basicWebPage() WebPage {
 		ID:          "1234",
 		Fingerprint: "fingerprint",
 		ContentText: "This is the content text",
-		FetchMethod: Client,
+		FetchMethod: DefaultClient,
 	}
 }
 
@@ -95,7 +92,7 @@ func TestMarshalDateZero(t *testing.T) {
 
 func TestSkipWhenMarshalling(t *testing.T) {
 	page := basicWebPage()
-	page.SkipWhenMarshaling(CanonicalURL, ContentText, FetchTime, OriginalURL)
+	page.SkipWhenMarshaling(CanonicalURL, ContentText, FetchTime, FetchMethod, OriginalURL)
 	var byteBuffer = new(bytes.Buffer)
 	encoder := json.NewEncoder(byteBuffer)
 	encoder.SetIndent("", "  ")
@@ -118,6 +115,9 @@ func TestSkipWhenMarshalling(t *testing.T) {
 	if rt.FetchTime != nil {
 		t.Errorf("Round trip FetchTime expected nil, got %v", rt.FetchTime)
 	}
+	if rt.FetchMethod != Unspecified {
+		t.Errorf("Round trip FetchMethod expected Unspecified, got %v", rt.FetchMethod)
+	}
 	page.SkipWhenMarshaling()
 	byteBuffer.Reset()
 	encoder.Encode(page)
@@ -134,6 +134,9 @@ func TestSkipWhenMarshalling(t *testing.T) {
 	}
 	if rt.FetchTime.Compare(*page.FetchTime) != 0 {
 		t.Errorf("Round trip FetchTime expected %s, got %s", page.FetchTime, rt.FetchTime)
+	}
+	if rt.FetchMethod != page.FetchMethod {
+		t.Errorf("Round trip FetchMethod expected %v, got %v", page.FetchMethod, rt.FetchMethod)
 	}
 	if rt.OriginalURL != page.OriginalURL {
 		t.Errorf("Round trip OriginalURL expected %s, got %s", page.OriginalURL, rt.OriginalURL)
@@ -240,106 +243,26 @@ func TestExpireTime(t *testing.T) {
 	}
 }
 
-func basicTrafilaturaResult() trafilatura.ExtractResult {
-	return trafilatura.ExtractResult{
-		ContentText: "T content text",
-		Metadata: trafilatura.Metadata{
-			URL:         "https://trafilatura.com/canonical",
-			Title:       "T title",
-			Author:      "author1;author2",
-			Hostname:    "trafilatura.com",
-			Description: "T description",
-			Sitename:    "T sitename",
-			Date:        time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC),
-			Categories:  []string{"T cat1", "T cat2"},
-			Tags:        []string{"T tag1", "T tag2"},
-			Language:    "fr",
-			Image:       "https://trafilatura.com/image.jpg",
-			PageType:    "T article",
-			License:     "T CC-BY-SA",
-		},
-	}
-}
-
-func TestMergeTrafilaturaResult(t *testing.T) {
-	page := basicWebPage()
-	tr := basicTrafilaturaResult()
-	page.MergeTrafilaturaResult(&tr)
-	if page.ContentText != tr.ContentText {
-		t.Errorf("ContentText mismatch: %s != %s", page.ContentText, tr.ContentText)
-	}
-	if page.CanonicalURL.String() != tr.Metadata.URL {
-		t.Errorf("CanonicalURL mismatch: %s != %s", page.CanonicalURL, tr.Metadata.URL)
-	}
-	if page.Title != tr.Metadata.Title {
-		t.Errorf("Title mismatch: %s != %s", page.Title, tr.Metadata.Title)
-	}
-	if strings.Join(page.Authors, ";") != tr.Metadata.Author {
-		t.Errorf("Authors mismatch: %v != %v", page.Authors, tr.Metadata.Author)
-	}
-	if page.Hostname != tr.Metadata.Hostname {
-		t.Errorf("Hostname mismatch: %s != %s", page.Hostname, tr.Metadata.Hostname)
-	}
-	if page.Description != tr.Metadata.Description {
-		t.Errorf("Description mismatch: %s != %s", page.Description, tr.Metadata.Description)
-	}
-	if page.Sitename != tr.Metadata.Sitename {
-		t.Errorf("Sitename mismatch: %s != %s", page.Sitename, tr.Metadata.Sitename)
-	}
-	if page.Date.Compare(tr.Metadata.Date) != 0 {
-		t.Errorf("Date mismatch: %s != %s", page.Date, tr.Metadata.Date)
-	}
-	if !slices.Equal(page.Categories, tr.Metadata.Categories) {
-		t.Errorf("Categories mismatch: %v != %v", page.Categories, tr.Metadata.Categories)
-	}
-	if !slices.Equal(page.Tags, tr.Metadata.Tags) {
-		t.Errorf("Tags mismatch: %v != %v", page.Tags, tr.Metadata.Tags)
-	}
-	if page.Language != tr.Metadata.Language {
-		t.Errorf("Language mismatch: %s != %s", page.Language, tr.Metadata.Language)
-	}
-	if page.Image != tr.Metadata.Image {
-		t.Errorf("Image mismatch: %s != %s", page.Image, tr.Metadata.Image)
-	}
-	if page.PageType != tr.Metadata.PageType {
-		t.Errorf("PageType mismatch: %s != %s", page.PageType, tr.Metadata.PageType)
-	}
-}
-
-func TestEmptyAuthorNotSaved(t *testing.T) {
-	page := basicWebPage()
-	page.Authors = nil
-	tr := basicTrafilaturaResult()
-	tr.Metadata.Author = ""
-	page.MergeTrafilaturaResult(&tr)
-	if page.Authors == nil {
-		t.Errorf("Authors was nil, expected empty array")
-	}
-	if len(page.Authors) != 0 {
-		t.Errorf("Empty author should not be saved: %q", page.Authors)
-	}
-}
-
 func TestFetchMethod(t *testing.T) {
 	tests := []struct {
 		name string
-		f    FetchMethod
+		f    FetchClient
 		want string
 	}{
 		{
 			name: "Client",
-			f:    Client,
-			want: "client",
+			f:    DefaultClient,
+			want: "DefaultClient",
 		},
 		{
 			name: "Headless",
-			f:    Headless,
-			want: "headless",
+			f:    HeadlessChrome,
+			want: "HeadlessChrome",
 		},
 		{
 			name: "Unknown",
-			f:    3,
-			want: "unknown",
+			f:    0,
+			want: "Unspecified",
 		},
 	}
 	for _, tt := range tests {
@@ -348,15 +271,16 @@ func TestFetchMethod(t *testing.T) {
 		var byteBuffer = new(bytes.Buffer)
 		encoder := json.NewEncoder(byteBuffer)
 		encoder.SetIndent("", "  ")
-		encoder.Encode(page)
+		err := encoder.Encode(page)
+		if err != nil {
+			t.Fatalf("error encoding JSON: %v", err)
+		}
 		decoder := json.NewDecoder(byteBuffer)
 		var rt WebPage
-		err := decoder.Decode(&rt)
+		err = decoder.Decode(&rt)
 		if err != nil {
 			t.Fatalf("Error decoding JSON: %s", err)
 		}
-
-		t.Logf("FetchMethod: %s", byteBuffer.String())
 		if got := page.FetchMethod.String(); got != tt.want {
 			t.Errorf("[%s] page.FetchMethod.String() = %v, want %v", tt.name, got, tt.want)
 		}

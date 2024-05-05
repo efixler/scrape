@@ -197,7 +197,7 @@ func TestHeadless503WhenUnavailable(t *testing.T) {
 }
 
 type mockUrlFetcher struct {
-	fetchMethod resource.FetchMethod
+	fetchMethod resource.FetchClient
 }
 
 func (m *mockUrlFetcher) Open(ctx context.Context) error { return nil }
@@ -216,26 +216,26 @@ func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 
 func TestSingleHandler(t *testing.T) {
 	ss := &scrapeServer{
-		urlFetcher:      &mockUrlFetcher{},
-		headlessFetcher: &mockUrlFetcher{fetchMethod: resource.Headless},
+		urlFetcher:      &mockUrlFetcher{fetchMethod: resource.DefaultClient},
+		headlessFetcher: &mockUrlFetcher{fetchMethod: resource.HeadlessChrome},
 	}
 	tests := []struct {
 		name         string
 		url          string
 		handler      http.HandlerFunc
-		expectMethod resource.FetchMethod
+		expectMethod resource.FetchClient
 	}{
 		{
 			name:         "client",
 			url:          "http://foo.bar",
 			handler:      ss.singleHandler(),
-			expectMethod: resource.Client,
+			expectMethod: resource.DefaultClient,
 		},
 		{
 			name:         "headless",
 			url:          "http://example.com",
 			handler:      ss.singleHeadlessHandler(),
-			expectMethod: resource.Headless,
+			expectMethod: resource.HeadlessChrome,
 		},
 	}
 

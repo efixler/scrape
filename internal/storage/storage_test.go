@@ -62,7 +62,8 @@ var mdata = `{
 	"language": "en",
 	"image": "https://martinfowler.com/logo-sq.png",
 	"page_type": "article",
-	"content_text": "Martin Fowler"
+	"content_text": "Martin Fowler",
+	"fetch_method": "DefaultClient"
   }`
 
 // TODO: Fuzz this so every return is different
@@ -153,12 +154,13 @@ func TestStore(t *testing.T) {
 	if stored.PageType != fetched.PageType {
 		t.Errorf("PageType changed from %q to %q", stored.PageType, fetched.PageType)
 	}
-
+	if stored.FetchMethod != fetched.FetchMethod {
+		t.Errorf("FetchMethod changed from %q to %q", stored.FetchMethod, fetched.FetchMethod)
+	}
 	// check that the expected lookup between requested and canonical URLs is correct
 	if lid, err := s.lookupId(Key(url)); lid != canonicalId {
 		t.Errorf("Expected lookup id %d, got %d (err: %s)", canonicalId, lid, err)
 	}
-
 	// NB: Delete only works for canonical URLs
 	ok, err := s.Delete(url)
 	if err != nil {

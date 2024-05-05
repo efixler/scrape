@@ -7,6 +7,7 @@ import (
 	"github.com/efixler/headless"
 	"github.com/efixler/headless/browser"
 	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/resource"
 )
 
 type client struct {
@@ -36,6 +37,10 @@ func NewChromeClient(ctx context.Context, userAgent string, maxConcurrent int) (
 		browser: browser,
 	}
 	return c, nil
+}
+
+func (c client) Identifier() resource.FetchClient {
+	return resource.HeadlessChrome
 }
 
 func (c *client) Get(url string, headers http.Header) (*http.Response, error) {

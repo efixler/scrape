@@ -16,7 +16,7 @@ import (
 
 const (
 	testSchema = "scrape_test"
-	dbURL      = "root:@tcp(127.0.0.1:3306)/?collation=utf8mb4_0900_ai_ci&multiStatements=true&parseTime=true&readTimeout=30s&timeout=10s&writeTimeout=30s"
+	dbURL      = "root:@tcp(127.0.0.1:3306)/?collation=utf8mb4_0900_ai_ci&multiStatements=true&parseTime=true&readTimeout=30s&timeout=10s&writeTimeout=30s&autocommit=1;"
 )
 
 //go:embed mysql/create.sql
@@ -55,8 +55,8 @@ func getTestDatabase(t *testing.T) *SQLStorage {
 	}
 	t.Cleanup(func() {
 		q := fmt.Sprintf("DROP DATABASE %v;", dbConfig.TargetSchema)
-		if _, err := db.Exec(q); err != nil {
-			t.Logf("error dropping mysql test database: %v", err)
+		if _, err := db.DB.Exec(q); err != nil {
+			t.Logf("error dropping mysql test database %q: %v", dbConfig.TargetSchema, err)
 		}
 
 	})

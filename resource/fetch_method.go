@@ -1,19 +1,55 @@
 package resource
 
-type FetchMethod int
-
-const (
-	Client FetchMethod = iota
-	Headless
+import (
+	"errors"
+	"fmt"
 )
 
-func (f FetchMethod) String() string {
-	switch f {
-	case Client:
-		return "client"
-	case Headless:
-		return "headless"
-	default:
-		return "unknown"
+type FetchClient int
+
+const (
+	Unspecified FetchClient = iota
+	DefaultClient
+	HeadlessChrome
+)
+
+var fetchMethods = map[FetchClient]string{
+	Unspecified:    "Unspecified",
+	DefaultClient:  "DefaultClient",
+	HeadlessChrome: "HeadlessChrome",
+}
+
+var ErrNoSuchFetchMethod = errors.New("no such FetchMethod")
+
+func (f FetchClient) String() string {
+	if val, ok := fetchMethods[f]; ok {
+		return val
+	} else {
+		return "Unknown"
+	}
+}
+
+func (f *FetchClient) UnmarshalText(data []byte) error {
+	for k, v := range fetchMethods {
+		if v == string(data) {
+			*f = k
+			return nil
+		}
+	}
+	return errors.Join(
+		fmt.Errorf("invalid FetchMethod %q", string(data)),
+		ErrNoSuchFetchMethod,
+	)
+}
+
+func (f FetchClient) MarshalText() ([]byte, error) {
+	if val, ok := fetchMethods[f]; ok {
+		return []byte(val), nil
+	} else {
+		return []byte(fetchMethods[Unspecified]),
+			errors.Join(
+				fmt.Errorf("invalid FetchMethod %q", int(f)),
+				ErrNoSuchFetchMethod,
+			)
 	}
 }
