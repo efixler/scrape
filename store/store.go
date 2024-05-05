@@ -38,6 +38,7 @@ type Maintainable interface {
 	Create() error
 	Clear() error
 	Maintain() error
+	Migrate() error
 }
 
 // This interface is to expose a method to supply data to healthchecks.

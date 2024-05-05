@@ -5,6 +5,8 @@ import (
 	"embed"
 	"errors"
 	"text/template"
+
+	"github.com/pressly/goose/v3"
 )
 
 //go:embed create.sql
@@ -37,6 +39,20 @@ func (s *Store) Create() error {
 	}
 	_, err = s.DB.ExecContext(s.Ctx, q)
 	return err
+}
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
+
+func (s *Store) Migrate() error {
+	goose.SetBaseFS(migrationsFS)
+	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
+		return err
+	}
+	if err := goose.Up(s.DB, "migrations"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Store) Maintain() error {

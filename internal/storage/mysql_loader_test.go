@@ -5,6 +5,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"embed"
 	_ "embed"
 	"fmt"
 	"testing"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/efixler/scrape/database"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -30,6 +32,9 @@ var (
 	createTemplate = template.Must(template.New("create").Parse(createSQL))
 	dbConfig       = mysqlConfig{TargetSchema: testSchema}
 )
+
+//go:embed mysql/migrations/*.sql
+var migrationsFS embed.FS
 
 // Returns a new SQLStorage instance for testing. Each instance returns
 // a freshly created db. Since a 'USE' statement is included in the create.sql
@@ -58,7 +63,13 @@ func getTestDatabase(t *testing.T) *SQLStorage {
 		if _, err := db.DB.Exec(q); err != nil {
 			t.Logf("error dropping mysql test database %q: %v", dbConfig.TargetSchema, err)
 		}
-
 	})
+	goose.SetBaseFS(migrationsFS)
+	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
+		t.Fatalf("Error setting dialect: %v", err)
+	}
+	if err := goose.Up(db.DB, "mysql/migrations"); err != nil {
+		t.Fatalf("Error creating MySQL test db via migration: %v", err)
+	}
 	return db
 }

@@ -53,7 +53,7 @@ func main() {
 		clearDatabase(dbFactory)
 		return
 	} else if dbFlags.Migrate {
-		createDatabase(dbFactory)
+		migrateDatabase(dbFactory)
 		return
 	} else if maintain {
 		maintainDatabase(dbFactory)
@@ -150,7 +150,7 @@ func maintainDatabase(dbFactory store.Factory) {
 	slog.Warn("Database maintenance complete", "database", db)
 }
 
-func createDatabase(dbFactory store.Factory) {
+func migrateDatabase(dbFactory store.Factory) {
 	db, ok := openDatabase(dbFactory).(store.Maintainable)
 	if !ok {
 		slog.Error("Creating database not available for this storage backend", "database", db)
@@ -158,6 +158,11 @@ func createDatabase(dbFactory store.Factory) {
 	}
 	defer db.(store.URLDataStore).Close()
 	err := db.Create()
+	if err != nil {
+		slog.Error("Error creating database", "database", db, "err", err)
+		os.Exit(1)
+	}
+	err = db.Migrate()
 	if err != nil {
 		slog.Error("Error creating database", "database", db, "err", err)
 		os.Exit(1)
