@@ -24,18 +24,19 @@ docker-build: ## build a docker image on the current platform, for local use
 	@docker build -t $(DOCKER_IMAGE_NAME) .
 
 docker-push: push-tag ## push an amd64/arm64 docker to Docker Hub or to a registry specified by CONTAINER_REGISTRY
-	@read -p "Do you want to push an amd64/arm64 image to '$(PUSH_TAG)'? (y/N) " answer; \
+	@read -p "Do you want to push an amd64/arm64 image to '$(PUSH_TAG)' and '$(LATEST_TAG)'? (y/N) " answer; \
 	if [ "$$answer" != "y" ]; then \
 		echo "Aborted."; \
 		exit 1; \
 	fi
 	@echo "Proceeding to make and push $(PUSH_TAG)..."
 	@docker buildx create --use
-	@docker buildx build --push --platform linux/amd64,linux/arm64 -t $(PUSH_TAG) . 
+	@docker buildx build --push --platform linux/amd64,linux/arm64 -t $(PUSH_TAG) -t $(LATEST_TAG) . 
 
 push-tag: latest-release-tag 
 	$(eval GITHUB_ORG := $(shell git remote get-url origin | sed -n 's/.*github.com[:/]\([^/]*\)\/.*/\1/p' | tr '[:upper:]' '[:lower:]'))
 	$(eval PUSH_TAG=$(CONTAINER_REGISTRY)/$(GITHUB_ORG)/$(DOCKER_IMAGE_NAME):$(RELEASE_TAG))
+	$(eval LATEST_TAG=$(CONTAINER_REGISTRY)/$(GITHUB_ORG)/$(DOCKER_IMAGE_NAME):latest)
 
 docker-run: ## run the local docker image, binding to port 8080, or the env value of SCRAPE_PORT
 	@echo "Running $(DOCKER_IMAGE_NAME)..."
