@@ -23,7 +23,7 @@ Fast web scraping
 - [Acknowledgements](#acknowledgements)
 
 ## Description
-`scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages at medium scale. 
+`scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages. The server provides a REST API to scrape web metadata, with support for batches, using either a direct client, with headless browser option that's useful for pages that need javascript to load.
 
  Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or as a server with a REST API. The default SQLite storage backend is performance-optimized and can store to disk or in memory. MySQL is also supported. Resources are stored with a configurable TTL. 
 
@@ -31,7 +31,7 @@ Fast web scraping
 
  RSS and Atom feeds are supported via an endpoint in `scrape-server`. Loading a feed returns the parsed results for all item links in the feed. 
 
- The `scrape` and `scrape-server` binaries should be buildable and runnable in any `cgo`-enabled environment where `SQLite3` is present. A docker build is also included.
+ The `scrape` and `scrape-server` binaries should be buildable and runnable in any environment where `go` and `SQLite3` (or a `MySQL` server) are present. A docker build is also included. See `make help` for build instructions.
 
 ## Output Format
 JSON output is a superset of Trafilatura fields. Empty fields may be omitted in responses.
@@ -42,6 +42,7 @@ JSON output is a superset of Trafilatura fields. Empty fields may be omitted in 
 | `requested_url` | String (URL) | The URL that was actually requested. (Some URL params (e.g. utm_*) may be stripped before the outbound request) |
 | `original_url` | String (URL) | Exactly the url that was in the inbound request |
 | `fetch_time` | ISO8601 | The time that URL was retrieved |
+| `fetch_method` | String | The type of client used to fetch this resource (`DefaultClient` or `HeadlessBrowser`)
 | `status_code` | Int | The status code returned by the target server when fetching this page |
 | `error` | String | Error message(s), if there were any, while processing this page |
 | `hostname` | Domain name | The domain serving this resource |
@@ -67,6 +68,7 @@ Here's an example, with long fields truncated:
   "requested_url": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
   "original_url": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
   "fetch_time": "2024-01-09T03:57:44Z",
+  "fetch_method": "DefaultClient",
   "status_code": 200,
   "hostname": "www.nasa.gov",
   "date": "2023-12-10T00:00:00Z",
@@ -110,7 +112,7 @@ Here's an example, with long fields truncated:
 ```
 go install github.com/efixler/scrape/cmd/scrape@latest
 ```
-The `scrape` command provides single and batch retrieval, using or bypassing the connected storage db. It also provide command to manage the backing store.
+The `scrape` command provides single and batch retrieval, using or bypassing the connected storage db. It also provides commands to manage the backing store.
 
 ### Quickstart
 ```
@@ -131,8 +133,6 @@ Flags:
         Show this help message
   -clear
         Clear the database and exit
-  -create
-        Create the database and exit
   -csv value
         CSV file path
   -csv-column value
@@ -154,6 +154,8 @@ Flags:
         Environment: SCRAPE_LOG_LEVEL (default WARN)
   -maintain
         Execute database maintenance and exit
+  -migrate
+        Migrate the database to the latest version (creating if necessary)
   -notext
         Skip text content
         Environment: SCRAPE_NOTEXT
@@ -166,7 +168,7 @@ Flags:
 ## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
 
-`scrape-server` is intended for use in closed environments at medium scale. There's no authentication, rate limiting or url sanitization beyond encoding checks. Don't deploy this on an open public network. Do deploy it as a sidecar, in a firewalled environment, or another environment that won't get unbounded quantities of hits.
+`scrape-server` is robust but does not support any authentication or rate limiting at this time. Keep that in mind when deploying.
 
 ### Installation
 ```
@@ -199,8 +201,9 @@ Command line options:
   -db-user value
         Database user
         Environment: SCRAPE_DB_USER
-  -headless
+  -enable-headless
         Enable headless browser extraction functionality
+        Environment: SCRAPE_ENABLE_HEADLESS
   -log-level value
         Set the log level [debug|error|info|warn]
         Environment: SCRAPE_LOG_LEVEL
@@ -224,7 +227,8 @@ The root path of the server (`/`) is browsable and provides a simple url to test
 
 ![Alt text](internal/server/pages/webui-control.png)
 
-The pulldown on the right lets you select between loading results for a page url or for a feed.
+The pulldown on the right lets you select between loading results for a page url or for a feed, or scraping a page
+using a headless browser instead of a direct http client.
 
 ### API 
 
@@ -265,6 +269,10 @@ there's an error fetching or parsing the requested content.
 
 In all other cases, requests should return a 200 status code, and any errors received when fetching a resource
 will be included in the returned JSON payload.
+
+#### extract/headless [GET, POST]
+Identical to the extract endpoint, but uses a headless browser to scrape content instead of a direct http client. This endpoint is likely to change, with its functionality folded into the `extract` endpoint using a
+param.
 
 #### feed [GET, POST]
 
@@ -309,7 +317,7 @@ This just returns a status `200` with the content `OK`
 
 ### SQLite
 
-SQLite is the default storage engine for `scrape`. There's no need for setup -- the database will autocreate if it doesn't exist. 
+SQLite is the default storage engine for `scrape`. There's no need for setup and you can get running right away. The database will autocreate if it doesn't exist. 
 
 SQLite is ideal when there's a 1:1 relationship between the service and its backing store, or if you're running the service on a workstation or a 'real' computer.
 
@@ -321,11 +329,11 @@ When your container shuts down, previously stored data will be lost. This may or
 It is also possible to mount a block drive to a container for persistent storage independent of the 
 container lifecycle.
 
-To specify a path to a SQLite database using the command line `-database` switch or the equivalent `SCRAPE_DB` environment variable, use the form `sqlite:/path/to.db`. The special form `sqlite::memory:` is supported for a transient, in-memory database.
+To specify a non-default path to a SQLite database using the command line `-database` switch or the equivalent `SCRAPE_DB` environment variable, use the form `sqlite:/path/to.db`. The special form `sqlite::memory:` is supported for a transient, in-memory database.
 
 ### MySQL
 
-MySQL will be a better choice for applications that run under higher volumes and/or where multiple
+MySQL will be a good choice for applications that run under higher volumes or where multiple
 service instances want to share a storage backend.
 
 Here are the configuration options for MySQL:
@@ -336,7 +344,7 @@ Here are the configuration options for MySQL:
 | -db-password | SCRAPE_DB_PASSWORD | Password | lkajd901e109i^jhj% |
 | -db-user | SCRAPE_DB_USER | Username for mysql connections | `scrape_user` |
 
-Create the MySQL database by running `scrape -create` with the applicable values above. For
+Create the MySQL database by running `scrape -migrate` with the applicable values above. For
 database creation a privileged user is required. The database will be provisioned with two
 roles; `scrape_app` for app operations and a `scrape_admin` role with full privileges to the
 schema. Assign these roles to users as appropriate.
@@ -355,9 +363,11 @@ Usage:
   build            build the binaries, to the build/ folder (default target)
   clean            clean the build directory
   docker-build     build a docker image on the current platform, for local use
-  docker-push      push an amd64/arm64 image to Docker Hub or to a registry specfied by CONTAINER_REGISTRY
-  docker-run       run the docker image, binding to port 8080, or the env value of SCRAPE_PORT
+  docker-push      push an amd64/arm64 docker to Docker Hub or to a registry specified by CONTAINER_REGISTRY
+  docker-run       run the local docker image, binding to port 8080, or the env value of SCRAPE_PORT
+  release-tag      create a release tag at the next patch version. Customize with TAG_MESSAGE and/or TAG_VERSION
   test             run the tests
+  test-mysql       run the MySQL integration tests
   vet              fmt, vet, and staticcheck
   cognitive        run the cognitive complexity checker
   help             show this help message
@@ -365,8 +375,7 @@ Usage:
 
 ### Using the Docker
 The `docker-build` target will build a docker on the current architecture. Run this image with
-`docker-run` to bring up a local instance of the service for testing. You don't need any Go 
-tooling installed locally to build and run via the Docker.
+`docker-run` (or with the normal Docker cli or desktop tools) to bring up a local instance of the service for testing. You don't need any Go tooling installed to build and run with the Docker.
 
 To push a image to a registry, use `docker-push`. This will build a multiplatform amd64/arm64 image
 and deploy it upstream. This image is appropriate for cloud platform deployment. The registry username 
@@ -383,12 +392,9 @@ The `docker-run` make target will mount a local folder called `docker/data` and 
 
 ## Roadmap
 - Outbound request pacing
-- Expose outbound request options (headers, timeouts, etc)
-- Headless fallback for pages that require Javascript
-- Explore performance optimizations, e.g.
-  - Batch request parallelization
-  - zstd compression for stored resources
-- Explore alternate fetch/parse backends
+- Expose outbound request options (headers, etc)
+- Client preference settings (e.g. use headless for specific domains)
+- Authentication hooks
 
 Feature request or bug? Post issues [here](https://github.com/efixler/scrape/issues).
 
