@@ -30,13 +30,16 @@ func NewClaims(options ...option) (*Claims, error) {
 			return nil, err
 		}
 	}
-	if err := c.validate(); err != nil {
+	if err := c.Validate(); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (c Claims) validate() error {
+// Implements the jwt.ClaimsValidator interface
+// In addition to the explicit call when the claims are created,
+// this method is called by ParseWithClaims when the token is parsed.
+func (c Claims) Validate() error {
 	if c.Subject == "" {
 		return fmt.Errorf("subject is required")
 	}
@@ -46,7 +49,7 @@ func (c Claims) validate() error {
 func (c Claims) String() string {
 	val, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
-		return fmt.Sprintf("Error marshaling claims: %v", err)
+		return fmt.Sprintf("error stringifying claims: %v", err)
 	}
 	return string(val)
 }
@@ -112,4 +115,33 @@ func (b *HMACBase64Key) UnmarshalText(text []byte) error {
 	}
 	*b = HMACBase64Key(decoded[:n])
 	return nil
+}
+
+var parser *jwt.Parser
+
+func VerifyClaims(tokenString string, key HMACBase64Key) (*Claims, error) {
+	if parser == nil {
+		parser = makeParser()
+	}
+	token, err := parser.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(key), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	claims, ok := token.Claims.(*Claims)
+	if !ok {
+		return nil, fmt.Errorf("unexpected claims type: %T", token.Claims)
+	}
+	return claims, nil
+}
+
+func makeParser() *jwt.Parser {
+	parser := jwt.NewParser(
+		jwt.WithIssuer(Issuer),
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Name}),
+		jwt.WithLeeway(1*time.Minute),
+		jwt.WithIssuedAt(),
+	)
+	return parser
 }
