@@ -72,14 +72,14 @@ func ExpiresAt(t time.Time) option {
 	}
 }
 
-func Subject(sub string) option {
+func WithSubject(sub string) option {
 	return func(c *Claims) error {
 		c.Subject = sub
 		return nil
 	}
 }
 
-func Audience(aud string) option {
+func WithAudience(aud string) option {
 	return func(c *Claims) error {
 		c.Audience = []string{aud}
 		return nil
@@ -119,7 +119,7 @@ func (b *HMACBase64Key) UnmarshalText(text []byte) error {
 
 var parser *jwt.Parser
 
-func VerifyClaims(tokenString string, key HMACBase64Key) (*Claims, error) {
+func VerifyToken(tokenString string, key HMACBase64Key) (*Claims, error) {
 	if parser == nil {
 		parser = makeParser()
 	}

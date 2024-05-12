@@ -52,7 +52,7 @@ func TestSubject(t *testing.T) {
 	}
 	for _, tt := range tests {
 		c := &Claims{}
-		err := Subject(tt.sub)(c)
+		err := WithSubject(tt.sub)(c)
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -75,7 +75,7 @@ func TestAudience(t *testing.T) {
 	}
 	for _, tt := range tests {
 		c := &Claims{}
-		err := Audience(tt.aud)(c)
+		err := WithAudience(tt.aud)(c)
 		if err != nil {
 			t.Errorf("Unexpected error: %v", err)
 		}
@@ -117,13 +117,13 @@ func TestHMACBase64Key(t *testing.T) {
 	}
 }
 
-func TestClaimsSignAndVerify(t *testing.T) {
+func TestSignAndVerify(t *testing.T) {
 	t.Parallel()
 	defaultKey := MustNewHS256SigningKey()
 	baseClaims, _ := NewClaims(
 		ExpiresAt(time.Now().Add(24*time.Hour)),
-		Subject("test"),
-		Audience("test"),
+		WithSubject("test"),
+		WithAudience("test"),
 	)
 	var tests = []struct {
 		name      string
@@ -188,12 +188,11 @@ func TestClaimsSignAndVerify(t *testing.T) {
 	}
 	for _, tt := range tests {
 		claims := tt.claimsF()
-		key := tt.key
-		token, err := claims.Sign(key)
+		token, err := claims.Sign(tt.key)
 		if err != nil {
 			t.Fatalf("Error signing claims: %v", err)
 		}
-		claims2, err := VerifyClaims(token, tt.verifyKey)
+		claims2, err := VerifyToken(token, tt.verifyKey)
 		if (err != nil) != tt.expectErr {
 			t.Fatalf("[%s] Unexpected error state verifying claims: %v", tt.name, err)
 		}

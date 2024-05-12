@@ -41,26 +41,27 @@ func makeToken() {
 	}
 	claims, err := auth.NewClaims(
 		auth.ExpiresAt(expires),
-		auth.Subject(subject),
-		auth.Audience(audience),
+		auth.WithSubject(subject),
+		auth.WithAudience(audience),
 	)
 	if err != nil {
 		slog.Error("Error generating claims", "err", err)
 		os.Exit(1)
 	}
+	fmt.Println("\nClaims:\n------")
 	fmt.Println(claims)
 	key := *signingKey.Get()
 	if len(key) == 0 {
 		slog.Warn("No signing key provided, cannot sign token, exiting")
 		os.Exit(1)
 	}
-	slog.Info("Signing key", "key", key)
 	ss, err := claims.Sign(key)
 	if err != nil {
 		slog.Error("Error signing token", "err", err)
 		os.Exit(1)
 	}
-	fmt.Println("Token:", ss)
+	fmt.Println("\nToken:\n-----")
+	fmt.Println(ss)
 }
 
 func makeSigningKey() {
