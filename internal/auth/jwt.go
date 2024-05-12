@@ -1,3 +1,4 @@
+// JWT token generation and verification logic.
 package auth
 
 import (

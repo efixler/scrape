@@ -28,7 +28,7 @@ func main() {
 	}
 	claims, err := auth.VerifyToken(key, token)
 	if err != nil {
-		slog.Error("Error verifying token, the token or signatore are invalid", "err", err)
+		slog.Error("Error verifying token, the token or signature are invalid", "err", err)
 		os.Exit(1)
 	}
 	fmt.Println("\nThis JWT is valid. Claims:\n------")
@@ -52,7 +52,10 @@ func init() {
 
 func usage() {
 	fmt.Println(`
-Generates JWT tokens for the scrape service. Also makes the signing key to use for the tokens.
+Verify and decode scrape JWT tokens.
+
+Signing key is required to verify the token signature. The signing key should be base64
+encoded and can be provided as a command line flag or environment variable.
 
 Usage: 
 -----
