@@ -119,7 +119,9 @@ func (b *HMACBase64Key) UnmarshalText(text []byte) error {
 
 var parser *jwt.Parser
 
-func VerifyToken(tokenString string, key HMACBase64Key) (*Claims, error) {
+// VerifyToken verifies the token string using the provided key.
+// In the case where the token's signature is invalid, the function will not return any claims.
+func VerifyToken(key HMACBase64Key, tokenString string) (*Claims, error) {
 	if parser == nil {
 		parser = makeParser()
 	}

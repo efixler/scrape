@@ -1,6 +1,6 @@
-// keygen generates auth keys for the scrape service
+// scrape-jwt-encode generates auth keys for the scrape service
 //
-// Run `scrape-keygen -h` for complete help and command line options.
+// Run `scrape-jwt-encode -h` for complete help and command line options.
 
 package main
 
@@ -80,7 +80,7 @@ func makeSigningKey() {
 }
 
 func init() {
-	flags.Init("scrape-keygen", flag.ExitOnError)
+	flags.Init("scrape-jwt-encode", flag.ExitOnError)
 	flags.Usage = usage
 	envflags.EnvPrefix = "SCRAPE_"
 	flags.BoolVar(&makeKey, "make-key", false, "Generate a new signing key")

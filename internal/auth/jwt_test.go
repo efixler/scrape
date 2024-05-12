@@ -192,7 +192,7 @@ func TestSignAndVerify(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error signing claims: %v", err)
 		}
-		claims2, err := VerifyToken(token, tt.verifyKey)
+		claims2, err := VerifyToken(tt.verifyKey, token)
 		if (err != nil) != tt.expectErr {
 			t.Fatalf("[%s] Unexpected error state verifying claims: %v", tt.name, err)
 		}
