@@ -47,7 +47,11 @@ func isJSON(r *http.Request) bool {
 	if r.Method == http.MethodGet {
 		return false
 	}
-	if strings.HasPrefix(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+	contentType := strings.SplitN(r.Header.Get("Content-Type"), ";", 2)[0]
+	switch contentType {
+	case "application/x-www-form-urlencoded":
+		return false
+	case "multipart/form-data":
 		return false
 	}
 	return true
