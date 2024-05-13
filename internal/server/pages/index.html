@@ -12,11 +12,18 @@
 		label {
   			margin: 0.2rem 0;
 		}
+		.data-iframe {
+  			position: relative;
+  			top: 16px; 
+  			width: 98%;
+  			min-width: 768px;
+  			height: calc(100vh - 108px); 
+		}
 	</style>
 </head>
 <body>
 <p>
-<form id="urlForm" action="/extract" method="POST" name="scrape" target="data_frame">
+<form id="urlForm" action="/extract" method="POST" name="scrape" target="data-iframe">
 <label for="url">Enter a URL:</label>
 <input type="submit" value="Hit It">
 <input type="url" name="url" id="url" value="https://" size="96" maxlength="200" pattern="https?://.*" required title="URL">
@@ -35,13 +42,49 @@ function updateFormAction() {
     document.getElementById("urlForm").action = selected;
 }
 </script>
-<div style="padding-top:16px;">
+<script type="text/javascript">
+	document.addEventListener('DOMContentLoaded', function() {
+		const iframe = document.getElementById('data');
+		iframe.contentDocument.body.innerHTML = '';
+		const preElement = document.createElement('pre');
+		preElement.style.whiteSpace = 'pre-wrap';
+		preElement.style.width = '100%';
+		iframe.contentDocument.body.appendChild(preElement);
+		const form = document.getElementById('urlForm');
+		form.addEventListener('submit', async function(event) {
+			event.preventDefault();
+			const action = form.action;
+			const headers = new Headers();
+			headers.append('Authorization', 'Bearer not_implemented_yet');
+			const formData = new FormData(form);
+
+			try { 
+			const response = await fetch(action, {
+				method: 'POST',
+				headers: headers,
+				body: formData
+			})
+			if (response.ok) {
+				const json = await response.json();
+				const jsonStr = JSON.stringify(json, null, 2);
+				preElement.textContent = jsonStr;
+			} else {
+				const text = await response.text();
+				preElement.textContent = `Error ${response.status}:\n${text}`;
+				throw new Error(`${response.status} - ${text}`);
+			}
+		} catch (error) {
+			console.error(error);
+		}
+	});
+});
+	</script>
+<div>
 <iframe 
 	id="data"
 	title="Scrape Results"
-	name="data_frame"
-	width="1024"
-	height="1024"
+	name="data-iframe"
+	class="data-iframe"
 	>
 
 </div>
