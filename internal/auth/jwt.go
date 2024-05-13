@@ -25,7 +25,6 @@ func NewClaims(options ...option) (*Claims, error) {
 	c := &Claims{}
 	c.Issuer = Issuer
 	c.IssuedAt = jwt.NewNumericDate(time.Now())
-	c.NotBefore = jwt.NewNumericDate(time.Now())
 	for _, opt := range options {
 		if err := opt(c); err != nil {
 			return nil, err

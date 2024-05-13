@@ -214,8 +214,5 @@ func TestSignAndVerify(t *testing.T) {
 		if claims.IssuedAt.Unix() != claims2.IssuedAt.Unix() {
 			t.Errorf("IssuedAt mismatch %v, got %v", claims.IssuedAt, claims2.IssuedAt)
 		}
-		if claims.NotBefore.Unix() != claims2.NotBefore.Unix() {
-			t.Errorf("NotBefore mismatch %v, got %v", claims.NotBefore, claims2.NotBefore)
-		}
 	}
 }
