@@ -27,7 +27,6 @@ func TestExpiresA(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-
 		c := &Claims{}
 		err := ExpiresAt(tt.t)(c)
 		if tt.expectErr && err == nil {

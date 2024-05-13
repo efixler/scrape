@@ -33,7 +33,6 @@ func main() {
 	}
 	fmt.Println("\nThis JWT is valid. Claims:\n------")
 	fmt.Println(claims)
-
 }
 
 func init() {
