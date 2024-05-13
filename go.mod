@@ -14,6 +14,7 @@ require (
 	github.com/efixler/webutil v0.0.0-20240331165905-2fd0e608a9e9
 	github.com/go-shiori/go-readability v0.0.0-20240204090920-819593fddc6b
 	github.com/go-sql-driver/mysql v1.8.1
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/markusmobius/go-domdistiller v0.0.0-20230515154422-71af71939ff3
 	github.com/markusmobius/go-trafilatura v1.5.1
 	github.com/mattn/go-sqlite3 v1.14.22
