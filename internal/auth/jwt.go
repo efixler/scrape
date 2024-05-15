@@ -62,6 +62,13 @@ func (c Claims) Sign(key HMACBase64Key) (string, error) {
 	return c.Token().SignedString([]byte(key))
 }
 
+func ExpiresIn(d time.Duration) option {
+	return func(c *Claims) error {
+		c.ExpiresAt = jwt.NewNumericDate(time.Now().Add(d))
+		return nil
+	}
+}
+
 func ExpiresAt(t time.Time) option {
 	return func(c *Claims) error {
 		if t.Before(time.Now()) {

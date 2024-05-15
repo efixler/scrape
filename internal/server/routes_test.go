@@ -14,6 +14,7 @@ import (
 
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/resource"
 )
@@ -302,6 +303,87 @@ func TestDeleteHandler(t *testing.T) {
 		resp := w.Result()
 		if resp.StatusCode != test.expectedResult {
 			t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
+		}
+	}
+}
+
+func TestHomeHandler(t *testing.T) {
+	tests := []struct {
+		name           string
+		key            auth.HMACBase64Key
+		expectedResult int
+	}{
+		{
+			name:           "no key",
+			key:            nil,
+			expectedResult: 200,
+		},
+		{
+			name:           "good key",
+			key:            auth.MustNewHS256SigningKey(),
+			expectedResult: 200,
+		},
+	}
+	for _, test := range tests {
+		ss := &scrapeServer{SigningKey: test.key}
+		req := httptest.NewRequest("GET", "http://foo.bar/", nil)
+		w := httptest.NewRecorder()
+		ss.homeHandler()(w, req)
+		resp := w.Result()
+		if resp.StatusCode != test.expectedResult {
+			t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
+		}
+	}
+}
+
+func TestMustTemplate(t *testing.T) {
+	tests := []struct {
+		name        string
+		key         auth.HMACBase64Key
+		expectToken bool
+	}{
+		{
+			name:        "with key",
+			key:         auth.MustNewHS256SigningKey(),
+			expectToken: true,
+		},
+		{
+			name:        "no key",
+			key:         nil,
+			expectToken: false,
+		},
+		{
+			name:        "empty key",
+			key:         auth.HMACBase64Key([]byte{}),
+			expectToken: false,
+		},
+	}
+	for _, test := range tests {
+		ss := &scrapeServer{SigningKey: test.key}
+		tmpl := ss.mustHomeTemplate()
+		tmpl, err := tmpl.Parse("{{AuthToken}}")
+		if err != nil {
+			t.Fatalf("[%s] Error parsing template: %s", test.name, err)
+		}
+		var buf bytes.Buffer
+		err = tmpl.Execute(&buf, nil)
+		if err != nil {
+			t.Fatalf("[%s] Error executing template: %s", test.name, err)
+		}
+		output := buf.String()
+		if !test.expectToken && output != "" {
+			t.Fatalf("[%s] Expected empty output, got %s", test.name, output)
+		}
+		if test.expectToken {
+			switch output {
+			case "":
+				t.Fatalf("[%s] Expected non-empty token, got empty", test.name)
+			default:
+				_, err := auth.VerifyToken(test.key, output)
+				if err != nil {
+					t.Fatalf("[%s] Error verifying token: %s", test.name, err)
+				}
+			}
 		}
 	}
 }

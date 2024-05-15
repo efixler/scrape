@@ -55,7 +55,10 @@ function updateFormAction() {
 			event.preventDefault();
 			const action = form.action;
 			const headers = new Headers();
-			headers.append('Authorization', 'Bearer not_implemented_yet');
+			const token = '{{AuthToken}}'
+			if (token) {
+				headers.append('Authorization', `Bearer ${token}`);
+			}
 			const formData = new FormData(form);
 
 			try { 

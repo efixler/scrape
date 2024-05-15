@@ -1,15 +1,18 @@
 package server
 
 import (
+	"bytes"
 	"context"
-	_ "embed"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"net/http/pprof"
 	nurl "net/url"
+	"time"
 
 	"github.com/efixler/webutil/jsonarray"
 
@@ -17,20 +20,15 @@ import (
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/server/healthchecks"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
 )
 
-func InitMux(
-	scrapeServer *scrapeServer,
-) (*http.ServeMux, error) {
+func InitMux(scrapeServer *scrapeServer) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", handleHome)
-	// scrapeServer, err := NewScrapeServer(ctx, sf, headlessClient)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	mux.HandleFunc("GET /{$}", scrapeServer.homeHandler())
 	h := scrapeServer.singleHandler()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
@@ -51,15 +49,6 @@ func EnableProfiling(mux *http.ServeMux) {
 	initPProf(mux)
 }
 
-//go:embed pages/index.html
-var home []byte
-
-func handleHome(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(home)
-}
-
 // The server struct is stateless but uses the same fetchers across all requests,
 // to optimize client and database connections. There's a general fetcher, and
 // special ones for headless scrapes and RSS/Atom feeds.
@@ -67,6 +56,7 @@ type scrapeServer struct {
 	urlFetcher      fetch.URLFetcher
 	headlessFetcher fetch.URLFetcher
 	feedFetcher     fetch.FeedFetcher
+	SigningKey      auth.HMACBase64Key
 }
 
 // When the context passed here is cancelled, the associated fetcher will
@@ -76,7 +66,6 @@ func NewScrapeServer(
 	sf store.Factory,
 	clientFactory fetch.Factory,
 	headlessFetcher fetch.URLFetcher,
-	// headlessClient fetch.Client,
 ) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(nil),
@@ -114,6 +103,51 @@ func (h *scrapeServer) Storage() store.URLDataStore {
 		return nil
 	}
 	return sbf.Storage
+}
+
+//go:embed pages/index.html
+var home embed.FS
+
+func (h scrapeServer) mustHomeTemplate() *template.Template {
+	tmpl := template.New("home")
+	var keyF = func() string { return "" }
+	if (h.SigningKey != nil) && (len(h.SigningKey) > 0) {
+		keyF = func() string {
+			c, err := auth.NewClaims(
+				auth.WithSubject("home"),
+				auth.ExpiresIn(60*time.Minute),
+			)
+			if err != nil {
+				slog.Error("Error creating claims for home view", "error", err)
+				return ""
+			}
+			s, err := c.Sign(h.SigningKey)
+			if err != nil {
+				slog.Error("Error signing claims for home view", "error", err)
+				return ""
+			}
+			return s
+		}
+	}
+	tmpl = tmpl.Funcs(template.FuncMap{"AuthToken": keyF})
+	homeSource, _ := home.ReadFile("pages/index.html")
+	tmpl = template.Must(tmpl.Parse(string(homeSource)))
+	tmpl.Option("missingkey=zero")
+	return tmpl
+}
+
+func (h scrapeServer) homeHandler() http.HandlerFunc {
+	tmpl := h.mustHomeTemplate()
+	return func(w http.ResponseWriter, r *http.Request) {
+		var buf bytes.Buffer
+		if err := tmpl.Execute(&buf, nil); err != nil {
+			http.Error(w, "Error rendering home page", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(buf.Bytes())
+	}
 }
 
 func (h *scrapeServer) singleHandler() http.HandlerFunc {

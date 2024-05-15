@@ -19,6 +19,7 @@ import (
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
@@ -34,6 +35,7 @@ const (
 var (
 	flags           flag.FlagSet
 	port            *envflags.Value[int]
+	signingKey      *envflags.Value[*auth.HMACBase64Key]
 	ttl             *envflags.Value[time.Duration]
 	userAgent       *envflags.Value[*ua.UserAgent]
 	dbFlags         *cmd.DatabaseFlags
@@ -56,12 +58,20 @@ func main() {
 		headlessFetcher, _ = trafilatura.Factory(headlessClient)()
 	}
 
+	// TODO: Implement options pattern for NewScrapeServer
 	ss, _ := server.NewScrapeServer(
 		ctx,
 		dbFactory,
 		defaultFetcherFactory,
 		headlessFetcher,
 	)
+
+	if sk := *signingKey.Get(); len(sk) > 0 {
+		ss.SigningKey = sk
+		slog.Info("scrape-server authorization via JWT is enabled")
+	} else {
+		slog.Info("scrape-server authorization is disabled, running in open access mode")
+	}
 
 	mux, err := server.InitMux(ss)
 	if err != nil {
@@ -105,6 +115,13 @@ func init() {
 
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
+
+	signingKey = envflags.NewText("SIGNING_KEY", &auth.HMACBase64Key{})
+	signingKey.AddTo(
+		&flags,
+		"signing-key",
+		"Base64 encoded HS256 key to verify JWT tokens. Required for JWT auth, and enables JWT auth if set.",
+	)
 
 	ttl = envflags.NewDuration("TTL", resource.DefaultTTL)
 	ttl.AddTo(&flags, "ttl", "TTL for fetched resources")
