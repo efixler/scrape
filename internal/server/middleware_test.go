@@ -257,6 +257,11 @@ func TestIsJson(t *testing.T) {
 			content:  "multipart/form-data; charset=utf-8",
 			expected: false,
 		},
+		{
+			name:     "empty",
+			content:  "",
+			expected: true,
+		},
 	}
 	for _, tt := range tests {
 		req := httptest.NewRequest("POST", "http://example.com", nil)
