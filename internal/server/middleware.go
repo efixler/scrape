@@ -16,8 +16,7 @@ type middleware func(http.HandlerFunc) http.HandlerFunc
 
 type payloadKey struct{}
 
-// type fetcherKey struct{}
-
+// Prepend the middlewares to the handler in the order they are provided.
 func Chain(h http.HandlerFunc, m ...middleware) http.HandlerFunc {
 	if len(m) == 0 {
 		return h

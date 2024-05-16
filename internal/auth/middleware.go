@@ -7,7 +7,6 @@ import (
 	"strings"
 )
 
-type Middleware func(http.HandlerFunc) http.HandlerFunc
 type ClaimsAuthorizer func(claims *Claims) error
 
 //type AuthHandler func
@@ -21,7 +20,11 @@ type ClaimsAuthorizer func(claims *Claims) error
 // is written to the response body.
 //
 // If the token is valid, the claims are added to the request context.
-func JWTAuthMiddleware(key HMACBase64Key, contextKey any, cc ...ClaimsAuthorizer) Middleware {
+func JWTAuthMiddleware(
+	key HMACBase64Key,
+	contextKey any,
+	cc ...ClaimsAuthorizer,
+) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			_, token, found := strings.Cut(r.Header.Get("Authorization"), " ")
