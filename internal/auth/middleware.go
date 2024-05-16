@@ -8,10 +8,20 @@ import (
 )
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
+type ClaimsAuthorizer func(claims *Claims) error
 
 //type AuthHandler func
 
-func JWTAuthMiddleware(key HMACBase64Key, contextKey any) Middleware {
+// Checks the Authorization header for a JWT token and verifies it using the provided key.
+// The token is always validated against the HMAC key, the issuer, and the Claims.Validate
+// function.
+//
+// The ClaimsAuthorizer functions, if any are called in order. If any of them return an
+// error, the request is rejected with a 401 Unauthorized status and the error message
+// is written to the response body.
+//
+// If the token is valid, the claims are added to the request context.
+func JWTAuthMiddleware(key HMACBase64Key, contextKey any, cc ...ClaimsAuthorizer) Middleware {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			_, token, found := strings.Cut(r.Header.Get("Authorization"), " ")
@@ -27,6 +37,16 @@ func JWTAuthMiddleware(key HMACBase64Key, contextKey any) Middleware {
 					http.StatusUnauthorized,
 				)
 				return
+			}
+			for _, c := range cc {
+				if err := c(claims); err != nil {
+					http.Error(
+						w,
+						fmt.Sprintf("Not authorized for this request: %v", err),
+						http.StatusUnauthorized,
+					)
+					return
+				}
 			}
 			r = r.WithContext(context.WithValue(r.Context(), contextKey, claims))
 			next(w, r)

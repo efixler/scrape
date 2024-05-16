@@ -22,6 +22,7 @@ func TestJWTAuthMiddleWare(t *testing.T) {
 		name         string
 		key          HMACBase64Key
 		authHeader   string
+		extra        []ClaimsAuthorizer
 		expectStatus int
 	}{
 		{
@@ -60,13 +61,27 @@ func TestJWTAuthMiddleWare(t *testing.T) {
 			authHeader:   fmt.Sprintf("Bearer %s", token),
 			expectStatus: http.StatusUnauthorized,
 		},
+		{
+			name:         "With extra authorizer, passthru",
+			key:          realKey,
+			authHeader:   fmt.Sprintf("Bearer %s", token),
+			extra:        []ClaimsAuthorizer{func(c *Claims) error { return nil }},
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "With extra authorizer, reject",
+			key:          realKey,
+			authHeader:   fmt.Sprintf("Bearer %s", token),
+			extra:        []ClaimsAuthorizer{func(c *Claims) error { return fmt.Errorf("nope") }},
+			expectStatus: http.StatusUnauthorized,
+		},
 	}
 	type contextKey struct{}
 	for _, tt := range tests {
 		req := httptest.NewRequest("GET", "http://example.com", nil)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Authorization", tt.authHeader)
-		m := JWTAuthMiddleware(tt.key, contextKey{})
+		m := JWTAuthMiddleware(tt.key, contextKey{}, tt.extra...)
 
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, ok := r.Context().Value(contextKey{}).(*Claims)
