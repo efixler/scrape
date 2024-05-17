@@ -36,7 +36,7 @@ func InitMux(scrapeServer *scrapeServer) (*http.ServeMux, error) {
 	mux.HandleFunc("GET /extract/headless", h)
 	mux.HandleFunc("POST /extract/headless", h)
 	mux.HandleFunc("POST /batch", scrapeServer.batchHandler())
-	mux.HandleFunc("DELETE /{$}", scrapeServer.deleteHandler())
+	mux.HandleFunc("DELETE /extract", scrapeServer.deleteHandler())
 	h = scrapeServer.feedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
@@ -92,6 +92,16 @@ func NewScrapeServer(
 	return handler, nil
 }
 
+type claimsKey struct{}
+
+// Prepend the authorization checker to the list of passed middleware if authorization is enabled.
+func (ss scrapeServer) withAuthIfEnabled(ms ...middleware) []middleware {
+	if len(ss.SigningKey) > 0 {
+		ms = append([]middleware{auth.JWTAuthMiddleware(ss.SigningKey, claimsKey{})}, ms...)
+	}
+	return ms
+}
+
 // Convenience method to get the underlying storage from the fetcher
 // which we use for healthchecks.
 // TODO: Re-evaluate. The underlying DB should probably be exposed via an
@@ -111,7 +121,7 @@ var home embed.FS
 func (h scrapeServer) mustHomeTemplate() *template.Template {
 	tmpl := template.New("home")
 	var keyF = func() string { return "" }
-	if (h.SigningKey != nil) && (len(h.SigningKey) > 0) {
+	if len(h.SigningKey) > 0 {
 		keyF = func() string {
 			c, err := auth.NewClaims(
 				auth.WithSubject("home"),
@@ -132,7 +142,6 @@ func (h scrapeServer) mustHomeTemplate() *template.Template {
 	tmpl = tmpl.Funcs(template.FuncMap{"AuthToken": keyF})
 	homeSource, _ := home.ReadFile("pages/index.html")
 	tmpl = template.Must(tmpl.Parse(string(homeSource)))
-	tmpl.Option("missingkey=zero")
 	return tmpl
 }
 
@@ -150,16 +159,13 @@ func (h scrapeServer) homeHandler() http.HandlerFunc {
 	}
 }
 
-func (h *scrapeServer) singleHandler() http.HandlerFunc {
-	return Chain(h.extract, MaxBytes(4096), parseSinglePayload())
+func (ss *scrapeServer) singleHandler() http.HandlerFunc {
+	return Chain(ss.extract, ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())...)
 }
 
-func (h *scrapeServer) singleHeadlessHandler() http.HandlerFunc {
-	return Chain(
-		extractWithFetcher(h.headlessFetcher),
-		MaxBytes(4096),
-		parseSinglePayload(),
-	)
+func (ss *scrapeServer) singleHeadlessHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())
+	return Chain(extractWithFetcher(ss.headlessFetcher), ms...)
 }
 
 // The nested handler here is the same as the one below, just enclosed around a fetcher.
@@ -236,8 +242,9 @@ func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
 	encoder.Encode(page)
 }
 
-func (h *scrapeServer) batchHandler() http.HandlerFunc {
-	return Chain(h.batch, MaxBytes(32768), DecodeJSONBody[BatchRequest]())
+func (ss *scrapeServer) batchHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(MaxBytes(32768), DecodeJSONBody[BatchRequest]())
+	return Chain(ss.batch, ms...)
 }
 
 func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
@@ -278,17 +285,18 @@ func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h scrapeServer) deleteHandler() http.HandlerFunc {
-	return Chain(h.delete, MaxBytes(4096), parseSinglePayload())
+func (ss *scrapeServer) deleteHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())
+	return Chain(ss.delete, ms...)
 }
 
-func (h scrapeServer) delete(w http.ResponseWriter, r *http.Request) {
+func (ss *scrapeServer) delete(w http.ResponseWriter, r *http.Request) {
 	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
 	if !ok {
 		http.Error(w, "Can't process delete request, no input data", http.StatusInternalServerError)
 		return
 	}
-	deleter, ok := h.urlFetcher.(*scrape.StorageBackedFetcher)
+	deleter, ok := ss.urlFetcher.(*scrape.StorageBackedFetcher)
 	if !ok {
 		http.Error(w, "Can't delete in the current configuration", http.StatusNotImplemented)
 		return
@@ -324,8 +332,9 @@ func (h *scrapeServer) synchronousBatch(urls []string, encoder *jsonarray.Encode
 	}
 }
 
-func (h *scrapeServer) feedHandler() http.HandlerFunc {
-	return Chain(h.feed, MaxBytes(4096), parseSinglePayload())
+func (ss *scrapeServer) feedHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())
+	return Chain(ss.feed, ms...)
 }
 
 func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {

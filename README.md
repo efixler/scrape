@@ -15,6 +15,7 @@ Fast web scraping
   - [Web Interface](#web-interface)
   - [API](#api)
   - [Healthchecks](#healthchecks)
+  - [Authorization](#authorization)
 - [Database Options](#database-options)
 - [Building and Developing](#building-and-developing)
   - [Building](#building)
@@ -23,13 +24,16 @@ Fast web scraping
 - [Acknowledgements](#acknowledgements)
 
 ## Description
-`scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages. The server provides a REST API to scrape web metadata, with support for batches, using either a direct client, with headless browser option that's useful for pages that need javascript to load.
+`scrape` provides a self-contained low-to-no-setup tool to grab metadata and text content from web pages. The server provides a REST API to scrape web metadata, with support for batches, using either a direct client, with headless browser option that's useful for pages that need javascript to load. 
 
  Results are stored, so subsequent fetches of a particular URL are fast. Install the binary, and operate it as a shell command or as a server with a REST API. The default SQLite storage backend is performance-optimized and can store to disk or in memory. MySQL is also supported. Resources are stored with a configurable TTL. 
 
  The `scrape` cli tool provides shell access to scraped content via command-line entry or CSV files, and also provides database management functionality. `scrape-server` provides web and API access to content metadata in one-offs or batches.
 
  RSS and Atom feeds are supported via an endpoint in `scrape-server`. Loading a feed returns the parsed results for all item links in the feed. 
+
+ Authorization via JWT keys is supported with a configuration option. The companion `scrape-jwt-encode` tool can be used to generate tokens, and to make the secret you need 
+ to securely  sign and verify JWT tokens. 
 
  The `scrape` and `scrape-server` binaries should be buildable and runnable in any environment where `go` and `SQLite3` (or a `MySQL` server) are present. A docker build is also included. See `make help` for build instructions.
 
@@ -168,7 +172,7 @@ Flags:
 ## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
 
-`scrape-server` is robust but does not support any authentication or rate limiting at this time. Keep that in mind when deploying.
+Running `scrape-server` with no arguments will bring up a server on port 8080 with a SQLite database, storing scraped pages for 30 days and without any authorization controls. See below for guidance on how to change these settings.
 
 ### Installation
 ```
@@ -206,13 +210,16 @@ Command line options:
         Environment: SCRAPE_ENABLE_HEADLESS
   -log-level value
         Set the log level [debug|error|info|warn]
-        Environment: SCRAPE_LOG_LEVEL
+        Environment: SCRAPE_LOG_LEVEL (default info)
   -port value
         Port to run the server on
         Environment: SCRAPE_PORT (default 8080)
   -profile
         Enable profiling at /debug/pprof
         Environment: SCRAPE_PROFILE
+  -signing-key value
+        Base64 encoded HS256 key to verify JWT tokens. Required for JWT auth, and enables JWT auth if set.
+        Environment: SCRAPE_SIGNING_KEY
   -ttl value
         TTL for fetched resources
         Environment: SCRAPE_TTL (default 720h0m0s)
@@ -310,6 +317,98 @@ database runtime info.
 #### /.well-known/heartbeat
 
 This just returns a status `200` with the content `OK`
+
+### Authorization
+
+By default, `scrape` runs without any authorization, all endpoints are open. JWT based authentication is supported, via the `scrape-jwt-encode` tool and a `scrape-server` configuration option. Here's how to enable it:
+
+#### Generate a Secret
+
+(`./build` is the path for executables built locally with `make` update this path if your binaries are elsewhere)
+
+Running `scrape-jwt-encode` with the `make-key` flag will generate a cryptographically random HS256 secret, and encode it to Base64.
+
+```
+scrape % ./build/scrape-jwt-encode -make-key
+Be sure to save this key, as it can't be re-generated:
+b4RThFbyMKfQE3+jAjJcR5rjVgVOeA2Ub9eethtX83M=
+```
+
+You will need this secret to generate tokens and to configure the server for authentication; you'll need to save it, but don't share it via non-secure means, etc.
+
+If the key is in your environment as `SCRAPE_SIGNING_KEY` it'll be picked up by both the JWT encoding tool and the server.
+
+#### Generate Tokens
+
+Tokens are also generated using `scrape-jwt-encode`. Here's the output of `scrape-jwt-encode -h`: 
+
+```
+scrape % ./build/scrape-jwt-encode -h       
+
+Generates JWT tokens for the scrape service. Also makes the signing key to use for the tokens.
+
+Usage: 
+-----
+scrape-jwt-encode -sub subject [-signing-key key] [-exp expiration] [-aud audience]
+scrape-jwt-encode -make-key
+
+  -aud string
+        Audience (recipient) for the key (default "moz")
+  -exp value
+        Expiration date for the key, in RFC3339 format. Default is 1 year from now. (default 2025-05-16T11:45:45.842362-04:00)
+  -make-key
+        Generate a new signing key
+  -signing-key value
+        HS256 key to sign the JWT token
+        Environment: SCRAPE_SIGNING_KEY (default &[])
+  -sub string
+        Subject (holder name) for the key (required)
+```
+
+When generating a key, only a `subject` is required. Authorization doesn't actually check this value, but it's a good idea to use unique identifying values here, as this may get used in the future and may also get logged.
+
+Here's the output from token generation, after putting the key from above into the environment. The claims are printed out for reference, but it's the token at the bottom that you want to share with API consumers.
+
+```
+scrape % export SCRAPE_SIGNING_KEY=b4RThFbyMKfQE3+jAjJcR5rjVgVOeA2Ub9eethtX83M=
+scrape % ./build/scrape-jwt-encode -sub some_user
+
+Claims:
+------
+{
+  "iss": "scrape",
+  "sub": "some_user",
+  "aud": [
+    "moz"
+  ],
+  "exp": 1747410570,
+  "iat": 1715874570
+}
+
+Token:
+-----
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzY3JhcGUiLCJzdWIiOiJzb21lX3VzZXIiLCJhdWQiOlsibW96Il0sImV4cCI6MTc0NzQxMDU3MCwiaWF0IjoxNzE1ODc0NTcwfQ.4AapsWfYAK78JhP9AyhupmZAHLeRDyIPlE8ODwwsVRg
+```
+
+### Using Tokens When Making API Requests
+
+When authorization is enabled on the server, API requests must have an `Authorization` header that begins with the string `Bearer ` (with a space) followed by the token.
+
+### Enabling Authorization In `scrape-server`
+
+To enable authorization on the server either:
+
+1. Start the server with the `SCRAPE_SIGNING_KEY` environment variable
+2. Pass a `-signing-key [key]` argument to the server when starting up
+
+When enabled, `scrape` will check the following qualities of the token, and reject API requests with a `401` unless there is a token passed in the `Authorization` header fulfilling the following criteria:
+
+1. It's a valid JWT token
+2. The token has been signed with the same signing key that the server is using
+3. The token's issuer is `scrape`
+4. The token is not expired
+
+Healthcheck paths don't require authorization, and neither does the web interface at the root URL. (The test console uses a short-lived key to authorize requests -- it _is_ possible to lift a key from here and use it for a little while; trying to strike a balance here between securing access and making exercising the server easy. You will also need to reload the test console periodically or calls from here will 401 as well)
 
 ## Database Options
 

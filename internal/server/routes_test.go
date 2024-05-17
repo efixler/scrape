@@ -387,3 +387,63 @@ func TestMustTemplate(t *testing.T) {
 		}
 	}
 }
+
+// Test that a request to the relevant API routes without a valid token
+// is rejected when running with a signing key.
+// Since the auth middleware is (and always should be) placed in the
+// middleware chain before the actual handler, we don't need to set up
+// a request body - the request should get rejected before that would get
+// evaluated.
+func TestAPIRoutesAreProtected(t *testing.T) {
+	ss := &scrapeServer{SigningKey: auth.MustNewHS256SigningKey()}
+	tests := []struct {
+		name    string
+		method  string
+		handler func() http.HandlerFunc
+	}{
+		{
+			name:    "POST /extract",
+			method:  http.MethodPost,
+			handler: ss.singleHandler,
+		},
+		{
+			name:    "GET /extract",
+			method:  http.MethodGet,
+			handler: ss.singleHandler,
+		},
+		{
+			name:    "POST /extract/headless",
+			method:  http.MethodPost,
+			handler: ss.singleHeadlessHandler,
+		},
+		{
+			name:    "POST /extract/batch",
+			method:  http.MethodPost,
+			handler: ss.batchHandler,
+		},
+		{
+			name:    "DELETE /extract",
+			method:  http.MethodDelete,
+			handler: ss.deleteHandler,
+		},
+		{
+			name:    "GET /feed",
+			method:  http.MethodGet,
+			handler: ss.feedHandler,
+		},
+		{
+			name:    "POST /feed",
+			method:  http.MethodPost,
+			handler: ss.feedHandler,
+		},
+	}
+	for _, test := range tests {
+		req := httptest.NewRequest(test.method, "http://foo.bar", nil)
+		w := httptest.NewRecorder()
+		test.handler()(w, req)
+		resp := w.Result()
+		if resp.StatusCode != 401 {
+			t.Fatalf("[%s] Expected 401, got %d", test.name, resp.StatusCode)
+		}
+	}
+}
