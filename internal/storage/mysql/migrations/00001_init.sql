@@ -27,7 +27,7 @@ CREATE INDEX fetch_method_expires_index ON urls (
 
 -- +goose Down
 -- +goose StatementBegin
-USE `scrape_test`;
+-- USE `scrape_test`;
 DROP TABLE IF EXISTS `urls`;
 DROP TABLE IF EXISTS `id_map`;
 -- +goose StatementEnd

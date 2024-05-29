@@ -5,11 +5,19 @@ import (
 	"flag"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/internal/storage/mysql"
 	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/store"
+)
+
+type MigrationCommand string
+
+const (
+	Up     MigrationCommand = "up"
+	Status MigrationCommand = "status"
 )
 
 var (
@@ -50,10 +58,10 @@ func NewDatabaseValue(env string, def DatabaseSpec) *envflags.Value[DatabaseSpec
 }
 
 type DatabaseFlags struct {
-	database *envflags.Value[DatabaseSpec]
-	username *envflags.Value[string]
-	password *envflags.Value[string]
-	Migrate  bool
+	database         *envflags.Value[DatabaseSpec]
+	username         *envflags.Value[string]
+	password         *envflags.Value[string]
+	MigrationCommand MigrationCommand
 }
 
 func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, migrateFlag bool) *DatabaseFlags {
@@ -66,11 +74,23 @@ func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, migrateFlag bool) *Da
 	dbFlags.username.AddTo(flags, "db-user", "Database user")
 	dbFlags.password.AddTo(flags, "db-password", "Database password")
 	if migrateFlag {
-		flags.BoolVar(
-			&dbFlags.Migrate,
+		flags.Func(
 			"migrate",
-			false,
-			"Migrate the database to the latest version (creating if necessary)",
+			"Issue a db migration command: (up)",
+			func(cmd string) error {
+				switch strings.ToLower(cmd) {
+				case "":
+					return nil
+				case "up":
+					dbFlags.MigrationCommand = Up
+					return nil
+				case "status":
+					dbFlags.MigrationCommand = Status
+					return nil
+				default:
+					return fmt.Errorf("unsupported migration command: %s", cmd)
+				}
+			},
 		)
 	}
 	return dbFlags
@@ -80,8 +100,12 @@ func (f DatabaseFlags) String() DatabaseSpec {
 	return f.database.Get()
 }
 
+func (f DatabaseFlags) IsMigration() bool {
+	return string(f.MigrationCommand) != ""
+}
+
 func (f DatabaseFlags) Database() (store.Factory, error) {
-	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.Migrate)
+	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.MigrationCommand == "up")
 }
 
 func (f DatabaseFlags) MustDatabase() store.Factory {

@@ -32,7 +32,7 @@ func (s *Store) createSQL() (string, error) {
 	return buf.String(), nil
 }
 
-func (s *Store) Create() error {
+func (s *Store) create() error {
 	q, err := s.createSQL()
 	if err != nil {
 		return err
@@ -45,11 +45,25 @@ func (s *Store) Create() error {
 var migrationsFS embed.FS
 
 func (s *Store) Migrate() error {
+	if err := s.create(); err != nil {
+		return err
+	}
 	goose.SetBaseFS(migrationsFS)
 	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
 		return err
 	}
 	if err := goose.Up(s.DB, "migrations"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) MigrationStatus() error {
+	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
+		return err
+	}
+	goose.SetBaseFS(migrationsFS)
+	if err := goose.Status(s.DB, "migrations"); err != nil {
 		return err
 	}
 	return nil

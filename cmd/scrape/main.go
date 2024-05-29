@@ -52,8 +52,8 @@ func main() {
 	if clear {
 		clearDatabase(dbFactory)
 		return
-	} else if dbFlags.Migrate {
-		migrateDatabase(dbFactory)
+	} else if dbFlags.IsMigration() {
+		migrateDatabase(dbFactory, dbFlags.MigrationCommand)
 		return
 	} else if maintain {
 		maintainDatabase(dbFactory)
@@ -150,24 +150,27 @@ func maintainDatabase(dbFactory store.Factory) {
 	slog.Warn("Database maintenance complete", "database", db)
 }
 
-func migrateDatabase(dbFactory store.Factory) {
+func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationCommand) {
 	db, ok := openDatabase(dbFactory).(store.Maintainable)
 	if !ok {
-		slog.Error("Creating database not available for this storage backend", "database", db)
+		slog.Error("database migrations not available for this storage backend", "database", db)
 		os.Exit(1)
 	}
 	defer db.(store.URLDataStore).Close()
-	err := db.Create()
+	var err error
+	switch migrationCommand {
+	case cmd.Up:
+		err = db.Migrate()
+	case cmd.Status:
+		err = db.MigrationStatus()
+	default:
+		err = fmt.Errorf("unsupported migration command: %s", migrationCommand)
+	}
 	if err != nil {
-		slog.Error("Error creating database", "database", db, "err", err)
+		slog.Error("Error migrating database", "database", db, "err", err)
 		os.Exit(1)
 	}
-	err = db.Migrate()
-	if err != nil {
-		slog.Error("Error creating database", "database", db, "err", err)
-		os.Exit(1)
-	}
-	slog.Warn("Database creation complete", "database", db)
+	slog.Warn("Database migration complete", "database", db)
 }
 
 func pingDatabase(dbFactory store.Factory) {

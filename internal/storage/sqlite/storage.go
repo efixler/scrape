@@ -68,10 +68,6 @@ func (s *Store) Open(ctx context.Context) error {
 	// In Memory DBs must always be created
 	needsCreate := s.config.IsInMemory() || !exists(s.config.filename)
 	if needsCreate {
-		// Todo: Merge create and migrate into a single operation
-		if err := s.Create(); err != nil {
-			return err
-		}
 		if err := s.Migrate(); err != nil {
 			return err
 		}
