@@ -106,7 +106,7 @@ func (f DatabaseFlags) IsMigration() bool {
 }
 
 func (f DatabaseFlags) Database() (store.Factory, error) {
-	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.MigrationCommand == "up")
+	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.MigrationCommand)
 }
 
 func (f DatabaseFlags) MustDatabase() store.Factory {
@@ -117,19 +117,30 @@ func (f DatabaseFlags) MustDatabase() store.Factory {
 	return dbF
 }
 
-func database(spec DatabaseSpec, username string, password string, noSchema bool) (store.Factory, error) {
+func database(spec DatabaseSpec, username string, password string, migration MigrationCommand) (store.Factory, error) {
+	// TODO: Have the DB implementations handle the connection nuances for migration cases.
 	switch spec.Type {
 	case "sqlite3":
 		fallthrough
 	case "sqlite":
-		return sqlite.Factory(sqlite.File(spec.Path)), nil
+		options := []sqlite.Option{sqlite.File(spec.Path)}
+		switch migration {
+		case MigrationCommand(""):
+			// no migration command
+		default:
+			// on any migration command don't auto-create the schema.
+			options = append(options, sqlite.WithoutAutoCreate())
+		}
+		return sqlite.Factory(options...), nil
 	case "mysql":
 		options := []mysql.Option{
 			mysql.NetAddress(spec.Path),
 			mysql.Username(username),
 			mysql.Password(password),
 		}
-		if noSchema {
+		// For MySQL we need special handling only when it's possible that the db doesn't
+		// exist yet.
+		if migration == Up {
 			options = append(options, mysql.ForMigration())
 		}
 		return mysql.Factory(options...), nil

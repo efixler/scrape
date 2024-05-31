@@ -151,6 +151,8 @@ func maintainDatabase(dbFactory store.Factory) {
 }
 
 func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationCommand) {
+	// TODO: Let the migrate methods themselves open the db, so we can encapsulate the
+	// issues around not-yet-existing DBs inside the DB implementation.
 	db, ok := openDatabase(dbFactory).(store.Maintainable)
 	if !ok {
 		slog.Error("database migrations not available for this storage backend", "database", db)
@@ -163,7 +165,7 @@ func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationComm
 	case cmd.Up:
 		err = db.Migrate()
 	case cmd.Reset:
-		err = db.Clear()
+		err = db.Reset()
 	case cmd.Status:
 		err = db.MigrationStatus()
 	default:

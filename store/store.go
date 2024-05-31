@@ -38,6 +38,7 @@ type Maintainable interface {
 	Clear() error
 	Maintain() error
 	Migrate() error
+	Reset() error
 	MigrationStatus() error
 }
 

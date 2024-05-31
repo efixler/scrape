@@ -70,7 +70,7 @@ func assertPathTo(fqn string) error {
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-func (s *Store) Clear() error {
+func (s *Store) Reset() error {
 	return s.DoMigrateReset(migrationsFS, "migrations")
 }
 
