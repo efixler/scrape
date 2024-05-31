@@ -162,6 +162,8 @@ func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationComm
 	switch migrationCommand {
 	case cmd.Up:
 		err = db.Migrate()
+	case cmd.Reset:
+		err = db.Clear()
 	case cmd.Status:
 		err = db.MigrationStatus()
 	default:

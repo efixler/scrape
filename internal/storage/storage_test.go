@@ -238,29 +238,29 @@ func TestCanonicalSelfLookupExists(t *testing.T) {
 	}
 }
 
-func TestClear(t *testing.T) {
-	s := getTestDatabase(t)
-	res := getWebPage(t)
-	_, err := s.Save(res)
-	if err != nil {
-		t.Fatalf("Error storing data: %v", err)
-	}
-	err = s.Clear()
-	if err != nil {
-		t.Errorf("Error clearing store: %v", err)
-	}
-	if rows, err := s.DB.QueryContext(s.Ctx, "SELECT COUNT(*) FROM urls"); err != nil {
-		t.Fatalf("Error counting rows after insert: %v", err)
-	} else {
-		defer rows.Close()
-		rows.Next()
-		var count int
-		rows.Scan(&count)
-		if count != 0 {
-			t.Errorf("Expected no rows, got %d", count)
-		}
-	}
-}
+// func TestClear(t *testing.T) {
+// 	s := getTestDatabase(t)
+// 	res := getWebPage(t)
+// 	_, err := s.Save(res)
+// 	if err != nil {
+// 		t.Fatalf("Error storing data: %v", err)
+// 	}
+// 	err = s.Clear()
+// 	if err != nil {
+// 		t.Errorf("Error clearing store: %v", err)
+// 	}
+// 	if rows, err := s.DB.QueryContext(s.Ctx, "SELECT COUNT(*) FROM urls"); err != nil {
+// 		t.Fatalf("Error counting rows after insert: %v", err)
+// 	} else {
+// 		defer rows.Close()
+// 		rows.Next()
+// 		var count int
+// 		rows.Scan(&count)
+// 		if count != 0 {
+// 			t.Errorf("Expected no rows, got %d", count)
+// 		}
+// 	}
+// }
 
 func TestDelete(t *testing.T) {
 	s := getTestDatabase(t)

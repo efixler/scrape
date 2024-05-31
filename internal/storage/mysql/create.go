@@ -50,6 +50,11 @@ func (s *Store) Migrate() error {
 	return s.DoMigrateUp(migrationsFS, "migrations", "TargetSchema", conf.Schema())
 }
 
+func (s *Store) Clear() error {
+	conf := s.DSNSource.(Config)
+	return s.DoMigrateReset(migrationsFS, "migrations", "TargetSchema", conf.Schema())
+}
+
 func (s *Store) MigrationStatus() error {
 	return s.PrintMigrationStatus(migrationsFS, "migrations")
 }

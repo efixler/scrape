@@ -17,6 +17,7 @@ type MigrationCommand string
 
 const (
 	Up     MigrationCommand = "up"
+	Reset  MigrationCommand = "reset"
 	Status MigrationCommand = "status"
 )
 
@@ -76,16 +77,16 @@ func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, migrateFlag bool) *Da
 	if migrateFlag {
 		flags.Func(
 			"migrate",
-			"Issue a db migration command: (up)",
-			func(cmd string) error {
-				switch strings.ToLower(cmd) {
-				case "":
-					return nil
-				case "up":
-					dbFlags.MigrationCommand = Up
-					return nil
-				case "status":
-					dbFlags.MigrationCommand = Status
+			"Issue a db migration command: up, reset, or status",
+			func(input string) error {
+				cmd := MigrationCommand(strings.ToLower(input))
+				switch cmd {
+				case Reset:
+					fallthrough
+				case Up:
+					fallthrough
+				case Status:
+					dbFlags.MigrationCommand = cmd
 					return nil
 				default:
 					return fmt.Errorf("unsupported migration command: %s", cmd)
