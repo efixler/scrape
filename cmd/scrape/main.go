@@ -175,7 +175,6 @@ func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationComm
 		slog.Error("Error migrating database", "database", db, "err", err)
 		os.Exit(1)
 	}
-	// slog.Warn("Database migration complete", "database", db)
 }
 
 func pingDatabase(dbFactory store.Factory) {
@@ -258,6 +257,8 @@ func init() {
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])
 	ll := logLevel.Get()
+	// Goose prints output directly during migrations, at INFO level,
+	// so if we're migrating, make sure we see the Goose messages.
 	if dbFlags.IsMigration() && (ll > slog.LevelInfo) {
 		ll = slog.LevelInfo
 	}
