@@ -9,7 +9,6 @@ import (
 
 	"github.com/efixler/scrape/database"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -27,14 +26,17 @@ func getTestDatabase(t *testing.T) *SQLStorage {
 	}
 	t.Cleanup(func() {
 		t.Logf("Cleaning up SQLite test database")
+		// This is really just here to exercise the migration reset code path.
+		// The SQLite test dbs will be destroyed when the connection is closed.
+		if err := db.DoMigrateReset(migrationsFS, "sqlite/migrations"); err != nil {
+			t.Logf("Error resetting SQLite test db: %v", err)
+		}
 		db.Close()
 	})
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.SetDialect(string(goose.DialectSQLite3)); err != nil {
-		t.Fatalf("Error setting dialect: %v", err)
-	}
-	if err := goose.Up(db.DB, "sqlite/migrations"); err != nil {
+
+	if err := db.DoMigrateUp(migrationsFS, "sqlite/migrations"); err != nil {
 		t.Fatalf("Error creating SQLite test db via migration: %v", err)
 	}
+
 	return db
 }

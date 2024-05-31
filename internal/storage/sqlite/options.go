@@ -12,7 +12,7 @@ import (
 type JournalMode string
 type SyncMode string
 type AccessMode string
-type option func(*config) error
+type Option func(*config) error
 
 const (
 	EnvDBPath                       = "SCRAPE_DB"
@@ -29,7 +29,7 @@ const (
 	AccessModeMemory    AccessMode  = "memory"
 )
 
-func InMemoryDB() option {
+func InMemoryDB() Option {
 	return func(c *config) error {
 		c.filename = InMemoryDBName
 		c.accessMode = AccessModeMemory
@@ -44,7 +44,7 @@ func InMemoryDB() option {
 }
 
 // Defaults always get applied in the New() function
-func Defaults() option {
+func Defaults() Option {
 	return func(c *config) error {
 		c.filename = DefaultDatabase
 		c.accessMode = AccessModeRWC
@@ -57,7 +57,7 @@ func Defaults() option {
 	}
 }
 
-func WithFileOrEnv(filename string) option {
+func WithFileOrEnv(filename string) Option {
 	return func(c *config) error {
 		if filename == "" {
 			filename = os.Getenv(EnvDBPath)
@@ -66,7 +66,7 @@ func WithFileOrEnv(filename string) option {
 	}
 }
 
-func File(filename string) option {
+func File(filename string) Option {
 	return func(c *config) error {
 		if resolvedPath, err := dbPath(filename); err != nil {
 			switch err {
@@ -87,9 +87,16 @@ func File(filename string) option {
 	}
 }
 
-func WithQueryTimeout(timeout time.Duration) option {
+func WithQueryTimeout(timeout time.Duration) Option {
 	return func(c *config) error {
 		c.queryTimeout = timeout
+		return nil
+	}
+}
+
+func WithoutAutoCreate() Option {
+	return func(c *config) error {
+		c.noAutoCreate = true
 		return nil
 	}
 }
@@ -104,6 +111,7 @@ type config struct {
 	accessMode      AccessMode
 	maxConnections  int           // 0 = use driver defaults
 	connMaxLifetime time.Duration // 0 = use driver defaults
+	noAutoCreate    bool
 }
 
 func (o config) DSN() string {
@@ -136,4 +144,15 @@ func (o config) ConnMaxLifetime() time.Duration {
 
 func (o config) IsInMemory() bool {
 	return o.filename == InMemoryDBName
+}
+
+func (o config) databaseExists() bool {
+	if o.IsInMemory() || !exists(o.filename) {
+		return false
+	}
+	return true
+}
+
+func (o config) autoCreate() bool {
+	return !o.noAutoCreate
 }

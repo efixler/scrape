@@ -5,11 +5,20 @@ import (
 	"flag"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/internal/storage/mysql"
 	"github.com/efixler/scrape/internal/storage/sqlite"
 	"github.com/efixler/scrape/store"
+)
+
+type MigrationCommand string
+
+const (
+	Up     MigrationCommand = "up"
+	Reset  MigrationCommand = "reset"
+	Status MigrationCommand = "status"
 )
 
 var (
@@ -50,10 +59,10 @@ func NewDatabaseValue(env string, def DatabaseSpec) *envflags.Value[DatabaseSpec
 }
 
 type DatabaseFlags struct {
-	database *envflags.Value[DatabaseSpec]
-	username *envflags.Value[string]
-	password *envflags.Value[string]
-	Migrate  bool
+	database         *envflags.Value[DatabaseSpec]
+	username         *envflags.Value[string]
+	password         *envflags.Value[string]
+	MigrationCommand MigrationCommand
 }
 
 func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, migrateFlag bool) *DatabaseFlags {
@@ -66,11 +75,23 @@ func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, migrateFlag bool) *Da
 	dbFlags.username.AddTo(flags, "db-user", "Database user")
 	dbFlags.password.AddTo(flags, "db-password", "Database password")
 	if migrateFlag {
-		flags.BoolVar(
-			&dbFlags.Migrate,
+		flags.Func(
 			"migrate",
-			false,
-			"Migrate the database to the latest version (creating if necessary)",
+			"Issue a db migration command: up, reset, or status",
+			func(input string) error {
+				cmd := MigrationCommand(strings.ToLower(input))
+				switch cmd {
+				case Reset:
+					fallthrough
+				case Up:
+					fallthrough
+				case Status:
+					dbFlags.MigrationCommand = cmd
+					return nil
+				default:
+					return fmt.Errorf("unsupported migration command: %s", cmd)
+				}
+			},
 		)
 	}
 	return dbFlags
@@ -80,8 +101,12 @@ func (f DatabaseFlags) String() DatabaseSpec {
 	return f.database.Get()
 }
 
+func (f DatabaseFlags) IsMigration() bool {
+	return string(f.MigrationCommand) != ""
+}
+
 func (f DatabaseFlags) Database() (store.Factory, error) {
-	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.Migrate)
+	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.MigrationCommand)
 }
 
 func (f DatabaseFlags) MustDatabase() store.Factory {
@@ -92,19 +117,30 @@ func (f DatabaseFlags) MustDatabase() store.Factory {
 	return dbF
 }
 
-func database(spec DatabaseSpec, username string, password string, noSchema bool) (store.Factory, error) {
+func database(spec DatabaseSpec, username string, password string, migration MigrationCommand) (store.Factory, error) {
+	// TODO: Have the DB implementations handle the connection nuances for migration cases.
 	switch spec.Type {
 	case "sqlite3":
 		fallthrough
 	case "sqlite":
-		return sqlite.Factory(sqlite.File(spec.Path)), nil
+		options := []sqlite.Option{sqlite.File(spec.Path)}
+		switch migration {
+		case MigrationCommand(""):
+			// no migration command
+		default:
+			// on any migration command don't auto-create the schema.
+			options = append(options, sqlite.WithoutAutoCreate())
+		}
+		return sqlite.Factory(options...), nil
 	case "mysql":
 		options := []mysql.Option{
 			mysql.NetAddress(spec.Path),
 			mysql.Username(username),
 			mysql.Password(password),
 		}
-		if noSchema {
+		// For MySQL we need special handling only when it's possible that the db doesn't
+		// exist yet.
+		if migration == Up {
 			options = append(options, mysql.ForMigration())
 		}
 		return mysql.Factory(options...), nil

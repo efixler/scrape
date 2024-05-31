@@ -34,13 +34,13 @@ type Store struct {
 // Returns the factory function that can be used to instantiate a sqlite store
 // in the cases where either creation should be delayed or where the caller may
 // want to instantiate multiple stores with the same configuration.
-func Factory(options ...option) store.Factory {
+func Factory(options ...Option) store.Factory {
 	return func() (store.URLDataStore, error) {
 		return New(options...)
 	}
 }
 
-func New(options ...option) (*Store, error) {
+func New(options ...Option) (*Store, error) {
 	c := &config{}
 	Defaults()(c)
 	for _, opt := range options {
@@ -66,12 +66,7 @@ func (s *Store) Open(ctx context.Context) error {
 	// SQLite will open even if the the DB file is not present, it will only fail later.
 	// So, if the db hasn't been opened, check for the file here.
 	// In Memory DBs must always be created
-	needsCreate := s.config.IsInMemory() || !exists(s.config.filename)
-	if needsCreate {
-		// Todo: Merge create and migrate into a single operation
-		if err := s.Create(); err != nil {
-			return err
-		}
+	if !s.config.databaseExists() && s.config.autoCreate() {
 		if err := s.Migrate(); err != nil {
 			return err
 		}

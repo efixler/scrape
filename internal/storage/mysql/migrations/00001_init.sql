@@ -1,5 +1,10 @@
 -- +goose Up
 -- +goose StatementBegin
+-- +goose ENVSUB ON
+USE `${TargetSchema}`;
+-- +goose ENVSUB OFF
+
+
 
 CREATE TABLE IF NOT EXISTS `urls` (
   `id` BIGINT UNSIGNED NOT NULL,
@@ -23,11 +28,14 @@ CREATE INDEX fetch_method_expires_index ON urls (
     fetch_method ASC
 );
 
+
 -- +goose StatementEnd
 
 -- +goose Down
+-- +goose ENVSUB ON
+USE `${TargetSchema}`;
+-- +goose ENVSUB OFF
 -- +goose StatementBegin
-USE `scrape_test`;
 DROP TABLE IF EXISTS `urls`;
 DROP TABLE IF EXISTS `id_map`;
 -- +goose StatementEnd

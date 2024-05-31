@@ -52,8 +52,8 @@ func main() {
 	if clear {
 		clearDatabase(dbFactory)
 		return
-	} else if dbFlags.Migrate {
-		migrateDatabase(dbFactory)
+	} else if dbFlags.IsMigration() {
+		migrateDatabase(dbFactory, dbFlags.MigrationCommand)
 		return
 	} else if maintain {
 		maintainDatabase(dbFactory)
@@ -150,24 +150,31 @@ func maintainDatabase(dbFactory store.Factory) {
 	slog.Warn("Database maintenance complete", "database", db)
 }
 
-func migrateDatabase(dbFactory store.Factory) {
+func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationCommand) {
+	// TODO: Let the migrate methods themselves open the db, so we can encapsulate the
+	// issues around not-yet-existing DBs inside the DB implementation.
 	db, ok := openDatabase(dbFactory).(store.Maintainable)
 	if !ok {
-		slog.Error("Creating database not available for this storage backend", "database", db)
+		slog.Error("database migrations not available for this storage backend", "database", db)
 		os.Exit(1)
 	}
 	defer db.(store.URLDataStore).Close()
-	err := db.Create()
+
+	var err error
+	switch migrationCommand {
+	case cmd.Up:
+		err = db.Migrate()
+	case cmd.Reset:
+		err = db.Reset()
+	case cmd.Status:
+		err = db.MigrationStatus()
+	default:
+		err = fmt.Errorf("unsupported migration command: %s", migrationCommand)
+	}
 	if err != nil {
-		slog.Error("Error creating database", "database", db, "err", err)
+		slog.Error("Error migrating database", "database", db, "err", err)
 		os.Exit(1)
 	}
-	err = db.Migrate()
-	if err != nil {
-		slog.Error("Error creating database", "database", db, "err", err)
-		os.Exit(1)
-	}
-	slog.Warn("Database creation complete", "database", db)
 }
 
 func pingDatabase(dbFactory store.Factory) {
@@ -249,10 +256,16 @@ func init() {
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelWarn)
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])
+	ll := logLevel.Get()
+	// Goose prints output directly during migrations, at INFO level,
+	// so if we're migrating, make sure we see the Goose messages.
+	if dbFlags.IsMigration() && (ll > slog.LevelInfo) {
+		ll = slog.LevelInfo
+	}
 	logger := slog.New(slog.NewTextHandler(
 		os.Stderr,
 		&slog.HandlerOptions{
-			Level: logLevel.Get(),
+			Level: ll,
 		},
 	))
 	slog.SetDefault(logger)

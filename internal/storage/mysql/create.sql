@@ -6,7 +6,6 @@ GRANT SELECT, INSERT, UPDATE, DELETE on {{.TargetSchema}}.* to scrape_app;
 CREATE ROLE IF NOT EXISTS scrape_admin;
 GRANT ALL ON {{.TargetSchema}}.* to scrape_admin;
 
-USE {{.TargetSchema}} ;
-
 COMMIT;
-SET AUTOCOMMIT = 1;
+USE {{.TargetSchema}};
+
