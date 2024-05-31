@@ -21,8 +21,8 @@ func testDatabaseForCreate(t *testing.T) *Store {
 	// todo: enable alternate names when also creating
 	// the database.
 	t.Cleanup(func() {
-		if _, err := db.DB.Exec("DROP DATABASE IF EXISTS scrape_test;"); err != nil {
-			t.Logf("error dropping test mysql database: %q", err)
+		if err := db.DoMigrateReset(migrationsFS, "migrations", "TargetSchema", "scrape_test"); err != nil {
+			t.Errorf("Error resetting mysql test db %v: %v", "scrape_test", err)
 		}
 		if err := db.Close(); err != nil {
 			t.Errorf("Error closing mysql database: %v", err)
@@ -31,8 +31,9 @@ func testDatabaseForCreate(t *testing.T) *Store {
 	return db // .(*Store)
 }
 
-func TestCreate(t *testing.T) {
-	// t.Skip("skipping mysql create test")
+// Test creating the db from scratch. The cleanup method above will migrate it down, deleting all
+// of the tables, but keeping the db and the permissions.
+func TestMigrate(t *testing.T) {
 	db := testDatabaseForCreate(t)
 	err := db.Open(context.Background())
 	if err != nil {

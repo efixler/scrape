@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"embed"
 	"errors"
-	"os"
 	"text/template"
 )
 
@@ -48,8 +47,6 @@ func (s *Store) Migrate() error {
 		return err
 	}
 	conf := s.DSNSource.(Config)
-	os.Setenv("TargetSchema", conf.Schema())
-
 	return s.DoMigrateUp(migrationsFS, "migrations", "TargetSchema", conf.Schema())
 }
 

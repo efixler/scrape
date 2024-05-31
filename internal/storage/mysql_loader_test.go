@@ -7,7 +7,6 @@ import (
 	"context"
 	"embed"
 	_ "embed"
-	"fmt"
 	"testing"
 	"text/template"
 
@@ -58,9 +57,8 @@ func getTestDatabase(t *testing.T) *SQLStorage {
 		t.Fatalf("Error creating database: %v", err)
 	}
 	t.Cleanup(func() {
-		q := fmt.Sprintf("DROP DATABASE %v;", dbConfig.TargetSchema)
-		if _, err := db.DB.Exec(q); err != nil {
-			t.Logf("error dropping mysql test database %q: %v", dbConfig.TargetSchema, err)
+		if err := db.DoMigrateReset(migrationsFS, "mysql/migrations", "TargetSchema", dbConfig.TargetSchema); err != nil {
+			t.Errorf("Error resetting mysql test db %v: %v", dbConfig.TargetSchema, err)
 		}
 	})
 

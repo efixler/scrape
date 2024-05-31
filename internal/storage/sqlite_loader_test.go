@@ -26,6 +26,11 @@ func getTestDatabase(t *testing.T) *SQLStorage {
 	}
 	t.Cleanup(func() {
 		t.Logf("Cleaning up SQLite test database")
+		// This is really just here to exercise the migration reset code path.
+		// The SQLite test dbs will be destroyed when the connection is closed.
+		if err := db.DoMigrateReset(migrationsFS, "sqlite/migrations"); err != nil {
+			t.Logf("Error resetting SQLite test db: %v", err)
+		}
 		db.Close()
 	})
 
