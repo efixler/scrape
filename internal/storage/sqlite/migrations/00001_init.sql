@@ -1,5 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
+PRAGMA foreign_keys = off;
+PRAGMA page_size = 16384; -- default is 4096 but text records are big
+PRAGMA temp_store = MEMORY;
+PRAGMA auto_vacuum = INCREMENTAL;
 CREATE TABLE IF NOT EXISTS id_map (
     requested_id INTEGER PRIMARY KEY ON CONFLICT REPLACE
                          NOT NULL,

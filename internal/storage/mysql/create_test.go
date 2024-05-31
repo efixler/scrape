@@ -38,7 +38,7 @@ func TestCreate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error opening database: %v", err)
 	}
-	err = db.Create()
+	err = db.Migrate()
 	if err != nil {
 		t.Errorf("Error creating database: %v", err)
 	}

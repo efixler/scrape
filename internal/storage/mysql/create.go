@@ -4,9 +4,8 @@ import (
 	"bytes"
 	"embed"
 	"errors"
+	"os"
 	"text/template"
-
-	"github.com/pressly/goose/v3"
 )
 
 //go:embed create.sql
@@ -48,25 +47,14 @@ func (s *Store) Migrate() error {
 	if err := s.create(); err != nil {
 		return err
 	}
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
-		return err
-	}
-	if err := goose.Up(s.DB, "migrations"); err != nil {
-		return err
-	}
-	return nil
+	conf := s.DSNSource.(Config)
+	os.Setenv("TargetSchema", conf.Schema())
+
+	return s.DoMigrateUp(migrationsFS, "migrations", "TargetSchema", conf.Schema())
 }
 
 func (s *Store) MigrationStatus() error {
-	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
-		return err
-	}
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.Status(s.DB, "migrations"); err != nil {
-		return err
-	}
-	return nil
+	return s.PrintMigrationStatus(migrationsFS, "migrations")
 }
 
 func (s *Store) Maintain() error {

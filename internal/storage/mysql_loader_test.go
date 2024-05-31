@@ -13,7 +13,6 @@ import (
 
 	"github.com/efixler/scrape/database"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -64,12 +63,9 @@ func getTestDatabase(t *testing.T) *SQLStorage {
 			t.Logf("error dropping mysql test database %q: %v", dbConfig.TargetSchema, err)
 		}
 	})
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.SetDialect(string(goose.DialectMySQL)); err != nil {
-		t.Fatalf("Error setting dialect: %v", err)
-	}
-	if err := goose.Up(db.DB, "mysql/migrations"); err != nil {
-		t.Fatalf("Error creating MySQL test db via migration: %v", err)
+
+	if err := db.DoMigrateUp(migrationsFS, "mysql/migrations", "TargetSchema", dbConfig.TargetSchema); err != nil {
+		t.Fatalf("Error creating MySQL test db (%v) via migration: %v", dbConfig.TargetSchema, err)
 	}
 	return db
 }

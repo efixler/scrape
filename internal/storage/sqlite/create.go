@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/efixler/scrape/store"
-	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -68,47 +67,15 @@ func assertPathTo(fqn string) error {
 	return nil
 }
 
-//go:embed create.sql
-var createSQL string
-
-// When this is called, the path to the database must already exist.
-func (s *Store) create() error {
-	// NB: The creation sql has been stripped down to a few pragmas; the actual creation is now
-	// handled by the migrations. SQLite doesn't need the two-stage create/migrate, but MySQL does, so,
-	// for now, keeping this in-place pending refactoring.
-	_, err := s.DB.ExecContext(s.Ctx, createSQL)
-	if err != nil {
-		slog.Error("sqlite: error creating database", "error", err)
-	}
-	return err
-}
-
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
 func (s *Store) Migrate() error {
-	if err := s.create(); err != nil {
-		return err
-	}
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.SetDialect(string(goose.DialectSQLite3)); err != nil {
-		return err
-	}
-	if err := goose.Up(s.DB, "migrations"); err != nil {
-		return err
-	}
-	return nil
+	return s.DoMigrateUp(migrationsFS, "migrations")
 }
 
 func (s *Store) MigrationStatus() error {
-	if err := goose.SetDialect(string(goose.DialectSQLite3)); err != nil {
-		return err
-	}
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.Status(s.DB, "migrations"); err != nil {
-		return err
-	}
-	return nil
+	return s.PrintMigrationStatus(migrationsFS, "migrations")
 }
 
 // Private version of the maintenance function that doesn't log, for running

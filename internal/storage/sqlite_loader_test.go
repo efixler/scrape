@@ -9,7 +9,6 @@ import (
 
 	"github.com/efixler/scrape/database"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/pressly/goose/v3"
 )
 
 const (
@@ -29,12 +28,10 @@ func getTestDatabase(t *testing.T) *SQLStorage {
 		t.Logf("Cleaning up SQLite test database")
 		db.Close()
 	})
-	goose.SetBaseFS(migrationsFS)
-	if err := goose.SetDialect(string(goose.DialectSQLite3)); err != nil {
-		t.Fatalf("Error setting dialect: %v", err)
-	}
-	if err := goose.Up(db.DB, "sqlite/migrations"); err != nil {
+
+	if err := db.DoMigrateUp(migrationsFS, "sqlite/migrations"); err != nil {
 		t.Fatalf("Error creating SQLite test db via migration: %v", err)
 	}
+
 	return db
 }

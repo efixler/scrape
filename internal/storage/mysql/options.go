@@ -121,6 +121,13 @@ func defaultConfig() Config {
 	}
 }
 
+func (c Config) Schema() string {
+	if c.TargetSchema != "" {
+		return c.TargetSchema
+	}
+	return c.DBName
+}
+
 func (c Config) DSN() string {
 	return c.Config.FormatDSN()
 }

@@ -157,6 +157,7 @@ func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationComm
 		os.Exit(1)
 	}
 	defer db.(store.URLDataStore).Close()
+
 	var err error
 	switch migrationCommand {
 	case cmd.Up:
@@ -170,7 +171,7 @@ func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationComm
 		slog.Error("Error migrating database", "database", db, "err", err)
 		os.Exit(1)
 	}
-	slog.Warn("Database migration complete", "database", db)
+	// slog.Warn("Database migration complete", "database", db)
 }
 
 func pingDatabase(dbFactory store.Factory) {
@@ -252,10 +253,14 @@ func init() {
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelWarn)
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")
 	flags.Parse(os.Args[1:])
+	ll := logLevel.Get()
+	if dbFlags.IsMigration() && (ll > slog.LevelInfo) {
+		ll = slog.LevelInfo
+	}
 	logger := slog.New(slog.NewTextHandler(
 		os.Stderr,
 		&slog.HandlerOptions{
-			Level: logLevel.Get(),
+			Level: ll,
 		},
 	))
 	slog.SetDefault(logger)
