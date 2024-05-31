@@ -127,48 +127,60 @@ That's actually it. The database will be created if it doesn't exist already.
 ```
 scrape % ./scrape -h
 Usage: 
-        scrape [flags] :url [...urls]
+	scrape [flags] :url [...urls]
 
 In addition to http[s] URLs, file:/// urls are supported, using the current working directory as the base path.
 
 Flags:
  
-  -h
-        Show this help message
+  -h	
+  	Show this help message
   -clear
-        Clear the database and exit
+    	Clear the database and exit
   -csv value
-        CSV file path
+    	CSV file path
   -csv-column value
-        The index of the column in the CSV that contains the URLs
-        Environment: SCRAPE_CSV_COLUMN (default 1)
+    	The index of the column in the CSV that contains the URLs
+    	Environment: SCRAPE_CSV_COLUMN (default 1)
   -database value
-        Database type:path
-        Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
+    	Database type:path
+    	Environment: SCRAPE_DB (default sqlite:scrape_data/scrape.db)
   -db-password value
-        Database password
-        Environment: SCRAPE_DB_PASSWORD
+    	Database password
+    	Environment: SCRAPE_DB_PASSWORD
   -db-user value
-        Database user
-        Environment: SCRAPE_DB_USER
+    	Database user
+    	Environment: SCRAPE_DB_USER
   -headless
-        Use headless browser for extraction
+    	Use headless browser for extraction
   -log-level value
-        Set the log level [debug|error|info|warn]
-        Environment: SCRAPE_LOG_LEVEL (default WARN)
+    	Set the log level [debug|error|info|warn]
+    	Environment: SCRAPE_LOG_LEVEL (default WARN)
   -maintain
-        Execute database maintenance and exit
-  -migrate
-        Migrate the database to the latest version (creating if necessary)
+    	Execute database maintenance and exit
+  -migrate value
+    	Issue a db migration command: up, reset, or status
   -notext
-        Skip text content
-        Environment: SCRAPE_NOTEXT
+    	Skip text content
+    	Environment: SCRAPE_NOTEXT
   -ping
-        Ping the database and exit
+    	Ping the database and exit
   -user-agent value
-        User agent to use for fetching
-        Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
+    	User agent to use for fetching
+    	Environment: SCRAPE_USER_AGENT (default Mozilla/5.0 (X11; Linux x86_64; rv:88.0) Gecko/20100101 Firefox/88.0)
+
 ```
+#### Managing database migrations
+
+The `-migrate` flag can be used to create (or update) the database. SQLite databases will be automatically brought up to date whenever `scrape` or `scrape-server` are invoked; MySQL
+databases need to be explicitly migrated.
+
+There are 3 accepted arguments to the `-migrate` flag:
+- `up`: Bring the database up to the latest version, creating if necessary.
+- `reset`: Bring the database down to no-tables and clear all data. The empty schema and permissions are preserved.
+- `status`: Show the current migration version and state.
+
+
 ## Usage as a Server
 The server provides a REST API to get resource data one-at-a-time or in bulk. The root URL serves up a page that can be used to spot check results for any url.
 
@@ -443,10 +455,10 @@ Here are the configuration options for MySQL:
 | -db-password | SCRAPE_DB_PASSWORD | Password | lkajd901e109i^jhj% |
 | -db-user | SCRAPE_DB_USER | Username for mysql connections | `scrape_user` |
 
-Create the MySQL database by running `scrape -migrate` with the applicable values above. For
+Create the MySQL database by running `scrape -migrate up` with the applicable values above. For
 database creation a privileged user is required. The database will be provisioned with two
 roles; `scrape_app` for app operations and a `scrape_admin` role with full privileges to the
-schema. Assign these roles to users as appropriate.
+schema. Assign these roles to users, and assign those users to the arguments above, as appropriate.
 
 ## Building and Developing
 
@@ -503,6 +515,7 @@ Feature request or bug? Post issues [here](https://github.com/efixler/scrape/iss
 `scrape` is powered by:
 -  [go-trafilatura](https://github.com/markusmobius/go-trafilatura) HTML parsing
 -  [gofeed](https://github.com/mmcdole/gofeed) Atom and RSS parsing
+-  [goose](https://github.com/pressly/goose) Database migrations
 -  [sqlite](https://www.sqlite.org/index.html) data storage
 -  [go-sqlite3](https://github.com/mattn/go-sqlite3) SQLite client
 -  [go-mysql](https://github.com/go-sql-driver/mysql) MySQL client
