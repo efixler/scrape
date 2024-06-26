@@ -14,10 +14,10 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
-type stmtIndex int
+// type stmtIndex int
 
 const (
-	_ stmtIndex = iota
+	_ = iota
 	save
 	saveId
 	lookupId
@@ -36,12 +36,12 @@ const (
 )
 
 type SQLStorage struct {
-	*database.DBHandle[stmtIndex]
+	*database.DBHandle[int]
 }
 
 func New(driver database.DriverName, dsnOptions database.DataSource) *SQLStorage {
 	return &SQLStorage{
-		DBHandle: &database.DBHandle[stmtIndex]{
+		DBHandle: &database.DBHandle[int]{
 			Driver:    driver,
 			DSNSource: dsnOptions,
 		},
