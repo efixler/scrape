@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"embed"
 	"errors"
 	"testing"
 	"time"
@@ -10,27 +11,36 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Embedded type for testing
-type materialDB struct {
-	DBHandle[string]
+type engine struct {
+	driver      string
+	dsnSource   DataSource
+	migrationFS *embed.FS
 }
 
-func (m *materialDB) Open(ctx context.Context) error {
-	err := m.DBHandle.Open(ctx)
-	if err != nil {
-		return err
-	}
+func (e *engine) PostOpen(ctx context.Context, dbh *DBHandle) error {
 	return nil
 }
 
-func newDB(driver DriverName, dsnSource DataSource) *materialDB {
-	return &materialDB{
-		DBHandle: DBHandle[string]{
-			Driver:    driver,
-			DSNSource: dsnSource,
-			stmts:     make(map[string]*sql.Stmt, 8),
-		},
+func (e *engine) DSNSource() DataSource {
+	return e.dsnSource
+}
+
+func (e *engine) Driver() string {
+	return e.driver
+}
+
+func (e *engine) MigrationFS() *embed.FS {
+	return e.migrationFS
+}
+
+func newDB(driver DriverName, dsnSource DataSource) *DBHandle {
+	e := &engine{
+		driver:      string(driver),
+		dsnSource:   dsnSource,
+		migrationFS: nil,
 	}
+
+	return New(e)
 }
 
 func TestMaintenanceRunsAndsStops(t *testing.T) {
@@ -115,21 +125,22 @@ func TestDBClosedOnContextCancel(t *testing.T) {
 }
 
 type mockDBHandleForCloseTest struct {
-	DBHandle[string]
+	*DBHandle
 	maintCount int
 }
 
 func TestDBCloseExpectations(t *testing.T) {
 	t.Parallel()
 
+	dbh := New(&engine{
+		driver:    string(SQLite),
+		dsnSource: NewDSN(":memory:"),
+	})
+
 	mdbh := &mockDBHandleForCloseTest{
-		DBHandle[string]{
-			Driver:    SQLite,
-			DSNSource: NewDSN(":memory:"),
-			stmts:     make(map[string]*sql.Stmt, 8),
-		},
-		0,
+		DBHandle: dbh,
 	}
+
 	// we don't want to cancel the context for this test
 	err := mdbh.Open(context.Background())
 	if err != nil {

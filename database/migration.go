@@ -8,46 +8,50 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-// Execute an up migration using goose. migrationDir is the path within
-// migrationFS where the migration files are stored.
+const (
+	MigrationDir = "migrations" // Default directory for migration files (in the embed.FS)
+)
+
+var (
+	ErrNoMigrationFS = fmt.Errorf("migration filesystem is not set")
+)
+
+// Execute an up migration using goose.
 // The environment variables are set before running the migration.
 // This may be used in conjunction with Goose's EnvSubOn directive.
-func (d *DBHandle[T]) DoMigrateUp(
-	migrationFS fs.FS,
-	migrationDir string,
-	env ...string,
-) error {
-	if clearF, err := d.prepareForMigration(migrationFS, env...); err != nil {
+func (d *DBHandle) DoMigrateUp(env ...string) error {
+	if clearF, err := d.prepareForMigration(env...); err != nil {
 		return err
 	} else {
 		defer clearF()
 	}
-	if err := goose.Up(d.DB, migrationDir); err != nil {
+	if err := goose.Up(d.DB, MigrationDir); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (d DBHandle[T]) DoMigrateReset(
-	migrationFS fs.FS,
-	migrationDir string,
-	env ...string) error {
-	if clearF, err := d.prepareForMigration(migrationFS, env...); err != nil {
+func (d DBHandle) DoMigrateReset(env ...string) error {
+	if clearF, err := d.prepareForMigration(env...); err != nil {
 		return err
 	} else {
 		defer clearF()
 	}
-	return goose.Reset(d.DB, migrationDir)
+	return goose.Reset(d.DB, MigrationDir)
 }
 
-func (d DBHandle[T]) prepareForMigration(migrationFS fs.FS, env ...string) (func(), error) {
-	if err := goose.SetDialect(string(d.Driver)); err != nil {
+func (d DBHandle) prepareForMigration(env ...string) (func(), error) {
+	if d.engine.MigrationFS() == nil {
+		return nil, ErrNoMigrationFS
+	}
+
+	if err := goose.SetDialect(string(d.engine.Driver())); err != nil {
 		return nil, err
 	}
 	if (len(env) % 2) != 0 {
 		return nil, fmt.Errorf("environment variables must be key-value pairs")
 	}
-	goose.SetBaseFS(migrationFS)
+	goose.SetBaseFS(*d.engine.MigrationFS())
 
 	envRestore := make(map[string]string, len(env)/2)
 	clearF := func() {
@@ -70,12 +74,15 @@ func (d DBHandle[T]) prepareForMigration(migrationFS fs.FS, env ...string) (func
 	return clearF, nil
 }
 
-func (d DBHandle[T]) PrintMigrationStatus(migrationFS fs.FS, migrationDir string) error {
-	if err := goose.SetDialect(string(d.Driver)); err != nil {
+func (d DBHandle) PrintMigrationStatus(migrationFS fs.FS, migrationDir string) error {
+	if err := goose.SetDialect(string(d.engine.Driver())); err != nil {
 		return err
 	}
-	goose.SetBaseFS(migrationFS)
-	if err := goose.Status(d.DB, migrationDir); err != nil {
+	if d.engine.MigrationFS() == nil {
+		return ErrNoMigrationFS
+	}
+	goose.SetBaseFS(*d.engine.MigrationFS())
+	if err := goose.Status(d.DB, MigrationDir); err != nil {
 		return err
 	}
 	return nil

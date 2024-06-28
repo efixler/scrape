@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func createTempTable(dbh *materialDB, rows int) error {
+func createTempTable(dbh *DBHandle, rows int) error {
 	create := `CREATE TABLE IF NOT EXISTS test_table (id INTEGER PRIMARY KEY, name TEXT)`
 	_, err := dbh.DB.Exec(create)
 	if err != nil {
