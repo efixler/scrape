@@ -27,12 +27,8 @@ type StorageBackedFetcher struct {
 
 func NewStorageBackedFetcher(
 	fetcherFactory fetch.Factory,
-	storageFactory store.Factory,
+	storage store.URLDataStore,
 ) (*StorageBackedFetcher, error) {
-	storage, err := storageFactory()
-	if err != nil {
-		return nil, err
-	}
 	fetcher, err := fetcherFactory()
 	if err != nil {
 		return nil, err
@@ -48,14 +44,6 @@ func NewStorageBackedFetcher(
 // so that they can hook into the context directly, specifically to
 // close and release resources on cancellation.
 func (f StorageBackedFetcher) Open(ctx context.Context) error {
-	err := f.Fetcher.Open(ctx)
-	if err != nil {
-		return err
-	}
-	err = f.Storage.Open(ctx)
-	if err != nil {
-		return err
-	}
 	context.AfterFunc(ctx, func() {
 		f.Close()
 	})
@@ -77,9 +65,9 @@ func (f *StorageBackedFetcher) WithAlternateURLFetcher(ctx context.Context, uf f
 		Storage: f.Storage,
 		saving:  f.saving,
 	}
-	if err := clone.Fetcher.Open(ctx); err != nil {
-		return nil, err
-	}
+	// if err := clone.Fetcher.Open(ctx); err != nil {
+	// 	return nil, err
+	// }
 	// Don't patch in a function to close the context here, because we only really need this to close the DB, which is already
 	// hooked by the parent. We also share the parent's WaitGroup for async saves for this reason.
 	return clone, nil
@@ -150,8 +138,8 @@ func (f *StorageBackedFetcher) Close() error {
 		f.closed = true
 	}()
 	f.saving.Wait()
-	f.Fetcher.Close()
-	f.Storage.Close()
+	// f.Fetcher.Close()
+	// f.Storage.Close()
 	return nil
 }
 

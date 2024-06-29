@@ -93,12 +93,12 @@ func (d DBHandle) PrintMigrationStatus() error {
 	if err := goose.SetDialect(string(d.Engine.Driver())); err != nil {
 		return err
 	}
-	migFS, dirName, err := extractMigrationFS(d.Engine.MigrationFS())
+	migFS, _, err := extractMigrationFS(d.Engine.MigrationFS())
 	if err != nil {
 		return err
 	}
 	goose.SetBaseFS(migFS)
-	if err := goose.Status(d.DB, dirName); err != nil {
+	if err := goose.Status(d.DB, "."); err != nil {
 		return err
 	}
 	return nil

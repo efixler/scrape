@@ -50,15 +50,17 @@ func main() {
 		slog.Error("Error initializing database connection", "err", err)
 		os.Exit(1)
 	}
+	openDatabase(dbh)
+	defer dbh.Close()
 
 	if clear {
 		// clearDatabase(dbFactory)
 		return
 	} else if dbFlags.IsMigration() {
-		// migrateDatabase(dbh, dbFlags.MigrationCommand)
+		migrateDatabase(dbh, dbFlags.MigrationCommand)
 		return
 	} else if maintain {
-		//maintainDatabase(dbFactory)
+		maintainDatabase(dbh)
 		return
 	} else if ping {
 		pingDatabase(dbh)
@@ -143,9 +145,6 @@ func maintainDatabase(dbh *database.DBHandle) {
 		slog.Error("Database maintenance not available for this storage backend", "database", dbh)
 		os.Exit(1)
 	}
-	openDatabase(dbh)
-
-	defer dbh.Close()
 	err := mt.Maintain(dbh)
 	if err != nil {
 		slog.Error("Error maintaining database", "database", dbh, "err", err)
@@ -155,9 +154,6 @@ func maintainDatabase(dbh *database.DBHandle) {
 }
 
 func migrateDatabase(dbh *database.DBHandle, migrationCommand cmd.MigrationCommand) {
-	openDatabase(dbh)
-	defer dbh.Close()
-
 	var err error
 	switch migrationCommand {
 	case cmd.Up:
@@ -176,8 +172,6 @@ func migrateDatabase(dbh *database.DBHandle, migrationCommand cmd.MigrationComma
 }
 
 func pingDatabase(dbh *database.DBHandle) {
-	openDatabase(dbh)
-	defer dbh.Close()
 	err := dbh.Ping()
 	if err != nil {
 		slog.Error("Error pinging database", "database", dbh, "err", err)
