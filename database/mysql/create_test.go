@@ -5,30 +5,34 @@ package mysql
 import (
 	"context"
 	"testing"
+
+	"github.com/efixler/scrape/database"
 )
 
 // Mysql integration tests assume a running mysql server
 // at localhost:3306 with a root login and no password.
 
-func testDatabaseForCreate(t *testing.T) *Store {
-	db, _ := New(
+func testDatabaseForCreate(t *testing.T) *database.DBHandle {
+	e, _ := New(
 		Username("root"),
 		Password(""),
 		NetAddress("localhost:3306"),
 		Schema("scrape_test"),
 		ForMigration(),
 	)
+	dbh := database.New(e)
+
 	// todo: enable alternate names when also creating
 	// the database.
 	t.Cleanup(func() {
-		if err := db.DoMigrateReset(migrationsFS, "migrations", "TargetSchema", "scrape_test"); err != nil {
+		if err := dbh.MigrateReset(); err != nil {
 			t.Errorf("Error resetting mysql test db %v: %v", "scrape_test", err)
 		}
-		if err := db.Close(); err != nil {
+		if err := dbh.Close(); err != nil {
 			t.Errorf("Error closing mysql database: %v", err)
 		}
 	})
-	return db // .(*Store)
+	return dbh
 }
 
 // Test creating the db from scratch. The cleanup method above will migrate it down, deleting all
@@ -39,7 +43,7 @@ func TestMigrate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error opening database: %v", err)
 	}
-	err = db.Migrate()
+	err = db.MigrateUp()
 	if err != nil {
 		t.Errorf("Error creating database: %v", err)
 	}

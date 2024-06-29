@@ -2,8 +2,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
-	"embed"
 	"errors"
 	"testing"
 	"time"
@@ -11,35 +9,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type engine struct {
-	driver      string
-	dsnSource   DataSource
-	migrationFS *embed.FS
-}
-
-func (e *engine) PostOpen(ctx context.Context, dbh *DBHandle) error {
-	return nil
-}
-
-func (e *engine) DSNSource() DataSource {
-	return e.dsnSource
-}
-
-func (e *engine) Driver() string {
-	return e.driver
-}
-
-func (e *engine) MigrationFS() *embed.FS {
-	return e.migrationFS
-}
-
 func newDB(driver DriverName, dsnSource DataSource) *DBHandle {
-	e := &engine{
-		driver:      string(driver),
-		dsnSource:   dsnSource,
-		migrationFS: nil,
-	}
-
+	e := NewEngine(string(driver), dsnSource, nil)
 	return New(e)
 }
 
@@ -49,8 +20,8 @@ func TestMaintenanceRunsAndsStops(t *testing.T) {
 	defer func() { MinMaintenanceInterval = oldMinInterval }()
 	MinMaintenanceInterval = 1 * time.Millisecond
 	count := 0
-	mfunc := func(ctx context.Context, db *sql.DB, tm time.Time) error {
-		t.Logf("Maintenance ran at %s", tm)
+	mfunc := func(dbh *DBHandle) error {
+		t.Logf("Maintenance ran at %s", time.Now())
 		count++
 		return nil
 	}
@@ -81,8 +52,8 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 	defer func() { MinMaintenanceInterval = oldMinInterval }()
 	MinMaintenanceInterval = 1 * time.Millisecond
 	count := 0
-	mfunc := func(ctx context.Context, db *sql.DB, tm time.Time) error {
-		t.Logf("Maintenance ran at %s", tm)
+	mfunc := func(dbh *DBHandle) error {
+		t.Logf("Maintenance ran at %s", time.Now())
 		count++
 		return errors.New("test error")
 	}
@@ -131,11 +102,9 @@ type mockDBHandleForCloseTest struct {
 
 func TestDBCloseExpectations(t *testing.T) {
 	t.Parallel()
+	engine := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
 
-	dbh := New(&engine{
-		driver:    string(SQLite),
-		dsnSource: NewDSN(":memory:"),
-	})
+	dbh := New(&engine)
 
 	mdbh := &mockDBHandleForCloseTest{
 		DBHandle: dbh,
@@ -146,7 +115,7 @@ func TestDBCloseExpectations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
 	}
-	mf := func(ctx context.Context, db *sql.DB, tm time.Time) error {
+	mf := func(dbh *DBHandle) error {
 		mdbh.maintCount++
 		return nil
 	}

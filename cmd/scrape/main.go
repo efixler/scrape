@@ -20,12 +20,13 @@ import (
 
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape"
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/ua"
 	"github.com/efixler/webutil/jsonarray"
 )
@@ -44,25 +45,26 @@ var (
 )
 
 func main() {
-	dbFactory, err := dbFlags.Database()
+	dbh, err := dbFlags.Database()
 	if err != nil {
 		slog.Error("Error initializing database connection", "err", err)
 		os.Exit(1)
 	}
+
 	if clear {
-		clearDatabase(dbFactory)
+		// clearDatabase(dbFactory)
 		return
 	} else if dbFlags.IsMigration() {
-		migrateDatabase(dbFactory, dbFlags.MigrationCommand)
+		// migrateDatabase(dbh, dbFlags.MigrationCommand)
 		return
 	} else if maintain {
-		maintainDatabase(dbFactory)
+		//maintainDatabase(dbFactory)
 		return
 	} else if ping {
-		pingDatabase(dbFactory)
+		pingDatabase(dbh)
 		return
 	}
-	fetcher, err := initFetcher(dbFactory)
+	fetcher, err := initFetcher(dbh)
 	if err != nil {
 		slog.Error("Error initializing fetcher", "err", err)
 		os.Exit(1)
@@ -120,89 +122,79 @@ func getArgs() []string {
 	return flags.Args()
 }
 
-func clearDatabase(dbFactory store.Factory) {
-	db, ok := openDatabase(dbFactory).(store.Maintainable)
+// func clearDatabase(dbFactory store.Factory) {
+// 	db, ok := openDatabase(dbFactory).(store.Maintainable)
+// 	if !ok {
+// 		slog.Error("Clearing database not available for this storage backend")
+// 		os.Exit(1)
+// 	}
+// 	defer db.(store.URLDataStore).Close()
+// 	err := db.Clear()
+// 	if err != nil {
+// 		slog.Error("Error clearing database", "database", db, "err", err)
+// 		os.Exit(1)
+// 	}
+// 	slog.Warn("Database cleared", "database", db)
+// }
+
+func maintainDatabase(dbh *database.DBHandle) {
+	mt, ok := dbh.Engine.(database.Maintainable)
 	if !ok {
-		slog.Error("Clearing database not available for this storage backend")
+		slog.Error("Database maintenance not available for this storage backend", "database", dbh)
 		os.Exit(1)
 	}
-	defer db.(store.URLDataStore).Close()
-	err := db.Clear()
+	openDatabase(dbh)
+
+	defer dbh.Close()
+	err := mt.Maintain(dbh)
 	if err != nil {
-		slog.Error("Error clearing database", "database", db, "err", err)
+		slog.Error("Error maintaining database", "database", dbh, "err", err)
 		os.Exit(1)
 	}
-	slog.Warn("Database cleared", "database", db)
+	slog.Warn("Database maintenance complete", "database", dbh)
 }
 
-func maintainDatabase(dbFactory store.Factory) {
-	db, ok := openDatabase(dbFactory).(store.Maintainable)
-	if !ok {
-		slog.Error("Maintaining database not available for this storage backend", "database", db)
-		os.Exit(1)
-	}
-	defer db.(store.URLDataStore).Close()
-	err := db.Maintain()
-	if err != nil {
-		slog.Error("Error maintaining database", "database", db, "err", err)
-		os.Exit(1)
-	}
-	slog.Warn("Database maintenance complete", "database", db)
-}
-
-func migrateDatabase(dbFactory store.Factory, migrationCommand cmd.MigrationCommand) {
-	// TODO: Let the migrate methods themselves open the db, so we can encapsulate the
-	// issues around not-yet-existing DBs inside the DB implementation.
-	db, ok := openDatabase(dbFactory).(store.Maintainable)
-	if !ok {
-		slog.Error("database migrations not available for this storage backend", "database", db)
-		os.Exit(1)
-	}
-	defer db.(store.URLDataStore).Close()
+func migrateDatabase(dbh *database.DBHandle, migrationCommand cmd.MigrationCommand) {
+	openDatabase(dbh)
+	defer dbh.Close()
 
 	var err error
 	switch migrationCommand {
 	case cmd.Up:
-		err = db.Migrate()
+		err = dbh.MigrateUp()
 	case cmd.Reset:
-		err = db.Reset()
+		err = dbh.MigrateReset()
 	case cmd.Status:
-		err = db.MigrationStatus()
+		err = dbh.PrintMigrationStatus()
 	default:
 		err = fmt.Errorf("unsupported migration command: %s", migrationCommand)
 	}
 	if err != nil {
-		slog.Error("Error migrating database", "database", db, "err", err)
+		slog.Error("Error migrating database", "database", dbh, "err", err)
 		os.Exit(1)
 	}
 }
 
-func pingDatabase(dbFactory store.Factory) {
-	db := openDatabase(dbFactory)
-	defer db.Close()
-	err := db.Ping()
+func pingDatabase(dbh *database.DBHandle) {
+	openDatabase(dbh)
+	defer dbh.Close()
+	err := dbh.Ping()
 	if err != nil {
-		slog.Error("Error pinging database", "database", db, "err", err)
+		slog.Error("Error pinging database", "database", dbh, "err", err)
 		os.Exit(1)
 	}
-	slog.Warn("Database ping successful", "database", db)
+	slog.Warn("Database ping successful", "database", dbh)
 }
 
-func openDatabase(dbFactory store.Factory) store.URLDataStore {
-	db, err := dbFactory()
+func openDatabase(dbh *database.DBHandle) {
+	err := dbh.Open(context.TODO())
 	if err != nil {
-		slog.Error("Error opening database factory", "db", db, "err", err)
+		slog.Error("Error opening database", "db", dbh, "err", err)
 		os.Exit(1)
 	}
-	err = db.Open(context.TODO())
-	if err != nil {
-		slog.Error("Error opening database", "db", db, "err", err)
-		os.Exit(1)
-	}
-	return db
 }
 
-func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) {
+func initFetcher(dbh *database.DBHandle) (*scrape.StorageBackedFetcher, error) {
 	var err error
 	var client fetch.Client
 	if headlessEnabled {
@@ -218,7 +210,7 @@ func initFetcher(dbFactory store.Factory) (*scrape.StorageBackedFetcher, error) 
 	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(client),
-		dbFactory,
+		storage.NewURLDataStore(dbh),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)

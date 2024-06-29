@@ -1,8 +1,6 @@
 package sqlite
 
 import (
-	"context"
-	"database/sql"
 	"embed"
 	"time"
 
@@ -14,6 +12,7 @@ const SQLiteDriver = "sqlite3"
 
 type SQLite struct {
 	config config
+	stats  *Stats
 }
 
 func New(options ...Option) (*SQLite, error) {
@@ -45,27 +44,29 @@ func (s SQLite) MigrationFS() *embed.FS {
 	return &migrationFS
 }
 
-// TODO: Trigger maintenance without this embed here (so it's not required)
-//
-//go:embed maintenance.sql
-var maintenanceSQL string
-
-func (s *SQLite) PostOpen(ctx context.Context, dbh *database.DBHandle) error {
+func (s *SQLite) AfterOpen(dbh *database.DBHandle) error {
 
 	// SQLite will open even if the the DB file is not present, it will only fail later.
 	// So, if the db hasn't been opened, check for the file here.
 	// In Memory DBs must always be created
 	if !s.config.databaseExists() && s.config.autoCreate() {
-		if err := dbh.DoMigrateUp(); err != nil {
+		if err := dbh.MigrateUp(); err != nil {
 			return err
 		}
 	}
 	dbh.Maintenance(
 		24*time.Hour,
-		func(ctx context.Context, db *sql.DB, tm time.Time) error {
-			_, err := db.ExecContext(ctx, maintenanceSQL)
-			return err
-		},
+		s.Maintain,
 	)
 	return nil
+}
+
+// TODO: Trigger maintenance without this embed here (so it's not required)
+//
+//go:embed maintenance.sql
+var maintenanceSQL string
+
+func (s *SQLite) Maintain(dbh *database.DBHandle) error {
+	_, err := dbh.DB.ExecContext(dbh.Ctx, maintenanceSQL)
+	return err
 }

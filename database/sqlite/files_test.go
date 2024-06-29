@@ -94,3 +94,10 @@ func TestCreate(t *testing.T) {
 		t.Errorf("Database file not created")
 	}
 }
+
+func TestInMemoryDSN(t *testing.T) {
+	_, err := dbPath(InMemoryDBName)
+	if err != ErrIsInMemory {
+		t.Errorf("expected ErrIsInMemory, got %v", err)
+	}
+}

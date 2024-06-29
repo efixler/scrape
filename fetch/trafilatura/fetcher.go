@@ -1,7 +1,6 @@
 package trafilatura
 
 import (
-	"context"
 	"errors"
 	"log/slog"
 	"mime"
@@ -39,10 +38,6 @@ func New(client fetch.Client) (*TrafilaturaFetcher, error) {
 		client:   client,
 	}
 	return fetcher, nil
-}
-
-func (f *TrafilaturaFetcher) Open(ctx context.Context) error {
-	return nil
 }
 
 // Fetch a URL and return a WebPage resource.
@@ -136,8 +131,4 @@ func (f *TrafilaturaFetcher) applyExtractResult(
 	r.Image = tr.Metadata.Image
 	r.PageType = tr.Metadata.PageType
 	r.FetchMethod = f.client.Identifier()
-}
-
-func (f *TrafilaturaFetcher) Close() error {
-	return nil
 }

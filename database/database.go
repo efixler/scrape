@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -33,14 +34,12 @@ type StatementGenerator func(ctx context.Context, db *sql.DB) (*sql.Stmt, error)
 // MaintenanceFunction is a function that can be called periodically to
 // perform maintenance on the database. It's passed the context and current
 // database handle. Returning an error will stop the maintenance ticker.
-type MaintenanceFunction func(ctx context.Context, db *sql.DB, t time.Time) error
+type MaintenanceFunction func(dbh *DBHandle) error
 
 type DBHandle struct {
 	Ctx    context.Context
 	DB     *sql.DB
-	engine Engine
-	// Driver    DriverName
-	// DSNSource DataSource
+	Engine Engine
 	stmts  map[any]*sql.Stmt
 	done   chan bool
 	closed bool
@@ -49,7 +48,7 @@ type DBHandle struct {
 
 func New(engine Engine) *DBHandle {
 	return &DBHandle{
-		engine: engine,
+		Engine: engine,
 		stmts:  make(map[any]*sql.Stmt, 8),
 	}
 }
@@ -66,8 +65,8 @@ func (s *DBHandle) Open(ctx context.Context) error {
 	}
 	s.Ctx = ctx
 	var err error
-	s.DB, err = sql.Open(string(s.engine.Driver()), s.engine.DSNSource().DSN())
-	slog.Info("opening db", "dsn", s.engine.DSNSource, "driver", s.engine.Driver())
+	s.DB, err = sql.Open(string(s.Engine.Driver()), s.Engine.DSNSource().DSN())
+	slog.Info("opening db", "dsn", s.Engine.DSNSource, "driver", s.Engine.Driver())
 	if err != nil {
 		return err
 	}
@@ -77,21 +76,21 @@ func (s *DBHandle) Open(ctx context.Context) error {
 	})
 	s.done = make(chan bool)
 	s.mutex = &sync.Mutex{}
-	if maxConns := s.engine.DSNSource().MaxConnections(); maxConns != 0 {
+	if maxConns := s.Engine.DSNSource().MaxConnections(); maxConns != 0 {
 		s.DB.SetMaxOpenConns(maxConns)
 		s.DB.SetMaxIdleConns(maxConns)
 	}
-	if connMaxLifetime := s.engine.DSNSource().ConnMaxLifetime(); connMaxLifetime != 0 {
+	if connMaxLifetime := s.Engine.DSNSource().ConnMaxLifetime(); connMaxLifetime != 0 {
 		s.DB.SetConnMaxLifetime(connMaxLifetime)
 	}
 
-	return s.engine.PostOpen(ctx, s)
+	return s.Engine.AfterOpen(s)
 }
 
 // Convenience method to get the safe DSN string, with the password obscured.
 // Implements fmt.Stringer interface.
 func (s DBHandle) String() string {
-	return s.engine.DSNSource().String()
+	return s.Engine.DSNSource().String()
 }
 
 // Pass a maintenance function and a duration to run it at.
@@ -111,13 +110,13 @@ func (s *DBHandle) Maintenance(d time.Duration, f MaintenanceFunction) error {
 		for {
 			select {
 			case <-s.done:
-				slog.Debug("DBHandle: maintenance ticker cancelled", "dsn", s.engine.DSNSource())
+				slog.Debug("DBHandle: maintenance ticker cancelled", "dsn", s.Engine.DSNSource())
 				return
 			case t := <-ticker.C:
-				slog.Debug("DBHandle: maintenance ticker fired", "dsn", s.engine.DSNSource(), "time", t)
-				err := f(s.Ctx, s.DB, t)
+				slog.Debug("DBHandle: maintenance ticker fired", "dsn", s.Engine.DSNSource(), "time", t)
+				err := f(s)
 				if err != nil {
-					slog.Error("DBHandle: maintenance error, cancelling job", "dsn", s.engine.DSNSource(), "error", err)
+					slog.Error("DBHandle: maintenance error, cancelling job", "dsn", s.Engine.DSNSource(), "error", err)
 					return
 				}
 			}
@@ -168,7 +167,7 @@ func (s *DBHandle) Statement(key any, generator StatementGenerator) (*sql.Stmt, 
 // It will close the database handle and any prepared statements, and stop any maintenance jobs.
 func (s *DBHandle) Close() error {
 	if s.closed || (s.DB == nil) {
-		slog.Debug("db already closed, returning", "dsn", s.engine.DSNSource())
+		slog.Debug("db already closed, returning", "dsn", s.Engine.DSNSource())
 		return nil
 	}
 	s.mutex.Lock()
@@ -177,7 +176,7 @@ func (s *DBHandle) Close() error {
 		return nil
 	}
 	s.closed = true
-	slog.Info("closing db", "dsn", s.engine.DSNSource())
+	slog.Info("closing db", "dsn", s.Engine.DSNSource())
 	s.StopMaintenance()
 	var errs []error
 	for _, stmt := range s.stmts {
@@ -197,15 +196,34 @@ func (s *DBHandle) Close() error {
 	}
 
 	if len(errs) > 0 {
-		slog.Warn("errors closing db", "dsn", s.engine.DSNSource(), "errors", errs)
+		slog.Warn("errors closing db", "dsn", s.Engine.DSNSource(), "errors", errs)
 		return errors.Join(errs...)
 	}
 	return nil
 }
 
-func (s *DBHandle) Stats() (any, error) {
+type stats struct {
+	SQL    sql.DBStats `json:"sql"`
+	Engine any         `json:"engine,omitempty"`
+}
+
+func (s *DBHandle) Stats() (*stats, error) {
 	if s.DB == nil {
 		return nil, ErrDatabaseNotOpen
 	}
-	return s.DB.Stats(), nil
+	stats := &stats{
+		SQL: s.DB.Stats(),
+	}
+
+	if observableEngine, ok := s.Engine.(Observable); ok {
+		fmt.Println("observableEngine")
+		var err error
+		stats.Engine, err = observableEngine.Stats(s)
+		if err != nil {
+			slog.Error("error getting engine stats", "error", err)
+		}
+	} else {
+		fmt.Println("engine not observable")
+	}
+	return stats, nil
 }

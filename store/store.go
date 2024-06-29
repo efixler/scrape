@@ -41,8 +41,3 @@ type Maintainable interface {
 	Reset() error
 	MigrationStatus() error
 }
-
-// This interface is to expose a method to supply data to healthchecks.
-type Observable interface {
-	Stats() (any, error)
-}

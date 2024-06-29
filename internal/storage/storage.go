@@ -35,17 +35,19 @@ const (
 	// qClearId  = `DELETE FROM id_map where canonical_id = ?`
 )
 
-type SQLStorage struct {
-	*database.DBHandle[stmtIndex]
+type WebPages struct {
+	*database.DBHandle
 }
 
-func New(driver database.DriverName, dsnOptions database.DataSource) *SQLStorage {
-	return &SQLStorage{
-		DBHandle: &database.DBHandle[stmtIndex]{
-			Driver:    driver,
-			DSNSource: dsnOptions,
-		},
-	}
+// Temporarily here for compatibility, but will be removed
+// func WebStoreFactory(dbh *database.DBHandle) store.Factory {
+// 	return func() (store.URLDataStore, error) {
+// 		return New(dbh), nil
+// 	}
+// }
+
+func NewURLDataStore(dbh *database.DBHandle) *WebPages {
+	return &WebPages{DBHandle: dbh}
 }
 
 // Save the data for a URL. Will overwrite data where the URL is the same.
@@ -55,7 +57,7 @@ func New(driver database.DriverName, dsnOptions database.DataSource) *SQLStorage
 // cases where the two urls are the same.
 // Returns a key for the stored URL (which you actually can't
 // use for anything, so this interface may change)
-func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
+func (s *WebPages) Save(uptr *resource.WebPage) (uint64, error) {
 	if uptr.TTL == 0 {
 		uptr.TTL = resource.DefaultTTL
 	}
@@ -115,7 +117,7 @@ func (s *SQLStorage) Save(uptr *resource.WebPage) (uint64, error) {
 	return key, nil
 }
 
-func (s SQLStorage) storeIdMap(requested *nurl.URL, canonicalID uint64) error {
+func (s WebPages) storeIdMap(requested *nurl.URL, canonicalID uint64) error {
 	stmt, err := s.Statement(saveId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qSaveId)
 	})
@@ -136,7 +138,7 @@ func (s SQLStorage) storeIdMap(requested *nurl.URL, canonicalID uint64) error {
 // being different than the requested URL.
 //
 // In that case, the canonical version of the content will be returned, if we have it.
-func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+func (s WebPages) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	requested_key := Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
@@ -202,7 +204,7 @@ func (s SQLStorage) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 }
 
 // Will search url_ids to see if there's a parent entry for this url.
-func (s *SQLStorage) lookupId(requested_id uint64) (uint64, error) {
+func (s *WebPages) lookupId(requested_id uint64) (uint64, error) {
 	stmt, err := s.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qLookupId)
 	})
@@ -229,7 +231,7 @@ func (s *SQLStorage) lookupId(requested_id uint64) (uint64, error) {
 // TODO: Evaluate desired behavior here
 // TODO: Not accounting for lookup keys
 // NB: TTL management is handled by maintenance routines
-func (s *SQLStorage) Delete(url *nurl.URL) (bool, error) {
+func (s *WebPages) Delete(url *nurl.URL) (bool, error) {
 	key := Key(url)
 	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)
@@ -256,7 +258,7 @@ func (s *SQLStorage) Delete(url *nurl.URL) (bool, error) {
 }
 
 // Clear will delete all content from the database
-func (s *SQLStorage) Clear() error {
+func (s *WebPages) Clear() error {
 	_, err := s.DB.ExecContext(s.Ctx, qClear)
 	return err
 }
