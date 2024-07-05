@@ -15,6 +15,14 @@ type SQLite struct {
 	stats  *Stats
 }
 
+func MustNew(options ...Option) *SQLite {
+	s, err := New(options...)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 func New(options ...Option) (*SQLite, error) {
 	c := &config{}
 	Defaults()(c)
@@ -38,10 +46,10 @@ func (s SQLite) DSNSource() database.DataSource {
 }
 
 //go:embed migrations/*.sql
-var migrationFS embed.FS
+var MigrationFS embed.FS
 
 func (s SQLite) MigrationFS() *embed.FS {
-	return &migrationFS
+	return &MigrationFS
 }
 
 func (s *SQLite) AfterOpen(dbh *database.DBHandle) error {

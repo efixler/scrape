@@ -23,6 +23,7 @@ import (
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/ua"
 	"github.com/efixler/webutil/graceful"
@@ -48,7 +49,7 @@ func main() {
 	slog.Info("scrape-server starting up", "port", port.Get())
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
-	dbFactory := dbFlags.MustDatabase()
+	dbh := dbFlags.MustDatabase()
 	dbFlags = nil
 	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
 	defaultFetcherFactory := trafilatura.Factory(normalClient)
@@ -57,11 +58,12 @@ func main() {
 		headlessClient := headless.MustChromeClient(ctx, userAgent.Get().String(), 6)
 		headlessFetcher, _ = trafilatura.Factory(headlessClient)()
 	}
+	urlStoreFactory := storage.URLDataStorageFactory(dbh)
 
 	// TODO: Implement options pattern for NewScrapeServer
 	ss, _ := server.NewScrapeServer(
 		ctx,
-		dbFactory,
+		urlStoreFactory,
 		defaultFetcherFactory,
 		headlessFetcher,
 	)
@@ -73,7 +75,7 @@ func main() {
 		slog.Info("scrape-server authorization is disabled, running in open access mode")
 	}
 
-	mux, err := server.InitMux(ss)
+	mux, err := server.InitMux(ss, dbh)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)

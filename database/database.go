@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -216,14 +215,11 @@ func (s *DBHandle) Stats() (*stats, error) {
 	}
 
 	if observableEngine, ok := s.Engine.(Observable); ok {
-		fmt.Println("observableEngine")
 		var err error
 		stats.Engine, err = observableEngine.Stats(s)
 		if err != nil {
 			slog.Error("error getting engine stats", "error", err)
 		}
-	} else {
-		fmt.Println("engine not observable")
 	}
 	return stats, nil
 }

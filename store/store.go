@@ -34,10 +34,11 @@ type URLDataStore interface {
 
 // This interface adds create/clear/maintain methods to the URLDataStore interface.
 // URLDataStores may support these methods to create, clear, and maintain the store.
+// This interface should not be needed anymore, delete
 type Maintainable interface {
-	Clear() error
+	Clear() error // remove me
 	Maintain() error
-	Migrate() error
+	Migrate() error // move to a migration interface
 	Reset() error
 	MigrationStatus() error
 }

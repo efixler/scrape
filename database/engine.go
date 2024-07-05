@@ -5,18 +5,29 @@ import (
 	"time"
 )
 
+// Interface for database implementations usin DBHandle
 type Engine interface {
+	// Called after the connection is opened
 	AfterOpen(dbh *DBHandle) error
+	// Provides DSN and basic configuratiin info
 	DSNSource() DataSource
+	// Driver Name
 	Driver() string
+	// Migrations directory, or nil if unsupported
 	MigrationFS() *embed.FS
 }
 
-// This interface is to expose a method to supply data to healthchecks.
+// This interface is to expose a method to supply
+// supplemental data (beyond what sql.Stats provides),
+// in healthcheacks. The struct returned from this function
+// will be added to the stats struct under the key 'engine'.
 type Observable interface {
 	Stats(dbh *DBHandle) (any, error)
 }
 
+// Interface for DB maintenance functions. Required for invoking
+// maintenance on-demand, not necessarily needed for setting up
+// periodic maintenance.
 type Maintainable interface {
 	Maintain(dbh *DBHandle) error
 }

@@ -27,9 +27,13 @@ type StorageBackedFetcher struct {
 
 func NewStorageBackedFetcher(
 	fetcherFactory fetch.Factory,
-	storage store.URLDataStore,
+	storageFactory store.Factory,
 ) (*StorageBackedFetcher, error) {
 	fetcher, err := fetcherFactory()
+	if err != nil {
+		return nil, err
+	}
+	storage, err := storageFactory()
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +48,14 @@ func NewStorageBackedFetcher(
 // so that they can hook into the context directly, specifically to
 // close and release resources on cancellation.
 func (f StorageBackedFetcher) Open(ctx context.Context) error {
+	err := f.Fetcher.Open(ctx)
+	if err != nil {
+		return err
+	}
+	err = f.Storage.Open(ctx)
+	if err != nil {
+		return err
+	}
 	context.AfterFunc(ctx, func() {
 		f.Close()
 	})
@@ -138,8 +150,8 @@ func (f *StorageBackedFetcher) Close() error {
 		f.closed = true
 	}()
 	f.saving.Wait()
-	// f.Fetcher.Close()
-	// f.Storage.Close()
+	f.Fetcher.Close()
+	f.Storage.Close()
 	return nil
 }
 

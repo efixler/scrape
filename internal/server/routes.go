@@ -17,6 +17,7 @@ import (
 	"github.com/efixler/webutil/jsonarray"
 
 	"github.com/efixler/scrape"
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/fetch/trafilatura"
@@ -26,7 +27,7 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
-func InitMux(scrapeServer *scrapeServer) (*http.ServeMux, error) {
+func InitMux(scrapeServer *scrapeServer, db *database.DBHandle) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", scrapeServer.homeHandler())
 	h := scrapeServer.singleHandler()
@@ -40,8 +41,7 @@ func InitMux(scrapeServer *scrapeServer) (*http.ServeMux, error) {
 	h = scrapeServer.feedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
-	obs, _ := scrapeServer.Storage().(store.Observable)
-	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", obs))
+	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", db))
 	return mux, nil
 }
 

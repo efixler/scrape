@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/database"
 )
 
-func Handler(root string, dbo store.Observable) http.Handler {
+func Handler(root string, dbh *database.DBHandle) http.Handler {
 	root = strings.TrimSuffix(root, "/")
 	mux := http.NewServeMux()
 	mux.HandleFunc("/heartbeat", heartbeat)
-	mux.Handle("/health", HealthHandler(dbo))
+	mux.Handle("/health", HealthHandler(dbh))
 	switch root {
 	case "":
 		return mux
@@ -34,17 +34,17 @@ func heartbeat(w http.ResponseWriter, r *http.Request) {
 type health struct {
 	Application Application `json:"application"`
 	Memory      *Memory     `json:"memory"`
-	dbObserver  Observer
+	database    *database.DBHandle
 }
 
-func HealthHandler(dbObservable store.Observable) http.Handler {
+func HealthHandler(db *database.DBHandle) http.Handler {
 	h := health{
 		Application: Application{
 			StartTime: time.Now().UTC().Format(time.RFC3339),
 		},
 	}
-	if dbObservable != nil {
-		h.dbObserver = dbObservable.Stats
+	if db != nil {
+		h.database = db
 	} else {
 		slog.Warn("Healthchecks: no database observer, will not include database stats")
 	}
@@ -54,8 +54,8 @@ func HealthHandler(dbObservable store.Observable) http.Handler {
 func (h health) MarshalJSON() ([]byte, error) {
 	type alias health
 	var dbStats interface{}
-	if h.dbObserver != nil {
-		dbStats, _ = h.dbObserver()
+	if h.database != nil {
+		dbStats, _ = h.database.Stats()
 	}
 
 	return json.Marshal(&struct {

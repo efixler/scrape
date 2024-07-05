@@ -39,9 +39,9 @@ var (
 	csvPath         *envflags.Value[string]
 	csvUrlIndex     *envflags.Value[int]
 	headlessEnabled bool
-	clear           bool
-	maintain        bool
-	ping            bool
+	// clear           bool
+	maintain bool
+	ping     bool
 )
 
 func main() {
@@ -53,10 +53,7 @@ func main() {
 	openDatabase(dbh)
 	defer dbh.Close()
 
-	if clear {
-		// clearDatabase(dbFactory)
-		return
-	} else if dbFlags.IsMigration() {
+	if dbFlags.IsMigration() {
 		migrateDatabase(dbh, dbFlags.MigrationCommand)
 		return
 	} else if maintain {
@@ -124,21 +121,6 @@ func getArgs() []string {
 	return flags.Args()
 }
 
-// func clearDatabase(dbFactory store.Factory) {
-// 	db, ok := openDatabase(dbFactory).(store.Maintainable)
-// 	if !ok {
-// 		slog.Error("Clearing database not available for this storage backend")
-// 		os.Exit(1)
-// 	}
-// 	defer db.(store.URLDataStore).Close()
-// 	err := db.Clear()
-// 	if err != nil {
-// 		slog.Error("Error clearing database", "database", db, "err", err)
-// 		os.Exit(1)
-// 	}
-// 	slog.Warn("Database cleared", "database", db)
-// }
-
 func maintainDatabase(dbh *database.DBHandle) {
 	mt, ok := dbh.Engine.(database.Maintainable)
 	if !ok {
@@ -204,7 +186,7 @@ func initFetcher(dbh *database.DBHandle) (*scrape.StorageBackedFetcher, error) {
 	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
 		trafilatura.Factory(client),
-		storage.NewURLDataStore(dbh),
+		storage.URLDataStorageFactory(dbh),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
@@ -235,7 +217,6 @@ func init() {
 	csvUrlIndex = envflags.NewInt("CSV_COLUMN", 1)
 	csvUrlIndex.AddTo(&flags, "csv-column", "The index of the column in the CSV that contains the URLs")
 
-	flags.BoolVar(&clear, "clear", false, "Clear the database and exit")
 	flags.BoolVar(&maintain, "maintain", false, "Execute database maintenance and exit")
 	flags.BoolVar(&ping, "ping", false, "Ping the database and exit")
 

@@ -28,7 +28,9 @@ var (
 type Factory func() (URLFetcher, error)
 
 type URLFetcher interface {
+	Open(context.Context) error
 	Fetch(*nurl.URL) (*resource.WebPage, error)
+	Close() error
 }
 
 type BatchURLFetcher interface {
