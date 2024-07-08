@@ -12,14 +12,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/efixler/scrape/database"
+	"github.com/efixler/scrape/database/sqlite"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/auth"
-	"github.com/efixler/scrape/internal/storage/sqlite"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 )
-
-var storeFactory = sqlite.Factory(sqlite.InMemoryDB())
 
 type mockFeedFetcher struct{}
 
@@ -70,7 +70,7 @@ func TestWellknown(t *testing.T) {
 	//ctx, cancel := context.WithCancel(context.Background())
 	//defer cancel()
 
-	mux, err := InitMux(&scrapeServer{})
+	mux, err := InitMux(&scrapeServer{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,10 +99,15 @@ func TestWellknown(t *testing.T) {
 
 func TestBatchReponseIsValid(t *testing.T) {
 	t.Parallel()
+	var dbh = database.New(sqlite.MustNew(sqlite.InMemoryDB()))
+	var storeFactory = storage.URLDataStorageFactory(dbh)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ss, _ := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
-	mux, err := InitMux(ss)
+	ss, err := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux, err := InitMux(ss, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,6 +155,8 @@ func TestBatchReponseIsValid(t *testing.T) {
 
 func TestExtractErrors(t *testing.T) {
 	t.Parallel()
+	var dbh = database.New(sqlite.MustNew(sqlite.InMemoryDB()))
+	var storeFactory = storage.URLDataStorageFactory(dbh)
 	type data struct {
 		url            string
 		expectedStatus int
@@ -164,8 +171,11 @@ func TestExtractErrors(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ss, _ := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
-	mux, err := InitMux(ss)
+	ss, err := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux, err := InitMux(ss, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

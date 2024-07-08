@@ -7,58 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/database"
 )
-
-func TestInMemoryDSN(t *testing.T) {
-	_, err := dbPath(InMemoryDBName)
-	if err != ErrIsInMemory {
-		t.Errorf("expected ErrIsInMemory, got %v", err)
-	}
-}
-
-func TestCreate(t *testing.T) {
-	fname := "_test_create.db"
-	store, err := New(File(fname))
-	if err != nil {
-		t.Errorf("Error creating database factory: %v", err)
-	}
-	err = store.Open(context.Background())
-	if err != nil {
-		t.Errorf("Error opening (and creating) database: %v", err)
-	}
-	// TODO: Test schema here
-	defer func() {
-		os.Remove(fname)
-		os.Remove(fname + "-wal")
-		os.Remove(fname + "-shm")
-	}()
-	_, err = os.Stat(fname)
-	if os.IsNotExist(err) {
-		t.Errorf("Database file not created")
-	}
-}
-
-func TestDontCreateWhenExists(t *testing.T) {
-	t.Skip("Skipping test because we can no longer easily catch this condition, since the db will now autocreate")
-	fname := "_test_dont_overwrite.db"
-	if _, err := os.Stat(fname); !os.IsNotExist(err) {
-		t.Fatalf("Database file %s already exists, can't run this test", fname)
-	}
-	_, err := os.Create(fname)
-	if err != nil {
-		t.Fatalf("Error creating dummy file %s: %v", fname, err)
-	}
-	defer os.Remove(fname)
-	store, err := Factory(File(fname))()
-	if err != nil {
-		t.Errorf("Error creating store: %v", err)
-	}
-	err = store.Open(context.TODO())
-	if err == nil {
-		t.Errorf("Oops! Overwrote existing database: %v", err)
-	}
-}
 
 func TestDbPath(t *testing.T) {
 	type args struct {
@@ -96,7 +46,7 @@ func TestAssertPathTo(t *testing.T) {
 	tests := []args{
 		{"empty", "", "", nil},
 		{"not empty", "foo", "", nil},
-		{"unreachable", "bfile-xyz.txt/baz", "bfile-xyz.txt", store.ErrCantCreateDatabase},
+		{"unreachable", "bfile-xyz.txt/baz", "bfile-xyz.txt", database.ErrCantCreateDatabase},
 	}
 	deletes := make([]*os.File, 0)
 	for _, test := range tests {
@@ -115,5 +65,38 @@ func TestAssertPathTo(t *testing.T) {
 	}
 	for _, file := range deletes {
 		os.Remove(file.Name())
+	}
+}
+
+// TODO: This test relies on how we're hardcoding the migrations directory in,
+// but also providing in the engine interface. We should be testing here with
+// and without the migrations directory.
+func TestCreate(t *testing.T) {
+	fname := "_test_create.db"
+	engine, err := New(File(fname))
+	if err != nil {
+		t.Errorf("Error creating database engine: %v", err)
+	}
+	store := database.New(engine)
+	err = store.Open(context.Background())
+	if err != nil {
+		t.Errorf("Error opening (and creating) database: %v", err)
+	}
+	// TODO: Test schema here
+	defer func() {
+		os.Remove(fname)
+		os.Remove(fname + "-wal")
+		os.Remove(fname + "-shm")
+	}()
+	_, err = os.Stat(fname)
+	if os.IsNotExist(err) {
+		t.Errorf("Database file not created")
+	}
+}
+
+func TestInMemoryDSN(t *testing.T) {
+	_, err := dbPath(InMemoryDBName)
+	if err != ErrIsInMemory {
+		t.Errorf("expected ErrIsInMemory, got %v", err)
 	}
 }

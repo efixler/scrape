@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -10,27 +9,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Embedded type for testing
-type materialDB struct {
-	DBHandle[string]
-}
-
-func (m *materialDB) Open(ctx context.Context) error {
-	err := m.DBHandle.Open(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func newDB(driver DriverName, dsnSource DataSource) *materialDB {
-	return &materialDB{
-		DBHandle: DBHandle[string]{
-			Driver:    driver,
-			DSNSource: dsnSource,
-			stmts:     make(map[string]*sql.Stmt, 8),
-		},
-	}
+func newDB(driver DriverName, dsnSource DataSource) *DBHandle {
+	e := NewEngine(string(driver), dsnSource, nil)
+	return New(e)
 }
 
 func TestMaintenanceRunsAndsStops(t *testing.T) {
@@ -39,8 +20,8 @@ func TestMaintenanceRunsAndsStops(t *testing.T) {
 	defer func() { MinMaintenanceInterval = oldMinInterval }()
 	MinMaintenanceInterval = 1 * time.Millisecond
 	count := 0
-	mfunc := func(ctx context.Context, db *sql.DB, tm time.Time) error {
-		t.Logf("Maintenance ran at %s", tm)
+	mfunc := func(dbh *DBHandle) error {
+		t.Logf("Maintenance ran at %s", time.Now())
 		count++
 		return nil
 	}
@@ -71,8 +52,8 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 	defer func() { MinMaintenanceInterval = oldMinInterval }()
 	MinMaintenanceInterval = 1 * time.Millisecond
 	count := 0
-	mfunc := func(ctx context.Context, db *sql.DB, tm time.Time) error {
-		t.Logf("Maintenance ran at %s", tm)
+	mfunc := func(dbh *DBHandle) error {
+		t.Logf("Maintenance ran at %s", time.Now())
 		count++
 		return errors.New("test error")
 	}
@@ -115,27 +96,26 @@ func TestDBClosedOnContextCancel(t *testing.T) {
 }
 
 type mockDBHandleForCloseTest struct {
-	DBHandle[string]
+	*DBHandle
 	maintCount int
 }
 
 func TestDBCloseExpectations(t *testing.T) {
 	t.Parallel()
+	engine := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
+
+	dbh := New(&engine)
 
 	mdbh := &mockDBHandleForCloseTest{
-		DBHandle[string]{
-			Driver:    SQLite,
-			DSNSource: NewDSN(":memory:"),
-			stmts:     make(map[string]*sql.Stmt, 8),
-		},
-		0,
+		DBHandle: dbh,
 	}
+
 	// we don't want to cancel the context for this test
 	err := mdbh.Open(context.Background())
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
 	}
-	mf := func(ctx context.Context, db *sql.DB, tm time.Time) error {
+	mf := func(dbh *DBHandle) error {
 		mdbh.maintCount++
 		return nil
 	}

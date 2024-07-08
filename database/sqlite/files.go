@@ -1,17 +1,12 @@
 package sqlite
 
 import (
-	"context"
-	"database/sql"
-	"embed"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
-	"time"
 
-	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/database"
 )
 
 const (
@@ -60,48 +55,9 @@ func assertPathTo(fqn string) error {
 		}
 	} else if !dh.IsDir() {
 		return errors.Join(
-			store.ErrCantCreateDatabase,
+			database.ErrCantCreateDatabase,
 			fmt.Errorf("path %s exists but is not a directory", dir),
 		)
 	}
 	return nil
 }
-
-//go:embed migrations/*.sql
-var migrationsFS embed.FS
-
-func (s *Store) Reset() error {
-	return s.DoMigrateReset(migrationsFS, "migrations")
-}
-
-func (s *Store) Migrate() error {
-	return s.DoMigrateUp(migrationsFS, "migrations")
-}
-
-func (s *Store) MigrationStatus() error {
-	return s.PrintMigrationStatus(migrationsFS, "migrations")
-}
-
-// Private version of the maintenance function that doesn't log, for running
-// on the timer provided by DBHandle.
-func maintain(ctx context.Context, db *sql.DB, tm time.Time) error {
-	slog.Debug("sqlite: maintenance ran", "time", tm)
-	_, err := db.ExecContext(ctx, maintenanceSQL)
-	return err
-}
-
-//go:embed maintenance.sql
-var maintenanceSQL string
-
-func (s *Store) Maintain() error {
-	_, err := s.DB.ExecContext(s.Ctx, maintenanceSQL)
-	return err
-}
-
-// // Clear() will drop all tables and recreate them.
-// // This is a destructive operation.
-// // Clear uses the same query as Create(), so it will also re-create the database
-// func (s *Store) Clear() error {
-// 	_, err := s.DB.ExecContext(s.Ctx, createSQL)
-// 	return err
-// }

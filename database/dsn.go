@@ -22,7 +22,11 @@ type DataSource interface {
 
 type dataSourceOption func(*DSNOptions)
 
-// DSNOptions is a struct that implements the DataSourceOptions interface, a basic implementation of DataSourceOptions.
+// DSNOptions is a struct that implements the DataSourceOptions interface,
+// a basic implementation of DataSourceOptions. Primarily used for testing,
+// to test package functionality without any dependencies on engine
+// implementations.
+
 type DSNOptions struct {
 	DSNString       string
 	queryTimeout    time.Duration

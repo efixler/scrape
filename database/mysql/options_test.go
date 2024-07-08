@@ -33,7 +33,7 @@ func TestUsername(t *testing.T) {
 		expectedErr error
 	}
 	tests := []data{
-		{"empty", "", store.ErrorValueNotAllowed},
+		{"empty", "", store.ErrValueNotAllowed},
 		{"foo", "foo", nil},
 	}
 	for _, test := range tests {
@@ -94,7 +94,7 @@ func TestAddress(t *testing.T) {
 		if (err != nil) != test.expectError {
 			t.Fatalf("%s: unexpected error: %s", test.name, err)
 		} else if test.expectError {
-			if !errors.Is(err, store.ErrorValueNotAllowed) {
+			if !errors.Is(err, store.ErrValueNotAllowed) {
 				t.Errorf("%s: unexpected error: %s", test.name, err)
 			}
 			continue

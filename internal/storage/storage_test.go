@@ -1,43 +1,43 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	nurl "net/url"
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
 )
 
-// DataSourceOptions implementation for tests
-type dsnGen string
-
-var dsn = dsnGen(dbURL)
-
-func (d dsnGen) String() string {
-	return string(d)
+func getURLDataStore(t *testing.T) *URLDataStore {
+	engine := getTestDatabaseEngine()
+	db := database.New(engine)
+	urlStore := NewURLDataStore(db)
+	// TODO: material storage should not be opening/closing the database
+	err := urlStore.Open(context.TODO())
+	if err != nil {
+		t.Fatalf("Error opening database: %v", err)
+	}
+	t.Cleanup(func() {
+		t.Logf("Cleaning up test database %v", engine.DSNSource())
+		if err := db.MigrateReset(); err != nil {
+			t.Errorf("Error resetting test db: %v", err)
+		}
+		urlStore.Close()
+	})
+	if err := db.MigrateUp(); err != nil {
+		t.Fatalf("Error creating test db via migration: %v", err)
+	}
+	return urlStore
 }
 
-func (d dsnGen) DSN() string {
-	return string(d)
-}
-
-func (d dsnGen) QueryTimeout() time.Duration {
-	return 10 * time.Second
-}
-
-func (d dsnGen) MaxConnections() int {
-	return 1
-}
-
-func (d dsnGen) ConnMaxLifetime() time.Duration {
-	return 0
-}
-
+// TODO: Move ping test to database package
 func TestOpen(t *testing.T) {
-	db := getTestDatabase(t)
+	db := getURLDataStore(t)
 	err := db.Ping()
 	if err != nil {
 		t.Errorf("Error pinging database: %v", err)
@@ -77,7 +77,7 @@ func getWebPage(t *testing.T) *resource.WebPage {
 }
 
 func TestStore(t *testing.T) {
-	s := getTestDatabase(t)
+	s := getURLDataStore(t)
 	meta := getWebPage(t)
 	cText := meta.ContentText
 
@@ -178,14 +178,14 @@ func TestStore(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceNotExists(t *testing.T) {
-	s := getTestDatabase(t)
+	s := getURLDataStore(t)
 	url, err := nurl.Parse("https://martinfowler.com/aboutYou")
 	if err != nil {
 		t.Errorf("Error parsing url: %v", err)
 	}
 	res, err := s.Fetch(url)
-	if err != store.ErrorResourceNotFound {
-		t.Errorf("Expected error %v, got %v", store.ErrorResourceNotFound, err)
+	if err != store.ErrResourceNotFound {
+		t.Errorf("Expected error %v, got %v", store.ErrResourceNotFound, err)
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)
@@ -193,7 +193,7 @@ func TestReturnValuesWhenResourceNotExists(t *testing.T) {
 }
 
 func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
-	s := getTestDatabase(t)
+	s := getURLDataStore(t)
 	var meta resource.WebPage
 	err := json.Unmarshal([]byte(mdata), &meta)
 	if err != nil {
@@ -212,8 +212,8 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 		t.Errorf("Error storing data: %v", err)
 	}
 	res, err := s.Fetch(url)
-	if err != store.ErrorResourceNotFound {
-		t.Errorf("Expected error %v, got %v", store.ErrorResourceNotFound, err)
+	if err != store.ErrResourceNotFound {
+		t.Errorf("Expected error %v, got %v", store.ErrResourceNotFound, err)
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)
@@ -222,7 +222,7 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 
 // We store self-referential lookups. This test confirms that they are stored.
 func TestCanonicalSelfLookupExists(t *testing.T) {
-	s := getTestDatabase(t)
+	s := getURLDataStore(t)
 	url, _ := nurl.Parse("https://martinfowler.com/aboutMe.html")
 	key := Key(url)
 	err := s.storeIdMap(url, key) // stores a self-referential lookup
@@ -239,7 +239,7 @@ func TestCanonicalSelfLookupExists(t *testing.T) {
 }
 
 func TestClear(t *testing.T) {
-	s := getTestDatabase(t)
+	s := getURLDataStore(t)
 	res := getWebPage(t)
 	_, err := s.Save(res)
 	if err != nil {
@@ -263,7 +263,7 @@ func TestClear(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	s := getTestDatabase(t)
+	s := getURLDataStore(t)
 	res := getWebPage(t)
 	_, err := s.Save(res)
 	if err != nil {

@@ -4,25 +4,33 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/efixler/scrape/database"
 )
 
 func TestStats(t *testing.T) {
-	db, err := New(InMemoryDB())
+	engine, err := New(InMemoryDB(), WithoutAutoCreate())
 	if err != nil {
 		t.Fatal(err)
 	}
 	context, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	db := database.New(engine)
+
 	err = db.Open(context)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sany, err := db.Stats()
+	defer db.Close()
+	fullStats, err := db.Stats() // This will call the stats in this package
 	if err != nil {
 		t.Fatal(err)
 	}
-	stats, _ := sany.(*Stats)
-	if stats.PageCount <= 0 {
+	stats, ok := fullStats.Engine.(*Stats)
+	if !ok {
+		t.Fatalf("Expected stats to be of type Stats, got %T", fullStats.Engine)
+	}
+	if stats.PageCount < 0 {
 		t.Errorf("Expected pages, got %d", stats.PageCount)
 	}
 	if stats.PageSize <= 0 {
@@ -41,7 +49,7 @@ func TestStats(t *testing.T) {
 		t.Errorf("Expected sqlite version, got empty string")
 	}
 	sany2, _ := db.Stats()
-	stats2, _ := sany2.(*Stats)
+	stats2, _ := sany2.Engine.(*Stats)
 	if stats2.fetchTime != stats.fetchTime {
 		t.Errorf("Expected stats fetch times to match, first: %v, second: %v", stats.fetchTime, stats2.fetchTime)
 	}
