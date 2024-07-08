@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/store"
 	"github.com/go-sql-driver/mysql"
 )
@@ -86,6 +87,16 @@ func ForMigration() Option {
 	}
 }
 
+func WithMaxConnections(max int) Option {
+	return func(c *Config) error {
+		if max < 1 {
+			return errors.Join(store.ErrorValueNotAllowed, errors.New("max connections must be at least 1"))
+		}
+		c.maxConns = max
+		return nil
+	}
+}
+
 func WithQueryTimeout(timeout time.Duration) Option {
 	return func(c *Config) error {
 		c.queryTimeout = timeout
@@ -99,6 +110,16 @@ type Config struct {
 	queryTimeout    time.Duration
 	maxConns        int
 	connMaxLifetime time.Duration
+}
+
+func MustDSN(options ...Option) database.DataSource {
+	c := defaultConfig()
+	for _, opt := range options {
+		if err := opt(&c); err != nil {
+			panic(err)
+		}
+	}
+	return c
 }
 
 func defaultConfig() Config {

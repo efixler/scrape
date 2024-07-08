@@ -28,6 +28,7 @@ func (d *DBHandle) MigrateUp(env ...string) error {
 	}
 	defer clearF()
 	if bm, ok := d.Engine.(BeforeMigrateUpHook); ok {
+		fmt.Println("Running BeforeMigrateUp hook")
 		err := bm.BeforeMigrateUp(d)
 		if err != nil {
 			return err

@@ -25,6 +25,14 @@ func New(options ...Option) (*MySQL, error) {
 	return s, nil
 }
 
+func MustNew(options ...Option) *MySQL {
+	s, err := New(options...)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 func (s MySQL) Driver() string {
 	return MySQLDriver
 }
@@ -34,10 +42,10 @@ func (s MySQL) DSNSource() database.DataSource {
 }
 
 //go:embed migrations/*.sql
-var migrationFS embed.FS
+var MigrationFS embed.FS
 
 func (s MySQL) MigrationFS() *embed.FS {
-	return &migrationFS
+	return &MigrationFS
 }
 
 func (s MySQL) AfterOpen(dbh *database.DBHandle) error {
