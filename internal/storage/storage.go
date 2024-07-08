@@ -167,7 +167,7 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, store.ErrorResourceNotFound
+		return nil, store.ErrResourceNotFound
 	}
 	// parsed_url, fetch_time, expires, metadata, content_text
 	var (
@@ -185,7 +185,7 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	exptime := time.Unix(expiryEpoch, 0)
 	if time.Now().After(exptime) {
-		return nil, store.ErrorResourceNotFound
+		return nil, store.ErrResourceNotFound
 	}
 	page := &resource.WebPage{}
 	err = json.Unmarshal([]byte(metadata), page)

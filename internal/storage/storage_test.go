@@ -184,8 +184,8 @@ func TestReturnValuesWhenResourceNotExists(t *testing.T) {
 		t.Errorf("Error parsing url: %v", err)
 	}
 	res, err := s.Fetch(url)
-	if err != store.ErrorResourceNotFound {
-		t.Errorf("Expected error %v, got %v", store.ErrorResourceNotFound, err)
+	if err != store.ErrResourceNotFound {
+		t.Errorf("Expected error %v, got %v", store.ErrResourceNotFound, err)
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)
@@ -212,8 +212,8 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 		t.Errorf("Error storing data: %v", err)
 	}
 	res, err := s.Fetch(url)
-	if err != store.ErrorResourceNotFound {
-		t.Errorf("Expected error %v, got %v", store.ErrorResourceNotFound, err)
+	if err != store.ErrResourceNotFound {
+		t.Errorf("Expected error %v, got %v", store.ErrResourceNotFound, err)
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)

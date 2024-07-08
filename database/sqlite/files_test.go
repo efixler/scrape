@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/efixler/scrape/database"
-	"github.com/efixler/scrape/store"
 )
 
 func TestDbPath(t *testing.T) {
@@ -47,7 +46,7 @@ func TestAssertPathTo(t *testing.T) {
 	tests := []args{
 		{"empty", "", "", nil},
 		{"not empty", "foo", "", nil},
-		{"unreachable", "bfile-xyz.txt/baz", "bfile-xyz.txt", store.ErrCantCreateDatabase},
+		{"unreachable", "bfile-xyz.txt/baz", "bfile-xyz.txt", database.ErrCantCreateDatabase},
 	}
 	deletes := make([]*os.File, 0)
 	for _, test := range tests {

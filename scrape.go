@@ -91,7 +91,7 @@ func (f *StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	url = resource.CleanURL(url)
 	// Now fetch the item from storage
 	res, err := f.Storage.Fetch(url)
-	if err != nil && !errors.Is(err, store.ErrorResourceNotFound) {
+	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
 		return nil, err
 	}
 	defer func() { res.OriginalURL = originalURL }()
@@ -199,7 +199,7 @@ func (f *StorageBackedFetcher) loadBatch(
 		if res, err := f.Storage.Fetch(url); err == nil {
 			res.OriginalURL = originalURL
 			foundChan <- res
-		} else if errors.Is(err, store.ErrorResourceNotFound) {
+		} else if errors.Is(err, store.ErrResourceNotFound) {
 			notFoundChan <- fetchMsg{cleanedURL: url, originalURL: originalURL}
 		} else { // this is really an error
 			slog.Error("Error fetching url in Batch", "url", url, "error", err)
