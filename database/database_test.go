@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -164,5 +165,101 @@ func TestConnParams(t *testing.T) {
 	}
 	if dbh.DB.Stats().MaxLifetimeClosed != 0 {
 		t.Errorf("Expected 0 MaxLifetimeClosed, got %d", dbh.DB.Stats().MaxLifetimeClosed)
+	}
+}
+
+type testStmtKey int
+
+func TestStatement(t *testing.T) {
+	dbh := newDB(
+		SQLite,
+		NewDSN(
+			":memory:",
+			WithMaxConnections(1),
+			WithConnMaxLifetime(-1),
+		),
+	)
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	t.Cleanup(func() {
+		dbh.Close()
+	})
+	genCallCount := 0
+
+	gen := func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		genCallCount++
+		return db.PrepareContext(ctx, "SELECT 1")
+	}
+
+	stmt1, err := dbh.Statement(testStmtKey(1), gen)
+	if err != nil {
+		t.Fatalf("Error preparing statement: %s", err)
+	}
+	defer stmt1.Close()
+	if genCallCount != 1 {
+		t.Errorf("Expected 1 generator call, got %d", genCallCount)
+	}
+
+	stmt2, err := dbh.Statement(testStmtKey(1), gen)
+	if err != nil {
+		t.Fatalf("Error retrieving preparing statement: %s", err)
+	}
+	defer stmt2.Close()
+	if genCallCount != 1 {
+		t.Errorf("Expected 1 generator call, got %d", genCallCount)
+	}
+	if stmt1 != stmt2 {
+		t.Errorf("Expected same prepared statement, got a different one")
+	}
+	stmt3, err := dbh.Statement(1, gen)
+	if err != nil {
+		t.Fatalf("Error retrieving preparing statement: %s", err)
+	}
+	defer stmt3.Close()
+	if genCallCount != 2 {
+		t.Errorf("Expected 2 generator calls, got %d", genCallCount)
+	}
+	if stmt1 == stmt3 {
+		t.Errorf("Expected different prepared statement, got the same one")
+	}
+	_, err = dbh.Statement(2, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return nil, errors.New("test error")
+	})
+	if err == nil {
+		t.Errorf("Expected error on failed statement creation, got nil")
+	}
+	if len(dbh.stmts) != 2 {
+		t.Errorf("Expected 2 statements in cache, got %d", len(dbh.stmts))
+	}
+}
+
+func TestInvalidMaintenanceInterval(t *testing.T) {
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	defer dbh.Close()
+	err = dbh.Maintenance(0, nil)
+	if err != ErrInvalidDuration {
+		t.Errorf("Expected error on invalid maintenance interval, got %v", err)
+	}
+}
+
+func TestStats(t *testing.T) {
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	defer dbh.Close()
+	stats, err := dbh.Stats()
+	if err != nil {
+		t.Fatalf("Error getting stats: %s", err)
+	}
+	if stats.SQL.MaxOpenConnections != 1 {
+		t.Errorf("Expected 1 MaxOpenConnections, got %d", stats.SQL.MaxOpenConnections)
 	}
 }
