@@ -26,12 +26,19 @@ func (s *MySQL) createSQL() (string, error) {
 		return "", errors.New("can't create database, empty target schema")
 	}
 	var buf bytes.Buffer
+	// TODO: Use migration env instead of config here
 	if err := tmpl.Execute(&buf, s.config); err != nil {
 		return "", err
 	}
 	return buf.String(), nil
 }
 
+// MySQL needs a pre-migration hook in order to create a database
+// because Goose needs a schema to run migrations, and we can't connect
+// with a schema name if the schema doesn't exist.
+// The creation SQL must `USE` the schema name it creates, so that subsquent
+// operations on the connection (whether or not those are running later migration
+// stages), will be in the correct schema.
 func (s *MySQL) BeforeMigrateUp(dbh *database.DBHandle) error {
 	q, err := s.createSQL()
 	if err != nil {

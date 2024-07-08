@@ -28,17 +28,6 @@ type Factory func() (URLDataStore, error)
 type URLDataStore interface {
 	fetch.URLFetcher
 	Save(*resource.WebPage) (uint64, error)
-	Ping() error
+	Ping() error // remove me
 	Delete(*nurl.URL) (bool, error)
-}
-
-// This interface adds create/clear/maintain methods to the URLDataStore interface.
-// URLDataStores may support these methods to create, clear, and maintain the store.
-// This interface should not be needed anymore, delete
-type Maintainable interface {
-	Clear() error // remove me
-	Maintain() error
-	Migrate() error // move to a migration interface
-	Reset() error
-	MigrationStatus() error
 }

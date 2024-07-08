@@ -77,9 +77,9 @@ func (f *StorageBackedFetcher) WithAlternateURLFetcher(ctx context.Context, uf f
 		Storage: f.Storage,
 		saving:  f.saving,
 	}
-	// if err := clone.Fetcher.Open(ctx); err != nil {
-	// 	return nil, err
-	// }
+	if err := clone.Fetcher.Open(ctx); err != nil {
+		return nil, err
+	}
 	// Don't patch in a function to close the context here, because we only really need this to close the DB, which is already
 	// hooked by the parent. We also share the parent's WaitGroup for async saves for this reason.
 	return clone, nil

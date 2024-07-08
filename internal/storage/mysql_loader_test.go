@@ -3,8 +3,6 @@
 package storage
 
 import (
-	_ "embed"
-
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/database/mysql"
 	_ "github.com/go-sql-driver/mysql"

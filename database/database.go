@@ -138,6 +138,9 @@ func (s *DBHandle) Ping() error {
 	return s.DB.PingContext(s.Ctx)
 }
 
+// Provides a means to cache prepared statements on a key. Use custom types
+// on the key (e.g. how Context does it) to avoid collisions.
+// The generator function will create the statement if it doesn't exist.
 func (s *DBHandle) Statement(key any, generator StatementGenerator) (*sql.Stmt, error) {
 	stmt, ok := s.stmts[key]
 	if ok {

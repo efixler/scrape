@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/store"
 	"github.com/go-sql-driver/mysql"
 )
@@ -110,16 +109,6 @@ type Config struct {
 	queryTimeout    time.Duration
 	maxConns        int
 	connMaxLifetime time.Duration
-}
-
-func MustDSN(options ...Option) database.DataSource {
-	c := defaultConfig()
-	for _, opt := range options {
-		if err := opt(&c); err != nil {
-			panic(err)
-		}
-	}
-	return c
 }
 
 func defaultConfig() Config {
