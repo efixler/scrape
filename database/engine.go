@@ -91,7 +91,7 @@ func (e BaseEngine) MigrationFS() *embed.FS {
 // development and probably not appropriate for production.
 //
 // This implementation was initially provided for tests, but is currently unused and
-// likely to be removed.
+// likely to be removed (or moved into a _test.go file) in the future.
 type BaseDataSource string
 
 func NewDataSource(dsn string) BaseDataSource {
