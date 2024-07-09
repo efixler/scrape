@@ -299,3 +299,20 @@ func TestCloseListenersInvoked(t *testing.T) {
 		t.Errorf("Expected error on adding close listener when already closed, got %v", err)
 	}
 }
+
+func TestPing(t *testing.T) {
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
+	if err := dbh.Ping(); err != ErrDatabaseNotOpen {
+		t.Errorf("Expected error pinging unopened database, got %v", err)
+	}
+	if err := dbh.Open(context.Background()); err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	if err := dbh.Ping(); err != nil {
+		t.Errorf("Error pinging database: %s", err)
+	}
+	dbh.Close()
+	if err := dbh.Ping(); err != ErrDatabaseClosed {
+		t.Errorf("Expected error pinging closed database")
+	}
+}

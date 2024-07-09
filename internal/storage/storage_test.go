@@ -35,10 +35,9 @@ func getURLDataStore(t *testing.T) *URLDataStore {
 	return urlStore
 }
 
-// TODO: Move ping test to database package
 func TestOpen(t *testing.T) {
-	db := getURLDataStore(t)
-	err := db.dbh.Ping()
+	urlStore := getURLDataStore(t)
+	err := urlStore.dbh.Ping() // so we know it's really open
 	if err != nil {
 		t.Errorf("Error pinging database: %v", err)
 	}
