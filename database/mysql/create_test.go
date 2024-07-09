@@ -48,3 +48,20 @@ func TestMigrate(t *testing.T) {
 		t.Errorf("Error creating database: %v", err)
 	}
 }
+
+func TestBeforeMigrateUp(t *testing.T) {
+	db := testDatabaseForCreate(t)
+	err := db.Open(context.Background())
+	if err != nil {
+		t.Errorf("Error opening database: %v", err)
+	}
+	e, ok := db.Engine.(database.BeforeMigrateUpHook)
+	if !ok {
+		t.Fatalf("Engine does not implement BeforeMigrateUpHook")
+	}
+
+	err = e.BeforeMigrateUp(db)
+	if err != nil {
+		t.Errorf("Error before migrating up: %v", err)
+	}
+}
