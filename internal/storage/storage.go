@@ -40,7 +40,7 @@ const (
 // database connection (via this interface), which prevents
 // other entities from using the same connection.
 type URLDataStore struct {
-	*database.DBHandle
+	dbh *database.DBHandle
 }
 
 // Temporarily here for compatibility, but will be removed
@@ -51,7 +51,21 @@ func URLDataStorageFactory(dbh *database.DBHandle) store.Factory {
 }
 
 func NewURLDataStore(dbh *database.DBHandle) *URLDataStore {
-	return &URLDataStore{DBHandle: dbh}
+	return &URLDataStore{dbh: dbh}
+}
+
+// Open and Close are provided here temporarily for compatibility
+
+func (s *URLDataStore) Open(ctx context.Context) error {
+	err := s.dbh.Open(ctx)
+	if err == database.ErrDatabaseAlreadyOpen {
+		return nil
+	}
+	return err
+}
+
+func (s *URLDataStore) Close() error {
+	return s.dbh.Close()
 }
 
 // Save the data for a URL. Will overwrite data where the URL is the same.
@@ -97,13 +111,13 @@ func (s *URLDataStore) Save(uptr *resource.WebPage) (uint64, error) {
 		int(uptr.FetchMethod),
 	}
 
-	stmt, err := s.Statement(save, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.dbh.Statement(save, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qSave)
 	})
 	if err != nil {
 		return 0, err
 	}
-	result, err := stmt.ExecContext(s.Ctx, values...)
+	result, err := stmt.ExecContext(s.dbh.Ctx, values...)
 	if err != nil {
 		return 0, err
 	}
@@ -122,13 +136,13 @@ func (s *URLDataStore) Save(uptr *resource.WebPage) (uint64, error) {
 }
 
 func (s URLDataStore) storeIdMap(requested *nurl.URL, canonicalID uint64) error {
-	stmt, err := s.Statement(saveId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.dbh.Statement(saveId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qSaveId)
 	})
 	if err != nil {
 		return err
 	}
-	_, err = stmt.ExecContext(s.Ctx, Key(requested), canonicalID)
+	_, err = stmt.ExecContext(s.dbh.Ctx, Key(requested), canonicalID)
 	if err != nil {
 		return err
 	}
@@ -155,13 +169,13 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	default:
 		return nil, err
 	}
-	stmt, err := s.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.dbh.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qFetch)
 	})
 	if err != nil {
 		return nil, err
 	}
-	rows, err := stmt.QueryContext(s.Ctx, key)
+	rows, err := stmt.QueryContext(s.dbh.Ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -209,13 +223,13 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 
 // Will search url_ids to see if there's a parent entry for this url.
 func (s *URLDataStore) lookupId(requested_id uint64) (uint64, error) {
-	stmt, err := s.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.dbh.Statement(lookupId, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qLookupId)
 	})
 	if err != nil {
 		return 0, err
 	}
-	rows, err := stmt.QueryContext(s.Ctx, requested_id)
+	rows, err := stmt.QueryContext(s.dbh.Ctx, requested_id)
 	if err != nil {
 		return 0, err
 	}
@@ -237,13 +251,13 @@ func (s *URLDataStore) lookupId(requested_id uint64) (uint64, error) {
 // NB: TTL management is handled by maintenance routines
 func (s *URLDataStore) Delete(url *nurl.URL) (bool, error) {
 	key := Key(url)
-	stmt, err := s.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+	stmt, err := s.dbh.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(ctx, qDelete)
 	})
 	if err != nil {
 		return false, err
 	}
-	result, err := stmt.ExecContext(s.Ctx, key)
+	result, err := stmt.ExecContext(s.dbh.Ctx, key)
 	if err != nil {
 		return false, err
 	}
@@ -261,8 +275,8 @@ func (s *URLDataStore) Delete(url *nurl.URL) (bool, error) {
 	}
 }
 
-// Clear will delete all content from the database
+// Clear will delete all url content from the database
 func (s *URLDataStore) Clear() error {
-	_, err := s.DB.ExecContext(s.Ctx, qClear)
+	_, err := s.dbh.DB.ExecContext(s.dbh.Ctx, qClear)
 	return err
 }
