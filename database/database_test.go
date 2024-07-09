@@ -263,3 +263,27 @@ func TestStats(t *testing.T) {
 		t.Errorf("Expected 1 MaxOpenConnections, got %d", stats.SQL.MaxOpenConnections)
 	}
 }
+
+type engineWithAfterOpen struct {
+	Engine
+	afterOpenCallCount int
+}
+
+func (e *engineWithAfterOpen) AfterOpen(dbh *DBHandle) error {
+	e.afterOpenCallCount++
+	return nil
+}
+
+func TestAfterOpenGetCalledWhenEngineImplements(t *testing.T) {
+	ee := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
+	engine := &engineWithAfterOpen{Engine: ee}
+	dbh := New(engine)
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	defer dbh.Close()
+	if engine.afterOpenCallCount != 1 {
+		t.Errorf("Expected AfterOpen to be called once, got %d", engine.afterOpenCallCount)
+	}
+}

@@ -82,8 +82,10 @@ func (s *DBHandle) Open(ctx context.Context) error {
 	if connMaxLifetime := s.Engine.DSNSource().ConnMaxLifetime(); connMaxLifetime != 0 {
 		s.DB.SetConnMaxLifetime(connMaxLifetime)
 	}
-
-	return s.Engine.AfterOpen(s)
+	if ae, ok := s.Engine.(AfterOpenHook); ok {
+		return ae.AfterOpen(s)
+	}
+	return nil
 }
 
 // Convenience method to get the safe DSN string, with the password obscured.

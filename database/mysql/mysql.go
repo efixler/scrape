@@ -48,10 +48,6 @@ func (s MySQL) MigrationFS() *embed.FS {
 	return &MigrationFS
 }
 
-func (s MySQL) AfterOpen(dbh *database.DBHandle) error {
-	return nil
-}
-
 func (s MySQL) MigrationEnv() []string {
 	return []string{"TargetSchema", s.config.Schema()}
 }
