@@ -14,8 +14,6 @@ import (
 // the hooks to implement platform-specific behaviors, while core CRUD operations
 // using DBHandle should only require one implementation.
 type Engine interface {
-	// Called after the connection is opened
-	AfterOpen(dbh *DBHandle) error
 	// Provides DSN and basic configuration info
 	DSNSource() DataSource
 	// Driver Name
@@ -37,6 +35,12 @@ type Observable interface {
 // periodic maintenance.
 type Maintainable interface {
 	Maintain(dbh *DBHandle) error
+}
+
+// Provided for Engine implementations that want to do something
+// right after the connection is opened.
+type AfterOpenHook interface {
+	AfterOpen(dbh *DBHandle) error
 }
 
 // If the engine provides this hook, it will be run before
@@ -67,10 +71,6 @@ func NewEngine(driver string, dsnSource DataSource, migrationFS *embed.FS) BaseE
 		dsnSource:   dsnSource,
 		migrationFS: migrationFS,
 	}
-}
-
-func (e BaseEngine) AfterOpen(dbh *DBHandle) error {
-	return nil
 }
 
 func (e BaseEngine) Driver() string {
