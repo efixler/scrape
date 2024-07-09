@@ -248,22 +248,6 @@ func TestInvalidMaintenanceInterval(t *testing.T) {
 	}
 }
 
-func TestStats(t *testing.T) {
-	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
-	err := dbh.Open(context.Background())
-	if err != nil {
-		t.Fatalf("Error opening database: %s", err)
-	}
-	defer dbh.Close()
-	stats, err := dbh.Stats()
-	if err != nil {
-		t.Fatalf("Error getting stats: %s", err)
-	}
-	if stats.SQL.MaxOpenConnections != 1 {
-		t.Errorf("Expected 1 MaxOpenConnections, got %d", stats.SQL.MaxOpenConnections)
-	}
-}
-
 type engineWithAfterOpen struct {
 	Engine
 	afterOpenCallCount int
@@ -285,5 +269,50 @@ func TestAfterOpenGetCalledWhenEngineImplements(t *testing.T) {
 	defer dbh.Close()
 	if engine.afterOpenCallCount != 1 {
 		t.Errorf("Expected AfterOpen to be called once, got %d", engine.afterOpenCallCount)
+	}
+}
+
+func TestCloseListenersInvoked(t *testing.T) {
+	engine := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
+	dbh := New(engine)
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	closeCount := 0
+	closeF := func() {
+		closeCount++
+	}
+	for i := 0; i < closeListenerCapacity; i++ {
+		if err = dbh.AddCloseListener(closeF); err != nil {
+			t.Fatalf("Error adding close listener: %s", err)
+		}
+	}
+	if err := dbh.AddCloseListener(closeF); err != ErrCloseListenersFull {
+		t.Errorf("Expected error on adding close listener when capacity reached, got %v", err)
+	}
+	dbh.Close()
+	if closeCount != closeListenerCapacity {
+		t.Errorf("Expected %d close listeners to be called, got %d", closeListenerCapacity, closeCount)
+	}
+	if err = dbh.AddCloseListener(closeF); err != ErrDatabaseClosed {
+		t.Errorf("Expected error on adding close listener when already closed, got %v", err)
+	}
+}
+
+func TestPing(t *testing.T) {
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
+	if err := dbh.Ping(); err != ErrDatabaseNotOpen {
+		t.Errorf("Expected error pinging unopened database, got %v", err)
+	}
+	if err := dbh.Open(context.Background()); err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	if err := dbh.Ping(); err != nil {
+		t.Errorf("Error pinging database: %s", err)
+	}
+	dbh.Close()
+	if err := dbh.Ping(); err != ErrDatabaseClosed {
+		t.Errorf("Expected error pinging closed database")
 	}
 }

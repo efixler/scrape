@@ -35,10 +35,9 @@ func getURLDataStore(t *testing.T) *URLDataStore {
 	return urlStore
 }
 
-// TODO: Move ping test to database package
 func TestOpen(t *testing.T) {
-	db := getURLDataStore(t)
-	err := db.Ping()
+	urlStore := getURLDataStore(t)
+	err := urlStore.dbh.Ping() // so we know it's really open
 	if err != nil {
 		t.Errorf("Error pinging database: %v", err)
 	}
@@ -249,7 +248,7 @@ func TestClear(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error clearing store: %v", err)
 	}
-	if rows, err := s.DB.QueryContext(s.Ctx, "SELECT COUNT(*) FROM urls"); err != nil {
+	if rows, err := s.dbh.DB.QueryContext(s.dbh.Ctx, "SELECT COUNT(*) FROM urls"); err != nil {
 		t.Fatalf("Error counting rows after insert: %v", err)
 	} else {
 		defer rows.Close()
