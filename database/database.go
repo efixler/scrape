@@ -168,6 +168,10 @@ func (s *DBHandle) Statement(key any, generator StatementGenerator) (*sql.Stmt, 
 	return stmt, nil
 }
 
+// Register a callback function to be called before the underlying database connection is closed.
+// The passed function can/should block if it needs to complete in-progress writes.
+// There is a limit (currently 8) to the number of listeners that can be registered. ErrCloseListenersFull
+// will be returned if this limit is reached.
 func (s *DBHandle) AddCloseListener(f BeforeClose) error {
 	if s.closed {
 		return ErrDatabaseClosed
