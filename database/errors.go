@@ -10,4 +10,5 @@ var (
 	ErrDatabaseClosed       = errors.New("database closed")
 	ErrCantResetMaintenance = errors.New("can't reset maintenance ticker")
 	ErrInvalidDuration      = errors.New("invalid duration for maintenance ticker")
+	ErrCloseListenersFull   = errors.New("close listeners are at full capacity")
 )

@@ -12,8 +12,9 @@ import (
 type DriverName string
 
 const (
-	SQLite DriverName = "sqlite3"
-	MySQL  DriverName = "mysql"
+	SQLite                DriverName = "sqlite3"
+	MySQL                 DriverName = "mysql"
+	closeListenerCapacity            = 8
 )
 
 var (
@@ -35,19 +36,21 @@ type MaintenanceFunction func(dbh *DBHandle) error
 type BeforeClose func()
 
 type DBHandle struct {
-	Ctx    context.Context
-	DB     *sql.DB
-	Engine Engine
-	stmts  map[any]*sql.Stmt
-	done   chan bool
-	closed bool
-	mutex  *sync.Mutex
+	Ctx            context.Context
+	DB             *sql.DB
+	Engine         Engine
+	stmts          map[any]*sql.Stmt
+	done           chan bool
+	closed         bool
+	mutex          *sync.Mutex
+	closeListeners chan BeforeClose
 }
 
 func New(engine Engine) *DBHandle {
 	return &DBHandle{
-		Engine: engine,
-		stmts:  make(map[any]*sql.Stmt, 8),
+		Engine:         engine,
+		stmts:          make(map[any]*sql.Stmt, 8),
+		closeListeners: make(chan BeforeClose, closeListenerCapacity),
 	}
 }
 
@@ -165,6 +168,18 @@ func (s *DBHandle) Statement(key any, generator StatementGenerator) (*sql.Stmt, 
 	return stmt, nil
 }
 
+func (s *DBHandle) AddCloseListener(f BeforeClose) error {
+	if s.closed {
+		return ErrDatabaseClosed
+	}
+	select {
+	case s.closeListeners <- f:
+		return nil
+	default:
+		return ErrCloseListenersFull
+	}
+}
+
 // Close will be called when the context passed to Open() is cancelled. It can
 // also be called manually to release resources.
 // It will close the database handle and any prepared statements, and stop any maintenance jobs.
@@ -181,6 +196,13 @@ func (s *DBHandle) Close() error {
 	s.closed = true
 	slog.Info("closing db", "dsn", s.Engine.DSNSource())
 	s.StopMaintenance()
+	// call any closeListeners and also clear them out
+	// TODO: Add a time limit to the f() invocations
+	// TODO (maybe): parallelize these calls and WaitGroup them
+	close(s.closeListeners) // we cannot receive more on this channel
+	for f := range s.closeListeners {
+		f()
+	}
 	var errs []error
 	for _, stmt := range s.stmts {
 		if stmt != nil {

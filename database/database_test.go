@@ -271,3 +271,31 @@ func TestAfterOpenGetCalledWhenEngineImplements(t *testing.T) {
 		t.Errorf("Expected AfterOpen to be called once, got %d", engine.afterOpenCallCount)
 	}
 }
+
+func TestCloseListenersInvoked(t *testing.T) {
+	engine := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
+	dbh := New(engine)
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	closeCount := 0
+	closeF := func() {
+		closeCount++
+	}
+	for i := 0; i < closeListenerCapacity; i++ {
+		if err = dbh.AddCloseListener(closeF); err != nil {
+			t.Fatalf("Error adding close listener: %s", err)
+		}
+	}
+	if err := dbh.AddCloseListener(closeF); err != ErrCloseListenersFull {
+		t.Errorf("Expected error on adding close listener when capacity reached, got %v", err)
+	}
+	dbh.Close()
+	if closeCount != closeListenerCapacity {
+		t.Errorf("Expected %d close listeners to be called, got %d", closeListenerCapacity, closeCount)
+	}
+	if err = dbh.AddCloseListener(closeF); err != ErrDatabaseClosed {
+		t.Errorf("Expected error on adding close listener when already closed, got %v", err)
+	}
+}
