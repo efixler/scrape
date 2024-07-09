@@ -17,12 +17,7 @@ const (
 )
 
 var (
-	ErrDatabaseNotOpen      = errors.New("database not opened")
-	ErrDatabaseAlreadyOpen  = errors.New("database already opened")
-	ErrDatabaseClosed       = errors.New("database closed")
-	ErrCantResetMaintenance = errors.New("can't reset maintenance ticker")
-	ErrInvalidDuration      = errors.New("invalid duration for maintenance ticker")
-	MinMaintenanceInterval  = 1 * time.Minute
+	MinMaintenanceInterval = 1 * time.Minute
 )
 
 // StatementGenerator is a function that returns a prepared statement.
@@ -34,6 +29,10 @@ type StatementGenerator func(ctx context.Context, db *sql.DB) (*sql.Stmt, error)
 // perform maintenance on the database. It's passed the context and current
 // database handle. Returning an error will stop the maintenance ticker.
 type MaintenanceFunction func(dbh *DBHandle) error
+
+// A function to be invoked before the underlying database connection is closed.
+// This function can/should block if it needs to complete in-progress writes.
+type BeforeClose func()
 
 type DBHandle struct {
 	Ctx    context.Context
@@ -204,27 +203,4 @@ func (s *DBHandle) Close() error {
 		return errors.Join(errs...)
 	}
 	return nil
-}
-
-type stats struct {
-	SQL    sql.DBStats `json:"sql"`
-	Engine any         `json:"engine,omitempty"`
-}
-
-func (s *DBHandle) Stats() (*stats, error) {
-	if s.DB == nil {
-		return nil, ErrDatabaseNotOpen
-	}
-	stats := &stats{
-		SQL: s.DB.Stats(),
-	}
-
-	if observableEngine, ok := s.Engine.(Observable); ok {
-		var err error
-		stats.Engine, err = observableEngine.Stats(s)
-		if err != nil {
-			slog.Error("error getting engine stats", "error", err)
-		}
-	}
-	return stats, nil
 }
