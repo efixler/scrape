@@ -3,7 +3,6 @@ package sqlite
 import (
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/efixler/scrape/database"
@@ -15,7 +14,6 @@ type AccessMode string
 type Option func(*config) error
 
 const (
-	EnvDBPath                       = "SCRAPE_DB"
 	DefaultBusyTimeout              = 5 * time.Second
 	DefaultQueryTimeout             = 30 * time.Second
 	JournalModeWAL      JournalMode = "WAL"
@@ -54,15 +52,6 @@ func Defaults() Option {
 		c.synchronous = SyncOff
 		c.queryTimeout = DefaultQueryTimeout
 		return nil
-	}
-}
-
-func WithFileOrEnv(filename string) Option {
-	return func(c *config) error {
-		if filename == "" {
-			filename = os.Getenv(EnvDBPath)
-		}
-		return File(filename)(c)
 	}
 }
 
