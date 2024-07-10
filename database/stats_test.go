@@ -19,4 +19,7 @@ func TestStats(t *testing.T) {
 	if stats.SQL.MaxOpenConnections != 1 {
 		t.Errorf("Expected 1 MaxOpenConnections, got %d", stats.SQL.MaxOpenConnections)
 	}
+	if stats.Driver != string(SQLite) {
+		t.Errorf("Expected %v driver, got %s", SQLite, stats.Driver)
+	}
 }
