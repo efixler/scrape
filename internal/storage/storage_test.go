@@ -62,7 +62,7 @@ var mdata = `{
 	"image": "https://martinfowler.com/logo-sq.png",
 	"page_type": "article",
 	"content_text": "Martin Fowler",
-	"fetch_method": "DefaultClient"
+	"fetch_method": "direct"
   }`
 
 // TODO: Fuzz this so every return is different

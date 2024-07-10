@@ -225,7 +225,7 @@ func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 func TestSingleHandler(t *testing.T) {
 	ss := &scrapeServer{
 		urlFetcher:      &mockUrlFetcher{fetchMethod: resource.DefaultClient},
-		headlessFetcher: &mockUrlFetcher{fetchMethod: resource.HeadlessChrome},
+		headlessFetcher: &mockUrlFetcher{fetchMethod: resource.HeadlessChromium},
 	}
 	tests := []struct {
 		name         string
@@ -243,7 +243,7 @@ func TestSingleHandler(t *testing.T) {
 			name:         "headless",
 			url:          "http://example.com",
 			handler:      ss.singleHeadlessHandler(),
-			expectMethod: resource.HeadlessChrome,
+			expectMethod: resource.HeadlessChromium,
 		},
 	}
 

@@ -72,7 +72,7 @@ Here's an example, with long fields truncated:
   "requested_url": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
   "original_url": "https://www.nasa.gov/missions/webb/nasas-webb-stuns-with-new-high-definition-look-at-exploded-star/",
   "fetch_time": "2024-01-09T03:57:44Z",
-  "fetch_method": "DefaultClient",
+  "fetch_method": "direct",
   "status_code": 200,
   "hostname": "www.nasa.gov",
   "date": "2023-12-10T00:00:00Z",

@@ -15,12 +15,12 @@ func TestFetchMethodString(t *testing.T) {
 		{
 			name: "Client",
 			f:    DefaultClient,
-			want: "DefaultClient",
+			want: "direct",
 		},
 		{
 			name: "Headless",
-			f:    HeadlessChrome,
-			want: "HeadlessChrome",
+			f:    HeadlessChromium,
+			want: "chromium-headless",
 		},
 		{
 			name: "Unknown",
@@ -44,9 +44,9 @@ func TestUnmarshal(t *testing.T) {
 		expectedValue FetchClient
 		expectError   bool
 	}{
-		{input: "Unspecified", expectedValue: Unspecified},
-		{input: "DefaultClient", expectedValue: DefaultClient},
-		{input: "HeadlessChrome", expectedValue: HeadlessChrome},
+		{input: "unspecified", expectedValue: Unspecified},
+		{input: "direct", expectedValue: DefaultClient},
+		{input: "chromium-headless", expectedValue: HeadlessChromium},
 		{input: "1", expectError: true},
 	}
 	c := &container{}
@@ -71,7 +71,7 @@ func TestMarshal(t *testing.T) {
 	}{
 		{input: 0, expectedValue: fetchMethods[Unspecified]},
 		{input: 1, expectedValue: fetchMethods[DefaultClient]},
-		{input: 2, expectedValue: fetchMethods[HeadlessChrome]},
+		{input: 2, expectedValue: fetchMethods[HeadlessChromium]},
 		{input: -1, expectError: true},
 	}
 	for _, test := range tests {
