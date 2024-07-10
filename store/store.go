@@ -17,8 +17,6 @@ var (
 	ErrMappingNotFound  = errors.New("id mapping not found")
 )
 
-type Factory func() (URLDataStore, error)
-
 // This interface is the contract for storing and retrieving WebPage resources.
 // It add Save() and Delete() methods to the fetch.URLFetcher interface.
 type URLDataStore interface {

@@ -17,7 +17,6 @@ import (
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/auth"
-	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 )
 
@@ -100,10 +99,9 @@ func TestWellknown(t *testing.T) {
 func TestBatchReponseIsValid(t *testing.T) {
 	t.Parallel()
 	var dbh = database.New(sqlite.MustNew(sqlite.InMemoryDB()))
-	var storeFactory = storage.URLDataStorageFactory(dbh)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ss, err := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
+	ss, err := NewScrapeServer(ctx, dbh, trafilatura.MustNew(nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +154,6 @@ func TestBatchReponseIsValid(t *testing.T) {
 func TestExtractErrors(t *testing.T) {
 	t.Parallel()
 	var dbh = database.New(sqlite.MustNew(sqlite.InMemoryDB()))
-	var storeFactory = storage.URLDataStorageFactory(dbh)
 	type data struct {
 		url            string
 		expectedStatus int
@@ -171,7 +168,7 @@ func TestExtractErrors(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ss, err := NewScrapeServer(ctx, storeFactory, trafilatura.Factory(nil), nil)
+	ss, err := NewScrapeServer(ctx, dbh, trafilatura.MustNew(nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
