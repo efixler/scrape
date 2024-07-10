@@ -6,7 +6,8 @@ import (
 )
 
 type stats struct {
-	SQL    sql.DBStats `json:"sql"`
+	SQL    sql.DBStats `json:"connections"`
+	Driver string      `json:"driver"`
 	Engine any         `json:"engine,omitempty"`
 }
 
@@ -15,7 +16,8 @@ func (s *DBHandle) Stats() (*stats, error) {
 		return nil, ErrDatabaseNotOpen
 	}
 	stats := &stats{
-		SQL: s.DB.Stats(),
+		Driver: string(s.Engine.Driver()),
+		SQL:    s.DB.Stats(),
 	}
 
 	if observableEngine, ok := s.Engine.(Observable); ok {
