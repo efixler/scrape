@@ -11,6 +11,7 @@ import (
 
 const (
 	minStatsInterval = 1 * time.Minute
+	statsItemTimeout = 10 * time.Millisecond
 )
 
 type Stats struct {
@@ -46,7 +47,7 @@ func (s *SQLite) Stats(dbh *database.DBHandle) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = dbh.DB.QueryRowContext(dbh.Ctx, "PRAGMA page_size;").Scan(&pageSize)
+	err = dbh.QueryRowContext(dbh.Ctx, "PRAGMA page_size;").Scan(&pageSize)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +73,6 @@ func (s *SQLite) Stats(dbh *database.DBHandle) (any, error) {
 	s.stats.UnusedPages = unusedPages
 	s.stats.MaxPageCount = maxPageCount
 	s.stats.Filesystem = s.filesystemStats()
-	// s.stats.DBStats, _ = s.WebPages.Stats()
 	s.stats.fetchTime = time.Now()
 	return s.stats, nil
 }

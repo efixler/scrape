@@ -36,8 +36,8 @@ type MaintenanceFunction func(dbh *DBHandle) error
 type BeforeClose func()
 
 type DBHandle struct {
+	*sql.DB
 	Ctx            context.Context
-	DB             *sql.DB
 	Engine         Engine
 	stmts          map[any]*sql.Stmt
 	done           chan bool
