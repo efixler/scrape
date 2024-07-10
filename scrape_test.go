@@ -35,12 +35,15 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 		w.Write(testPage)
 	}))
 	defer ts.Close()
-	client := ts.Client()
-	fFactory := trafilatura.Factory(fetch.MustClient(fetch.WithHTTPClient(client)))
+	client := fetch.MustClient(fetch.WithHTTPClient(ts.Client()))
+	tf, err := trafilatura.New(client)
+	if err != nil {
+		t.Fatal(err)
+	}
 	dbh := database.New(sqlite.MustNew(sqlite.InMemoryDB()))
-	sFactory := storage.URLDataStorageFactory(dbh)
+	storage := storage.NewURLDataStore(dbh)
 
-	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
+	fetcher, err := NewStorageBackedFetcher(tf, storage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,11 +160,15 @@ func TestFetchUnstored(t *testing.T) {
 		}
 	}))
 	defer ts.Close()
-	client := ts.Client()
-	fFactory := trafilatura.Factory(fetch.MustClient(fetch.WithHTTPClient(client)))
+
+	client := fetch.MustClient(fetch.WithHTTPClient(ts.Client()))
+	tf, err := trafilatura.New(client)
+	if err != nil {
+		t.Fatal(err)
+	}
 	dbh := database.New(sqlite.MustNew(sqlite.InMemoryDB()))
-	sFactory := storage.URLDataStorageFactory(dbh)
-	fetcher, err := NewStorageBackedFetcher(fFactory, sFactory)
+	storage := storage.NewURLDataStore(dbh)
+	fetcher, err := NewStorageBackedFetcher(tf, storage)
 	if err != nil {
 		t.Fatal(err)
 	}

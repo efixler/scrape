@@ -50,8 +50,9 @@ func main() {
 		slog.Error("Error initializing database connection", "err", err)
 		os.Exit(1)
 	}
-	openDatabase(dbh)
-	defer dbh.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	openDatabase(dbh, ctx)
 
 	if dbFlags.IsMigration() {
 		migrateDatabase(dbh, dbFlags.MigrationCommand)
@@ -162,8 +163,8 @@ func pingDatabase(dbh *database.DBHandle) {
 	slog.Warn("Database ping successful", "database", dbh)
 }
 
-func openDatabase(dbh *database.DBHandle) {
-	err := dbh.Open(context.TODO())
+func openDatabase(dbh *database.DBHandle, ctx context.Context) {
+	err := dbh.Open(ctx)
 	if err != nil {
 		slog.Error("Error opening database", "db", dbh, "err", err)
 		os.Exit(1)
@@ -174,7 +175,7 @@ func initFetcher(dbh *database.DBHandle) (*scrape.StorageBackedFetcher, error) {
 	var err error
 	var client fetch.Client
 	if headlessEnabled {
-		client, err = headless.NewChromeClient(context.TODO(), userAgent.Get().String(), 1)
+		client, err = headless.NewChromeClient(dbh.Ctx, userAgent.Get().String(), 1)
 		if err != nil {
 			return nil, fmt.Errorf("error creating headless client: %s", err)
 		}
@@ -185,13 +186,13 @@ func initFetcher(dbh *database.DBHandle) (*scrape.StorageBackedFetcher, error) {
 		)
 	}
 	fetcher, err := scrape.NewStorageBackedFetcher(
-		trafilatura.Factory(client),
-		storage.URLDataStorageFactory(dbh),
+		trafilatura.MustNew(client),
+		storage.NewURLDataStore(dbh),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
 	}
-	err = fetcher.Open(context.TODO())
+	err = fetcher.Open(dbh.Ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error opening storage backed fetcher: %s", err)
 	}

@@ -43,13 +43,6 @@ type URLDataStore struct {
 	dbh *database.DBHandle
 }
 
-// Temporarily here for compatibility, but will be removed
-func URLDataStorageFactory(dbh *database.DBHandle) store.Factory {
-	return func() (store.URLDataStore, error) {
-		return NewURLDataStore(dbh), nil
-	}
-}
-
 func NewURLDataStore(dbh *database.DBHandle) *URLDataStore {
 	return &URLDataStore{dbh: dbh}
 }

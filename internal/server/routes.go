@@ -22,6 +22,7 @@ import (
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/server/healthchecks"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/store"
 )
@@ -62,13 +63,13 @@ type scrapeServer struct {
 // close and release any resources they have open.
 func NewScrapeServer(
 	ctx context.Context,
-	sf store.Factory,
-	clientFactory fetch.Factory,
+	dbh *database.DBHandle,
+	directFetcher fetch.URLFetcher,
 	headlessFetcher fetch.URLFetcher,
 ) (*scrapeServer, error) {
 	urlFetcher, err := scrape.NewStorageBackedFetcher(
-		clientFactory,
-		sf,
+		directFetcher,
+		storage.NewURLDataStore(dbh),
 	)
 	if err != nil {
 		return nil, err

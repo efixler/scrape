@@ -26,17 +26,13 @@ type StorageBackedFetcher struct {
 }
 
 func NewStorageBackedFetcher(
-	fetcherFactory fetch.Factory,
-	storageFactory store.Factory,
+	fetcher fetch.URLFetcher,
+	storage store.URLDataStore,
 ) (*StorageBackedFetcher, error) {
-	fetcher, err := fetcherFactory()
-	if err != nil {
-		return nil, err
-	}
-	storage, err := storageFactory()
-	if err != nil {
-		return nil, err
-	}
+	// fetcher, err := fetcherFactory()
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return &StorageBackedFetcher{
 		Fetcher: fetcher,
 		Storage: storage,

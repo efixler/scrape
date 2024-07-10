@@ -23,7 +23,6 @@ import (
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
-	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/ua"
 	"github.com/efixler/webutil/graceful"
@@ -52,19 +51,17 @@ func main() {
 	dbh := dbFlags.MustDatabase()
 	dbFlags = nil
 	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
-	defaultFetcherFactory := trafilatura.Factory(normalClient)
 	var headlessFetcher fetch.URLFetcher = nil
 	if headlessEnabled.Get() {
 		headlessClient := headless.MustChromeClient(ctx, userAgent.Get().String(), 6)
-		headlessFetcher, _ = trafilatura.Factory(headlessClient)()
+		headlessFetcher = trafilatura.MustNew(headlessClient)
 	}
-	urlStoreFactory := storage.URLDataStorageFactory(dbh)
 
 	// TODO: Implement options pattern for NewScrapeServer
 	ss, _ := server.NewScrapeServer(
 		ctx,
-		urlStoreFactory,
-		defaultFetcherFactory,
+		dbh,
+		trafilatura.MustNew(normalClient),
 		headlessFetcher,
 	)
 
