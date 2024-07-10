@@ -244,7 +244,7 @@ Command line options:
 
 The root path of the server (`/`) is browsable and provides a simple url to test URLs and results.
 
-![Alt text](internal/server/pages/webui-control.png)
+![Alt text](internal/server/assets/webui-control.png)
 
 The pulldown on the right lets you select between loading results for a page url or for a feed, or scraping a page
 using a headless browser instead of a direct http client.
@@ -255,7 +255,7 @@ using a headless browser instead of a direct http client.
 Returns the metadata for the supplied list of URLs. Returned metadatas are not guaranteed to be
 in the same order as the request. 
 
-The `batch` endpoint behaves indentically to the `extract` endpoint in all ways except two:
+The `batch` endpoint behaves identically to the `extract` endpoint in all ways except two:
 1. The endpoint returns an array of the JSON payload described above
 1. When individual items have errors, the request will still return with a 200 status code. Inspect the 
 payload for individual items to determine the status of an individual item request.
