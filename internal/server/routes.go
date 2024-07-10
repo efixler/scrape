@@ -24,7 +24,6 @@ import (
 	"github.com/efixler/scrape/internal/server/healthchecks"
 	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
 )
 
 func InitMux(scrapeServer *scrapeServer, db *database.DBHandle) (*http.ServeMux, error) {
@@ -100,19 +99,6 @@ func (ss scrapeServer) withAuthIfEnabled(ms ...middleware) []middleware {
 		ms = append([]middleware{auth.JWTAuthMiddleware(ss.SigningKey, claimsKey{})}, ms...)
 	}
 	return ms
-}
-
-// Convenience method to get the underlying storage from the fetcher
-// which we use for healthchecks.
-// TODO: Re-evaluate. The underlying DB should probably be exposed via an
-// interface method, or (less likely) it could be references in the context
-// for consumers that we want to keep decoupled.
-func (h *scrapeServer) Storage() store.URLDataStore {
-	sbf, ok := h.urlFetcher.(*scrape.StorageBackedFetcher)
-	if !ok {
-		return nil
-	}
-	return sbf.Storage
 }
 
 //go:embed pages/index.html
