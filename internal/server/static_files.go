@@ -3,7 +3,6 @@ package server
 import (
 	"embed"
 	"io/fs"
-	"log/slog"
 	"net/http"
 )
 
@@ -12,7 +11,6 @@ var assetsDir embed.FS
 
 func assetsHandler() http.Handler {
 	d, err := fs.Sub(assetsDir, "assets")
-	slog.Info("assetsHandler", "d", d)
 	if err != nil {
 		panic(err)
 	}
