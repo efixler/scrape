@@ -29,10 +29,6 @@ func NewStorageBackedFetcher(
 	fetcher fetch.URLFetcher,
 	storage store.URLDataStore,
 ) (*StorageBackedFetcher, error) {
-	// fetcher, err := fetcherFactory()
-	// if err != nil {
-	// 	return nil, err
-	// }
 	return &StorageBackedFetcher{
 		Fetcher: fetcher,
 		Storage: storage,
