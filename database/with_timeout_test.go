@@ -63,14 +63,8 @@ func TestExecTimeout(t *testing.T) {
 	} else if err != context.DeadlineExceeded {
 		t.Errorf("Expected context.DeadlineExceeded, got %s", err)
 	}
-	_, err = dbh.Exec(query)
-	if err == nil {
-		t.Errorf("Expected error from Exec, didn't get one")
-	} else if err != context.DeadlineExceeded {
-		t.Errorf("Expected context.DeadlineExceeded, got %s", err)
-	}
 
-	// In the quert case, we won't see the timeout until we scan the rows
+	// In the query case, we won't see the timeout until we scan the rows
 	rows, err := dbh.QueryTimeout(100*time.Millisecond, query)
 	if err == nil {
 		defer rows.Close()
@@ -97,7 +91,9 @@ func TestExecTimeout(t *testing.T) {
 	}
 }
 
-func TestQuery(t *testing.T) {
+// Tests basic operation of QuertTimeout and QueryRowTimeout
+// (and not actually the timeout functionality)
+func TestQueryTimeout(t *testing.T) {
 	dbh := newDB(SQLite, NewDSN(":memory:", WithQueryTimeout(250*time.Millisecond)))
 	ctx := context.Background()
 	err := dbh.Open(ctx)
@@ -114,7 +110,7 @@ func TestQuery(t *testing.T) {
 		t.Fatalf("Error pinging database: %s", err)
 	}
 	query := `SELECT * FROM test_table order by id;`
-	rows, err := dbh.Query(query)
+	rows, err := dbh.QueryTimeout(-1, query)
 	if err != nil {
 		t.Fatalf("Error from Query: %s", err)
 	}
@@ -127,7 +123,7 @@ func TestQuery(t *testing.T) {
 		t.Errorf("Expected 100 rows, got %d", count)
 	}
 	query = `SELECT name FROM test_table WHERE id = 0;`
-	row := dbh.QueryRow(query)
+	row := dbh.QueryRowTimeout(-1, query)
 	err = row.Err()
 	if err != nil {
 		t.Fatalf("Error from QueryRow: %s", err)

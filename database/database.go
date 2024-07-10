@@ -36,8 +36,8 @@ type MaintenanceFunction func(dbh *DBHandle) error
 type BeforeClose func()
 
 type DBHandle struct {
+	*sql.DB
 	Ctx            context.Context
-	DB             *sql.DB
 	Engine         Engine
 	stmts          map[any]*sql.Stmt
 	done           chan bool
@@ -197,7 +197,6 @@ func (s *DBHandle) Close() error {
 	if s.closed || (s.DB == nil) {
 		return nil
 	}
-	s.closed = true
 	slog.Info("closing db", "dsn", s.Engine.DSNSource())
 	s.StopMaintenance()
 	// call any closeListeners and also clear them out
@@ -223,7 +222,7 @@ func (s *DBHandle) Close() error {
 		}
 		s.DB = nil
 	}
-
+	s.closed = true
 	if len(errs) > 0 {
 		slog.Warn("errors closing db", "dsn", s.Engine.DSNSource(), "errors", errs)
 		return errors.Join(errs...)
