@@ -11,7 +11,6 @@ import (
 
 const (
 	minStatsInterval = 1 * time.Minute
-	statsItemTimeout = 10 * time.Millisecond
 )
 
 type Stats struct {
