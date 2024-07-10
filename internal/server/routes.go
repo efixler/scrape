@@ -29,6 +29,7 @@ import (
 func InitMux(scrapeServer *scrapeServer, db *database.DBHandle) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", scrapeServer.homeHandler())
+	mux.Handle("/assets/", assetsHandler())
 	h := scrapeServer.singleHandler()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
@@ -101,7 +102,7 @@ func (ss scrapeServer) withAuthIfEnabled(ms ...middleware) []middleware {
 	return ms
 }
 
-//go:embed pages/index.html
+//go:embed templates/index.html
 var home embed.FS
 
 func (h scrapeServer) mustHomeTemplate() *template.Template {
@@ -126,7 +127,7 @@ func (h scrapeServer) mustHomeTemplate() *template.Template {
 		}
 	}
 	tmpl = tmpl.Funcs(template.FuncMap{"AuthToken": keyF})
-	homeSource, _ := home.ReadFile("pages/index.html")
+	homeSource, _ := home.ReadFile("templates/index.html")
 	tmpl = template.Must(tmpl.Parse(string(homeSource)))
 	return tmpl
 }
