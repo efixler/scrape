@@ -67,7 +67,7 @@ func (s *DBHandle) Open(ctx context.Context) error {
 	s.Ctx = ctx
 	var err error
 	s.DB, err = sql.Open(string(s.Engine.Driver()), s.Engine.DSNSource().DSN())
-	slog.Info("opening db", "dsn", s.Engine.DSNSource, "driver", s.Engine.Driver())
+	slog.Info("opening db", "dsn", s.Engine.DSNSource(), "driver", s.Engine.Driver())
 	if err != nil {
 		return err
 	}
