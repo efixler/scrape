@@ -3,7 +3,7 @@ Package scrape provides a simple interface for fetching and storing web pages'
 metadata and text content. The `scrape` and `scrape-server` commands provide
 a command-line interface and a REST API, respectively.
 */
-package scrape
+package internal
 
 import (
 	"context"

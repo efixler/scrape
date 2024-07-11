@@ -16,10 +16,10 @@ import (
 
 	"github.com/efixler/webutil/jsonarray"
 
-	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/feed"
+	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/server/healthchecks"
 	"github.com/efixler/scrape/internal/storage"
@@ -67,7 +67,7 @@ func NewScrapeServer(
 	directFetcher fetch.URLFetcher,
 	headlessFetcher fetch.URLFetcher,
 ) (*scrapeServer, error) {
-	urlFetcher, err := scrape.NewStorageBackedFetcher(
+	urlFetcher, err := internal.NewStorageBackedFetcher(
 		directFetcher,
 		storage.NewURLDataStore(dbh),
 	)
@@ -283,7 +283,7 @@ func (ss *scrapeServer) delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Can't process delete request, no input data", http.StatusInternalServerError)
 		return
 	}
-	deleter, ok := ss.urlFetcher.(*scrape.StorageBackedFetcher)
+	deleter, ok := ss.urlFetcher.(*internal.StorageBackedFetcher)
 	if !ok {
 		http.Error(w, "Can't delete in the current configuration", http.StatusNotImplemented)
 		return

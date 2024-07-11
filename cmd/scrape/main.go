@@ -19,10 +19,10 @@ import (
 	"os"
 
 	"github.com/efixler/envflags"
-	"github.com/efixler/scrape"
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/storage"
@@ -171,7 +171,7 @@ func openDatabase(dbh *database.DBHandle, ctx context.Context) {
 	}
 }
 
-func initFetcher(dbh *database.DBHandle) (*scrape.StorageBackedFetcher, error) {
+func initFetcher(dbh *database.DBHandle) (*internal.StorageBackedFetcher, error) {
 	var err error
 	var client fetch.Client
 	if headlessEnabled {
@@ -185,7 +185,7 @@ func initFetcher(dbh *database.DBHandle) (*scrape.StorageBackedFetcher, error) {
 			fetch.WithUserAgent(userAgent.Get().String()),
 		)
 	}
-	fetcher, err := scrape.NewStorageBackedFetcher(
+	fetcher, err := internal.NewStorageBackedFetcher(
 		trafilatura.MustNew(client),
 		storage.NewURLDataStore(dbh),
 	)
