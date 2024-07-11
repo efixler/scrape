@@ -33,7 +33,7 @@
 	<option value="/extract/headless">Headless</option>
 	<option value="/feed">Feed</option>
 </select>
-	
+<input type="hidden" name="token" value="{{AuthToken}}">
 <input type="hidden" name="pp" value="1">
 </form>
 </p>
@@ -56,12 +56,12 @@ function updateFormAction() {
 			event.preventDefault();
 			const action = form.action;
 			const headers = new Headers();
-			const token = '{{AuthToken}}'
+			const token = form.token.value;
 			if (token) {
 				headers.append('Authorization', `Bearer ${token}`);
 			}
 			const formData = new FormData(form);
-
+			formData.delete('token');
 			try { 
 			const response = await fetch(action, {
 				method: 'POST',
