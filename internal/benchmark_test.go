@@ -1,6 +1,6 @@
 //go:build benchmark
 
-package scrape
+package internal
 
 // This file is associated with the tag "benchmark" to keep it from running
 // during normal tests.  It can take a while, and some of the tests call out,
