@@ -14,24 +14,29 @@
 		label {
   			margin: 0.2rem 0;
 		}
-		.data-iframe {
-  			position: relative;
-  			top: 16px; 
-  			width: 98%;
-  			min-width: 768px;
-  			height: calc(100vh - 108px); 
+		pre {
+			white-space: pre-wrap;
+			width: 100%;
+		}
+		.response-container {
+			width: 100%;
+			min-width: 768px;
+			height: calc(100vh - 108px);
+			overflow: auto;
+			border: 0.1rem inset #ccc;
+			padding-block: 0.0rem;
+			padding-inline: 0.4rem;
+			box-sizing: border-box;			
 		}
 	</style>
 </head>
 <body>
 <p>
-<form action="/extract" x-data="formHandler" @submit.prevent="handleSubmit">
-
-<!-- <form id="urlForm" action="/extract" method="POST" name="scrape" target="data-iframe" x-data="formHandler" @submit.prevent="handleSubmit"> -->
+<form x-data="formHandler" @submit.prevent="handleSubmit">
 <label for="url">Enter a URL:</label>
 <input type="submit" value="Hit It">
 <input type="url" name="url" id="url" value="https://" size="96" maxlength="200" pattern="https?://.*" required title="URL">
-<select title="URL Type" id="actionSelect" onchange="updateFormAction()">
+<select title="URL Type" x-model="formAction">
 	<option value="/extract">Page</option>
 	<option value="/extract/headless">Headless</option>
 	<option value="/feed">Feed</option>
@@ -40,18 +45,16 @@
 <input type="hidden" name="pp" value="1">
 </form>
 </p>
-<script>
-function updateFormAction() {
-    var selected = document.getElementById("actionSelect").value;
-    document.getElementById("urlForm").action = selected;
-}
-</script>
+<div class="response-container">
+	<pre x-ref="responseContent" id="responseContent"></pre>
+</div> 
+
 <script type="text/javascript">
 	function formHandler() {
 		return {
+			formAction: '/extract',
 			async handleSubmit(event) {
 				const form = event.target;
-				const action = form.action;
 				const headers = new Headers();
 				const token = form.token.value;
 				if (token) {
@@ -60,7 +63,7 @@ function updateFormAction() {
 				const formData = new FormData(form);
 				formData.delete('token');
 				try { 
-					const response = await fetch(action, {
+					const response = await fetch(this.formAction, {
 						method: 'POST',
 						headers: headers,
 						body: formData
@@ -80,63 +83,13 @@ function updateFormAction() {
 				}
 			},
 			updateContent(content) {
-				const iframe = document.getElementById('data');
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-				const preElement = iframeDoc.getElementById('responseContent');
-				preElement.textContent = content;
+				document.getElementById('responseContent').textContent = content;
+				// following should work but doesn't
+				// this.$refs.responseContent.textContent = content;
 			}
 		}
 	}
 </script>
 
-<script type="text/javascript">
-	document.addEventListener('DOMContentLoaded', function() {
-		const iframe = document.getElementById('data');
-		iframe.contentDocument.body.innerHTML = '';
-		const preElement = document.createElement('pre');
-		preElement.style.whiteSpace = 'pre-wrap';
-		preElement.style.width = '100%';
-		preElement.id = 'responseContent'
-		iframe.contentDocument.body.appendChild(preElement);
-	//	const form = document.getElementById('urlForm');
-	// 	form.addEventListener('submit', async function(event) {
-	// 		event.preventDefault();
-	// 		const action = form.action;
-	// 		const headers = new Headers();
-	// 		const token = form.token.value;
-	// 		if (token) {
-	// 			headers.append('Authorization', `Bearer ${token}`);
-	// 		}
-	// 		const formData = new FormData(form);
-	// 		formData.delete('token');
-	// 		try { 
-	// 		const response = await fetch(action, {
-	// 			method: 'POST',
-	// 			headers: headers,
-	// 			body: formData
-	// 		})
-	// 		if (response.ok) {
-	// 			const json = await response.json();
-	// 			const jsonStr = JSON.stringify(json, null, 2);
-	// 			preElement.textContent = jsonStr;
-	// 		} else {
-	// 			const text = await response.text();
-	// 			preElement.textContent = `Error ${response.status}:\n${text}`;
-	// 			throw new Error(`${response.status} - ${text}`);
-	// 		}
-	// 	} catch (error) {
-	// 		console.error(error);
-	// 	}
-	// });
-});
-	</script>
-<div>
-<iframe 
-	id="data"
-	title="Scrape Results"
-	name="data-iframe"
-	class="data-iframe"
-	>
-</div>
 </body>
 </html>
