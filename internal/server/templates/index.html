@@ -6,6 +6,37 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 	<style>
+		body, html {
+			margin: 0;
+			padding: 0;
+			height: 100vh;
+		}
+		.page-container {
+			display: flex;
+			flex-direction: column;
+			gap: 0.6rem;
+			box-sizing: border-box;
+			height: 100%;
+			padding: 0.6rem;
+		}
+		.controls-container {
+			background-color: #fff;
+			box-sizing: border-box;
+		}
+		.response-container {
+			width: 100%;
+			min-width: 768px;
+			flex: 1;
+			overflow: auto;
+			border: 0.1rem inset #ccc;
+			padding-block: 0.2rem;
+			padding-inline: 0.4rem;
+			box-sizing: border-box;
+		}
+		pre {
+			white-space: pre-wrap;
+			width: 100%;
+		}
 		label {
 			display: block;
 			font: 1rem 'Verdana'
@@ -14,24 +45,12 @@
 		label {
   			margin: 0.2rem 0;
 		}
-		pre {
-			white-space: pre-wrap;
-			width: 100%;
-		}
-		.response-container {
-			width: 100%;
-			min-width: 768px;
-			height: calc(100vh - 108px);
-			overflow: auto;
-			border: 0.1rem inset #ccc;
-			padding-block: 0.0rem;
-			padding-inline: 0.4rem;
-			box-sizing: border-box;			
-		}
+		
 	</style>
 </head>
 <body>
-<p>
+<div class="page-container">
+<div class="controls-container">
 <form x-data="formHandler" @submit.prevent="handleSubmit">
 <label for="url">Enter a URL:</label>
 <input type="submit" value="Hit It">
@@ -41,14 +60,15 @@
 	<option value="/extract/headless">Headless</option>
 	<option value="/feed">Feed</option>
 </select>
-<input type="hidden" name="token" value="{{AuthToken}}">
+<label for="token">Token:</label>
+<input type="text" name="token" size="101" maxlength="255" value="{{AuthToken}}" placeholder="Enter your access token">
 <input type="hidden" name="pp" value="1">
 </form>
-</p>
+</div><!-- controls-container -->
 <div class="response-container">
 	<pre x-ref="responseContent" id="responseContent"></pre>
 </div> 
-
+</div><!-- page-container -->
 <script type="text/javascript">
 	function formHandler() {
 		return {
