@@ -4,92 +4,113 @@
 	<meta charset="utf-8" />
 	<title>scrape</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 	<style>
+		body, html {
+			margin: 0;
+			padding: 0;
+			height: 100vh;
+		}
+		.page-container {
+			display: flex;
+			flex-direction: column;
+			gap: 0.6rem;
+			box-sizing: border-box;
+			height: 100%;
+			padding: 0.6rem;
+		}
+		.controls-container {
+			background-color: #fff;
+			box-sizing: border-box;
+		}
+		.response-container {
+			width: 100%;
+			min-width: 768px;
+			flex: 1;
+			overflow: auto;
+			border: 0.1rem inset #ccc;
+			padding-block: 0.2rem;
+			padding-inline: 0.4rem;
+			box-sizing: border-box;
+			user-select: text;
+		}
+		pre {
+			white-space: pre-wrap;
+			width: 100%;
+		}
 		label {
 			display: block;
-			font: 1rem 'Verdana'
+			font-family: Verdana, Arial, Helvetica, sans-serif;
+			font-size: 1.0rem;
 		}
 		input,
 		label {
   			margin: 0.2rem 0;
 		}
-		.data-iframe {
-  			position: relative;
-  			top: 16px; 
-  			width: 98%;
-  			min-width: 768px;
-  			height: calc(100vh - 108px); 
-		}
 	</style>
 </head>
 <body>
-<p>
-<form id="urlForm" action="/extract" method="POST" name="scrape" target="data-iframe">
+<div class="page-container">
+<div class="controls-container">
+<form x-data="formHandler" @submit.prevent="handleSubmit">
 <label for="url">Enter a URL:</label>
-<input type="submit" value="Hit It">
-<input type="url" name="url" id="url" value="https://" size="96" maxlength="200" pattern="https?://.*" required title="URL">
-<select title="URL Type" id="actionSelect" onchange="updateFormAction()">
+<select title="URL Type" x-model="formAction">
 	<option value="/extract">Page</option>
 	<option value="/extract/headless">Headless</option>
 	<option value="/feed">Feed</option>
 </select>
-<input type="hidden" name="token" value="{{AuthToken}}">
+<input type="url" name="url" id="url" value="https://" size="96" maxlength="200" pattern="https?://.*" required title="URL">
+<input type="submit" value="Hit It">
+<!-- <label for="token">Token:</label> -->
+<input type="hidden" name="token" size="101" maxlength="255" value="{{AuthToken}}" placeholder="Enter your access token">
 <input type="hidden" name="pp" value="1">
 </form>
-</p>
-<script>
-function updateFormAction() {
-    var selected = document.getElementById("actionSelect").value;
-    document.getElementById("urlForm").action = selected;
-}
-</script>
+</div><!-- controls-container -->
+<div class="response-container">
+	<pre x-ref="responseContent" id="responseContent"></pre>
+</div> 
+</div><!-- page-container -->
 <script type="text/javascript">
-	document.addEventListener('DOMContentLoaded', function() {
-		const iframe = document.getElementById('data');
-		iframe.contentDocument.body.innerHTML = '';
-		const preElement = document.createElement('pre');
-		preElement.style.whiteSpace = 'pre-wrap';
-		preElement.style.width = '100%';
-		iframe.contentDocument.body.appendChild(preElement);
-		const form = document.getElementById('urlForm');
-		form.addEventListener('submit', async function(event) {
-			event.preventDefault();
-			const action = form.action;
-			const headers = new Headers();
-			const token = form.token.value;
-			if (token) {
-				headers.append('Authorization', `Bearer ${token}`);
+	function formHandler() {
+		return {
+			formAction: '/extract',
+			async handleSubmit(event) {
+				const form = event.target;
+				const headers = new Headers();
+				const token = form.token.value;
+				if (token) {
+					headers.append('Authorization', `Bearer ${token}`);
+				}
+				const formData = new FormData(form);
+				formData.delete('token');
+				try { 
+					const response = await fetch(this.formAction, {
+						method: 'POST',
+						headers: headers,
+						body: formData
+					})
+					
+					if (response.ok) {
+						const json = await response.json();
+						const jsonStr = JSON.stringify(json, null, 2);
+						this.updateContent(jsonStr);
+					} else {
+						const text = await response.text();
+						this.updateContent(`Error ${response.status}:\n${text}`);
+						throw new Error(`${response.status} - ${text}`);
+					}
+				} catch (error) {
+					console.error(error);
+				}
+			},
+			updateContent(content) {
+				document.getElementById('responseContent').textContent = content;
+				// following should work but doesn't
+				// this.$refs.responseContent.textContent = content;
 			}
-			const formData = new FormData(form);
-			formData.delete('token');
-			try { 
-			const response = await fetch(action, {
-				method: 'POST',
-				headers: headers,
-				body: formData
-			})
-			if (response.ok) {
-				const json = await response.json();
-				const jsonStr = JSON.stringify(json, null, 2);
-				preElement.textContent = jsonStr;
-			} else {
-				const text = await response.text();
-				preElement.textContent = `Error ${response.status}:\n${text}`;
-				throw new Error(`${response.status} - ${text}`);
-			}
-		} catch (error) {
-			console.error(error);
 		}
-	});
-});
-	</script>
-<div>
-<iframe 
-	id="data"
-	title="Scrape Results"
-	name="data-iframe"
-	class="data-iframe"
-	>
-</div>
+	}
+</script>
+
 </body>
 </html>
