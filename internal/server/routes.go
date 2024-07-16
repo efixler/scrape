@@ -107,9 +107,10 @@ var home embed.FS
 
 func (h scrapeServer) mustHomeTemplate() *template.Template {
 	tmpl := template.New("home")
-	var keyF = func() string { return "" }
-	if len(h.SigningKey) > 0 {
-		keyF = func() string {
+	var authTokenF = func() string { return "" }
+	var authEnabledF = func() bool { return len(h.SigningKey) > 0 }
+	if authEnabledF() {
+		authTokenF = func() string {
 			c, err := auth.NewClaims(
 				auth.WithSubject("home"),
 				auth.ExpiresIn(60*time.Minute),
@@ -126,7 +127,11 @@ func (h scrapeServer) mustHomeTemplate() *template.Template {
 			return s
 		}
 	}
-	tmpl = tmpl.Funcs(template.FuncMap{"AuthToken": keyF})
+	funcMap := template.FuncMap{
+		"AuthToken":   authTokenF,
+		"AuthEnabled": authEnabledF,
+	}
+	tmpl = tmpl.Funcs(funcMap)
 	homeSource, _ := home.ReadFile("templates/index.html")
 	tmpl = template.Must(tmpl.Parse(string(homeSource)))
 	return tmpl
