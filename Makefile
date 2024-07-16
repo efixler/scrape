@@ -1,4 +1,7 @@
-MODULE_NAME := $(shell go list -m)
+MODULE_NAME := scrape
+ifneq ($(shell command -v go >/dev/null 2>&1 && echo yes),)
+    MODULE_NAME := $(shell go list -m)
+endif
 DOCKER_IMAGE_NAME := ${shell basename ${MODULE_NAME}}-bookworm-slim
 CWD := $(shell pwd)
 BUILD_DIR := build
