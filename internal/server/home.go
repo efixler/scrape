@@ -14,11 +14,20 @@ import (
 //go:embed templates/index.html
 var home embed.FS
 
-func mustHomeTemplate(ss *scrapeServer) *template.Template {
+// mustHomeTemplate creates a template for the home page.
+// To enable usage of the home page without a token when auth is enabled,
+// for API endpoint, set openHome to true.
+func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 	tmpl := template.New("home")
 	var authTokenF = func() string { return "" }
-	var authEnabledF = func() bool { return ss.AuthEnabled() }
-	if authEnabledF() {
+	var showTokenWidget = func() bool {
+		// when openHome is true don't show the token entry widget
+		if openHome {
+			return false
+		}
+		return ss.AuthEnabled()
+	}
+	if ss.AuthEnabled() && openHome {
 		authTokenF = func() string {
 			c, err := auth.NewClaims(
 				auth.WithSubject("home"),
@@ -37,8 +46,8 @@ func mustHomeTemplate(ss *scrapeServer) *template.Template {
 		}
 	}
 	funcMap := template.FuncMap{
-		"AuthToken":   authTokenF,
-		"AuthEnabled": authEnabledF,
+		"AuthToken":       authTokenF,
+		"ShowTokenWidget": showTokenWidget,
 	}
 	tmpl = tmpl.Funcs(funcMap)
 	homeSource, _ := home.ReadFile("templates/index.html")
@@ -46,8 +55,8 @@ func mustHomeTemplate(ss *scrapeServer) *template.Template {
 	return tmpl
 }
 
-func homeHandler(ss *scrapeServer) http.HandlerFunc {
-	tmpl := mustHomeTemplate(ss)
+func homeHandler(ss *scrapeServer, openHome bool) http.HandlerFunc {
+	tmpl := mustHomeTemplate(ss, openHome)
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
 		if err := tmpl.Execute(&buf, nil); err != nil {

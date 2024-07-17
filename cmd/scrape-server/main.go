@@ -43,6 +43,7 @@ var (
 	dbFlags         *cmd.DatabaseFlags
 	headlessEnabled *envflags.Value[bool]
 	profile         *envflags.Value[bool]
+	publicHome      *envflags.Value[bool]
 	logWriter       io.Writer
 )
 
@@ -77,7 +78,7 @@ func main() {
 		slog.Info("scrape-server authorization is disabled, running in open access mode")
 	}
 
-	mux, err := server.InitMux(ss, dbh)
+	mux, err := server.InitMux(ss, dbh, publicHome.Get())
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
@@ -136,6 +137,9 @@ func init() {
 
 	profile = envflags.NewBool("PROFILE", false)
 	profile.AddTo(&flags, "profile", "Enable profiling at /debug/pprof")
+
+	publicHome = envflags.NewBool("PUBLIC_HOME", false)
+	publicHome.AddTo(&flags, "public-home", "Enable the homepage without requiring a token (when auth is enabled)")
 
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelInfo)
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")

@@ -12,21 +12,31 @@ func TestMustTemplate(t *testing.T) {
 	tests := []struct {
 		name        string
 		key         auth.HMACBase64Key
+		openHome    bool
 		expectToken bool
 	}{
 		{
-			name:        "with key",
+			name:        "auth enabled",
 			key:         auth.MustNewHS256SigningKey(),
+			openHome:    false,
+			expectToken: false,
+		},
+		{
+			name:        "auth enabled with open home",
+			key:         auth.MustNewHS256SigningKey(),
+			openHome:    true,
 			expectToken: true,
 		},
 		{
-			name:        "no key",
+			name:        "auth disabled",
 			key:         nil,
+			openHome:    false,
 			expectToken: false,
 		},
 		{
 			name:        "empty key",
 			key:         auth.HMACBase64Key([]byte{}),
+			openHome:    false,
 			expectToken: false,
 		},
 	}
@@ -36,7 +46,7 @@ func TestMustTemplate(t *testing.T) {
 			WithURLFetcher(&mockUrlFetcher{}),
 			WithAuthorizationIf(test.key),
 		)
-		tmpl := mustHomeTemplate(ss)
+		tmpl := mustHomeTemplate(ss, test.openHome)
 		tmpl, err := tmpl.Parse("{{AuthToken}}")
 		if err != nil {
 			t.Fatalf("[%s] Error parsing template: %s", test.name, err)

@@ -8,19 +8,19 @@ import (
 	"github.com/efixler/scrape/internal/server/healthchecks"
 )
 
-func InitMux(scrapeServer *scrapeServer, db *database.DBHandle) (*http.ServeMux, error) {
+func InitMux(ss *scrapeServer, db *database.DBHandle, openHome bool) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", homeHandler(scrapeServer))
+	mux.HandleFunc("GET /{$}", homeHandler(ss, openHome))
 	mux.Handle("/assets/", assetsHandler())
-	h := scrapeServer.singleHandler()
+	h := ss.singleHandler()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
-	h = scrapeServer.singleHeadlessHandler()
+	h = ss.singleHeadlessHandler()
 	mux.HandleFunc("GET /extract/headless", h)
 	mux.HandleFunc("POST /extract/headless", h)
-	mux.HandleFunc("POST /batch", scrapeServer.batchHandler())
-	mux.HandleFunc("DELETE /extract", scrapeServer.deleteHandler())
-	h = scrapeServer.feedHandler()
+	mux.HandleFunc("POST /batch", ss.batchHandler())
+	mux.HandleFunc("DELETE /extract", ss.deleteHandler())
+	h = ss.feedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
 	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", db))

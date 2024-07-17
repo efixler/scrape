@@ -149,6 +149,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="page-container">
     <div class="controls-container">
@@ -167,7 +168,7 @@
         </div>
       </form>
     </div><!-- controls-container -->
-    <!-- {{if AuthEnabled}}  -->
+    <!-- {{if ShowTokenWidget}}  -->
     <div class="token-container" x-data="tokenHandler()">
       <div class="token-header">
         <!-- TODO: Convert <a> to button, link hover color/state of +/- and button -->
@@ -257,4 +258,5 @@
     }
   </script>
 </body>
+
 </html>
