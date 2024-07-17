@@ -10,7 +10,7 @@ import (
 
 func InitMux(scrapeServer *scrapeServer, db *database.DBHandle) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /{$}", scrapeServer.homeHandler())
+	mux.HandleFunc("GET /{$}", homeHandler(scrapeServer))
 	mux.Handle("/assets/", assetsHandler())
 	h := scrapeServer.singleHandler()
 	mux.HandleFunc("GET /extract", h)

@@ -16,8 +16,28 @@ import (
 	"github.com/efixler/scrape/database/sqlite"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 )
+
+type mockUrlFetcher struct {
+	fetchMethod resource.FetchClient
+}
+
+func (m *mockUrlFetcher) Open(ctx context.Context) error { return nil }
+func (m *mockUrlFetcher) Close() error                   { return nil }
+func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+	r := &resource.WebPage{
+		OriginalURL:  url.String(),
+		RequestedURL: url,
+		StatusCode:   200,
+		ContentText:  "Hello, world!",
+		FetchMethod:  m.fetchMethod,
+	}
+
+	return r, nil
+}
 
 type mockFeedFetcher struct{}
 
@@ -47,7 +67,11 @@ func TestFeedSourceErrors(t *testing.T) {
 		{urlPath: "/?url=http://passthru.com/508", expected: 508},
 	}
 	mockFeedFetcher := &mockFeedFetcher{}
-	scrapeServer := &scrapeServer{feedFetcher: mockFeedFetcher}
+	scrapeServer := MustScrapeServer(
+		context.Background(),
+		WithFeedFetcher(mockFeedFetcher),
+		WithURLFetcher(&mockUrlFetcher{}),
+	)
 
 	urlBase := "http://foo.bar" // just make the initial URL valid
 	handler := scrapeServer.feedHandler()
@@ -68,10 +92,20 @@ func TestBatchReponseIsValid(t *testing.T) {
 	var dbh = database.New(sqlite.MustNew(sqlite.InMemoryDB()))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	ss, err := NewScrapeServer(ctx, dbh, trafilatura.MustNew(nil), nil)
-	if err != nil {
-		t.Fatal(err)
+	if err := dbh.Open(ctx); err != nil {
+		t.Fatalf("Could not open database: %v", err)
 	}
+
+	fetcher := internal.NewStorageBackedFetcher(
+		trafilatura.MustNew(nil),
+		storage.NewURLDataStore(dbh),
+	)
+
+	ss := MustScrapeServer(
+		ctx,
+		WithURLFetcher(fetcher),
+	)
+
 	mux, err := InitMux(ss, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -118,8 +152,19 @@ func TestBatchReponseIsValid(t *testing.T) {
 	}
 }
 
+func TestNewFailsWithNilFetcher(t *testing.T) {
+	if _, err := NewScrapeServer(context.Background(), WithURLFetcher(nil)); err == nil {
+		t.Error("Expected error on nil URLFetcher, got nil")
+	}
+	if _, err := NewScrapeServer(context.Background()); err == nil {
+		t.Error("Expected error on no URLFetcher, got nil")
+	}
+}
+
 func TestHeadless503WhenUnavailable(t *testing.T) {
-	ss := &scrapeServer{headlessFetcher: nil}
+	ss := MustScrapeServer(context.Background(), WithURLFetcher(&mockUrlFetcher{}))
+
+	// ss := &scrapeServer{headlessFetcher: nil}
 	handler := ss.singleHeadlessHandler()
 	req := httptest.NewRequest("GET", "http://foo.bar?url=http://example.com", nil)
 	w := httptest.NewRecorder()
@@ -130,29 +175,12 @@ func TestHeadless503WhenUnavailable(t *testing.T) {
 	}
 }
 
-type mockUrlFetcher struct {
-	fetchMethod resource.FetchClient
-}
-
-func (m *mockUrlFetcher) Open(ctx context.Context) error { return nil }
-func (m *mockUrlFetcher) Close() error                   { return nil }
-func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
-	r := &resource.WebPage{
-		OriginalURL:  url.String(),
-		RequestedURL: url,
-		StatusCode:   200,
-		ContentText:  "Hello, world!",
-		FetchMethod:  m.fetchMethod,
-	}
-
-	return r, nil
-}
-
 func TestSingleHandler(t *testing.T) {
-	ss := &scrapeServer{
-		urlFetcher:      &mockUrlFetcher{fetchMethod: resource.DefaultClient},
-		headlessFetcher: &mockUrlFetcher{fetchMethod: resource.HeadlessChromium},
-	}
+	ss := MustScrapeServer(
+		context.Background(),
+		WithURLFetcher(&mockUrlFetcher{fetchMethod: resource.DefaultClient}),
+		WithHeadless(&mockUrlFetcher{fetchMethod: resource.HeadlessChromium}),
+	)
 	tests := []struct {
 		name         string
 		url          string
@@ -204,7 +232,10 @@ func TestSingleHandler(t *testing.T) {
 }
 
 func TestDeleteHandler(t *testing.T) {
-	ss := &scrapeServer{urlFetcher: &mockUrlFetcher{}}
+	ss := MustScrapeServer(
+		context.Background(),
+		WithURLFetcher(&mockUrlFetcher{}),
+	)
 	tests := []struct {
 		name           string
 		body           string

@@ -60,7 +60,7 @@ func makeFetcher(dbPath string, ctx context.Context) (*StorageBackedFetcher, err
 	topts := *trafilatura.DefaultOptions
 	topts.Transport = t
 
-	fetcher, err := NewStorageBackedFetcher(
+	fetcher := NewStorageBackedFetcher(
 		trafilatura.Factory(topts),
 		sqlite.Factory(dbPath),
 	)

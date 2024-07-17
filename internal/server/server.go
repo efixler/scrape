@@ -1,41 +1,31 @@
 package server
 
 import (
-	"bytes"
 	"context"
-	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"log/slog"
 	"net/http"
 	nurl "net/url"
-	"time"
 
-	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/auth"
-	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/webutil/jsonarray"
 )
 
 func WithURLFetcher(f fetch.URLFetcher) option {
 	return func(s *scrapeServer) error {
+		if f == nil {
+			return errors.New("nil fetcher provided")
+		}
 		if err := f.Open(s.ctx); err != nil {
-			return nil
+			return err
 		}
 		s.urlFetcher = f
-		return nil
-	}
-}
-
-func WithAuthorization(key auth.HMACBase64Key) option {
-	return func(s *scrapeServer) error {
-		s.SigningKey = key
 		return nil
 	}
 }
@@ -50,10 +40,42 @@ func WithHeadless(hf fetch.URLFetcher) option {
 	}
 }
 
+func WithFeedFetcher(ff fetch.FeedFetcher) option {
+	return func(s *scrapeServer) error {
+		if ff == nil {
+			return errors.New("nil feed fetcher provided")
+		}
+		if err := ff.Open(s.ctx); err != nil {
+			return err
+		}
+		s.feedFetcher = ff
+		return nil
+	}
+}
+
+func WithAuthorizationIfKey(key auth.HMACBase64Key) option {
+	return func(s *scrapeServer) error {
+		if len(key) > 0 {
+			s.signingKey = key
+		}
+		return nil
+	}
+}
+
 type option func(*scrapeServer) error
 
-func NewScrapeServerConfig(ctx context.Context, opts ...option) (*scrapeServer, error) {
-	ss := &scrapeServer{}
+func MustScrapeServer(ctx context.Context, opts ...option) *scrapeServer {
+	ss, err := NewScrapeServer(ctx, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return ss
+}
+
+// When the context passed here is cancelled, the associated fetcher will
+// close and release any resources they have open.
+func NewScrapeServer(ctx context.Context, opts ...option) (*scrapeServer, error) {
+	ss := &scrapeServer{ctx: ctx}
 	for _, opt := range opts {
 		err := opt(ss)
 		if err != nil {
@@ -63,10 +85,12 @@ func NewScrapeServerConfig(ctx context.Context, opts ...option) (*scrapeServer, 
 	if ss.urlFetcher == nil {
 		return nil, errors.New("no URL fetcher provided")
 	}
-	ss.feedFetcher = feed.NewFeedFetcher(feed.DefaultOptions)
-	err := ss.feedFetcher.Open(ctx)
-	if err != nil {
-		return nil, err
+	if ss.feedFetcher == nil {
+		ss.feedFetcher = feed.NewFeedFetcher(feed.DefaultOptions)
+		err := ss.feedFetcher.Open(ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return ss, nil
 }
@@ -79,99 +103,58 @@ type scrapeServer struct {
 	urlFetcher      fetch.URLFetcher
 	headlessFetcher fetch.URLFetcher
 	feedFetcher     fetch.FeedFetcher
-	SigningKey      auth.HMACBase64Key
+	signingKey      auth.HMACBase64Key
 }
 
 // When the context passed here is cancelled, the associated fetcher will
 // close and release any resources they have open.
-func NewScrapeServer(
-	ctx context.Context,
-	dbh *database.DBHandle,
-	directFetcher fetch.URLFetcher,
-	headlessFetcher fetch.URLFetcher,
-) (*scrapeServer, error) {
-	urlFetcher, err := internal.NewStorageBackedFetcher(
-		directFetcher,
-		storage.NewURLDataStore(dbh),
-	)
-	if err != nil {
-		return nil, err
-	}
-	feedFetcher := feed.NewFeedFetcher(feed.DefaultOptions)
-	handler := &scrapeServer{
-		urlFetcher:      urlFetcher,
-		feedFetcher:     feedFetcher,
-		headlessFetcher: headlessFetcher,
-	}
-	err = handler.urlFetcher.Open(ctx)
-	if err != nil {
-		return nil, err
-	}
+// func NewScrapeServer(
+// 	ctx context.Context,
+// 	dbh *database.DBHandle,
+// 	directFetcher fetch.URLFetcher,
+// 	headlessFetcher fetch.URLFetcher,
+// ) (*scrapeServer, error) {
+// 	urlFetcher, err := internal.NewStorageBackedFetcher(
+// 		directFetcher,
+// 		storage.NewURLDataStore(dbh),
+// 	)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	feedFetcher := feed.NewFeedFetcher(feed.DefaultOptions)
+// 	handler := &scrapeServer{
+// 		urlFetcher:      urlFetcher,
+// 		feedFetcher:     feedFetcher,
+// 		headlessFetcher: headlessFetcher,
+// 	}
+// 	err = handler.urlFetcher.Open(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	err = feedFetcher.Open(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return handler, nil
+// 	err = feedFetcher.Open(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	return handler, nil
+// }
+
+func (ss scrapeServer) SigningKey() auth.HMACBase64Key {
+	return ss.signingKey
+}
+
+func (ss scrapeServer) AuthEnabled() bool {
+	return len(ss.signingKey) > 0
 }
 
 type claimsKey struct{}
 
 // Prepend the authorization checker to the list of passed middleware if authorization is enabled.
 func (ss scrapeServer) withAuthIfEnabled(ms ...middleware) []middleware {
-	if len(ss.SigningKey) > 0 {
-		ms = append([]middleware{auth.JWTAuthMiddleware(ss.SigningKey, claimsKey{})}, ms...)
+	if len(ss.signingKey) > 0 {
+		ms = append([]middleware{auth.JWTAuthMiddleware(ss.signingKey, claimsKey{})}, ms...)
 	}
 	return ms
-}
-
-//go:embed templates/index.html
-var home embed.FS
-
-func (h scrapeServer) mustHomeTemplate() *template.Template {
-	tmpl := template.New("home")
-	var authTokenF = func() string { return "" }
-	var authEnabledF = func() bool { return len(h.SigningKey) > 0 }
-	if authEnabledF() {
-		authTokenF = func() string {
-			c, err := auth.NewClaims(
-				auth.WithSubject("home"),
-				auth.ExpiresIn(60*time.Minute),
-			)
-			if err != nil {
-				slog.Error("Error creating claims for home view", "error", err)
-				return ""
-			}
-			s, err := c.Sign(h.SigningKey)
-			if err != nil {
-				slog.Error("Error signing claims for home view", "error", err)
-				return ""
-			}
-			return s
-		}
-	}
-	funcMap := template.FuncMap{
-		"AuthToken":   authTokenF,
-		"AuthEnabled": authEnabledF,
-	}
-	tmpl = tmpl.Funcs(funcMap)
-	homeSource, _ := home.ReadFile("templates/index.html")
-	tmpl = template.Must(tmpl.Parse(string(homeSource)))
-	return tmpl
-}
-
-func (h scrapeServer) homeHandler() http.HandlerFunc {
-	tmpl := h.mustHomeTemplate()
-	return func(w http.ResponseWriter, r *http.Request) {
-		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, nil); err != nil {
-			http.Error(w, "Error rendering home page", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write(buf.Bytes())
-	}
 }
 
 func (ss *scrapeServer) singleHandler() http.HandlerFunc {

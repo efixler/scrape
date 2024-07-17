@@ -1,14 +1,11 @@
 package server
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/efixler/scrape/database"
-	"github.com/efixler/scrape/database/sqlite"
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/auth"
 )
@@ -47,7 +44,6 @@ func TestWellknown(t *testing.T) {
 
 func TestExtractErrors(t *testing.T) {
 	t.Parallel()
-	var dbh = database.New(sqlite.MustNew(sqlite.InMemoryDB()))
 	type data struct {
 		url            string
 		expectedStatus int
@@ -60,12 +56,11 @@ func TestExtractErrors(t *testing.T) {
 		{url: "?url=http://[::1", expectedStatus: 400},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	ss, err := NewScrapeServer(ctx, dbh, trafilatura.MustNew(nil), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ss := MustScrapeServer(
+		context.Background(),
+		WithURLFetcher(trafilatura.MustNew(nil)),
+	)
+
 	mux, err := InitMux(ss, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -86,7 +81,8 @@ func TestExtractErrors(t *testing.T) {
 	}
 }
 
-func TestHomeHandler(t *testing.T) {
+// HomeHander is open by intent
+func TestHomeHandlerAuth(t *testing.T) {
 	tests := []struct {
 		name           string
 		key            auth.HMACBase64Key
@@ -104,65 +100,17 @@ func TestHomeHandler(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		ss := &scrapeServer{SigningKey: test.key}
+		ss := MustScrapeServer(
+			context.Background(),
+			WithURLFetcher(&mockUrlFetcher{}),
+			WithAuthorizationIfKey(test.key),
+		)
 		req := httptest.NewRequest("GET", "http://foo.bar/", nil)
 		w := httptest.NewRecorder()
-		ss.homeHandler()(w, req)
+		homeHandler(ss)(w, req)
 		resp := w.Result()
 		if resp.StatusCode != test.expectedResult {
 			t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
-		}
-	}
-}
-
-func TestMustTemplate(t *testing.T) {
-	tests := []struct {
-		name        string
-		key         auth.HMACBase64Key
-		expectToken bool
-	}{
-		{
-			name:        "with key",
-			key:         auth.MustNewHS256SigningKey(),
-			expectToken: true,
-		},
-		{
-			name:        "no key",
-			key:         nil,
-			expectToken: false,
-		},
-		{
-			name:        "empty key",
-			key:         auth.HMACBase64Key([]byte{}),
-			expectToken: false,
-		},
-	}
-	for _, test := range tests {
-		ss := &scrapeServer{SigningKey: test.key}
-		tmpl := ss.mustHomeTemplate()
-		tmpl, err := tmpl.Parse("{{AuthToken}}")
-		if err != nil {
-			t.Fatalf("[%s] Error parsing template: %s", test.name, err)
-		}
-		var buf bytes.Buffer
-		err = tmpl.Execute(&buf, nil)
-		if err != nil {
-			t.Fatalf("[%s] Error executing template: %s", test.name, err)
-		}
-		output := buf.String()
-		if !test.expectToken && output != "" {
-			t.Fatalf("[%s] Expected empty output, got %s", test.name, output)
-		}
-		if test.expectToken {
-			switch output {
-			case "":
-				t.Fatalf("[%s] Expected non-empty token, got empty", test.name)
-			default:
-				_, err := auth.VerifyToken(test.key, output)
-				if err != nil {
-					t.Fatalf("[%s] Error verifying token: %s", test.name, err)
-				}
-			}
 		}
 	}
 }
@@ -174,7 +122,11 @@ func TestMustTemplate(t *testing.T) {
 // a request body - the request should get rejected before that would get
 // evaluated.
 func TestAPIRoutesAreProtected(t *testing.T) {
-	ss := &scrapeServer{SigningKey: auth.MustNewHS256SigningKey()}
+	ss := MustScrapeServer(
+		context.Background(),
+		WithURLFetcher(&mockUrlFetcher{}),
+		WithAuthorizationIfKey(auth.MustNewHS256SigningKey()),
+	)
 	tests := []struct {
 		name    string
 		method  string
