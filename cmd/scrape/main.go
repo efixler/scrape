@@ -185,13 +185,11 @@ func initFetcher(dbh *database.DBHandle) (*internal.StorageBackedFetcher, error)
 			fetch.WithUserAgent(userAgent.Get().String()),
 		)
 	}
-	fetcher, err := internal.NewStorageBackedFetcher(
+	fetcher := internal.NewStorageBackedFetcher(
 		trafilatura.MustNew(client),
 		storage.NewURLDataStore(dbh),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("error creating storage backed fetcher: %s", err)
-	}
+
 	err = fetcher.Open(dbh.Ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error opening storage backed fetcher: %s", err)

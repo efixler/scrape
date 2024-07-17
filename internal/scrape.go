@@ -28,12 +28,12 @@ type StorageBackedFetcher struct {
 func NewStorageBackedFetcher(
 	fetcher fetch.URLFetcher,
 	storage store.URLDataStore,
-) (*StorageBackedFetcher, error) {
+) *StorageBackedFetcher {
 	return &StorageBackedFetcher{
 		Fetcher: fetcher,
 		Storage: storage,
 		saving:  new(sync.WaitGroup),
-	}, nil
+	}
 }
 
 // The context passed to Open() will be passed on to child components

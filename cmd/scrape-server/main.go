@@ -19,10 +19,12 @@ import (
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/ua"
 	"github.com/efixler/webutil/graceful"
@@ -50,23 +52,26 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	dbh := dbFlags.MustDatabase()
 	dbFlags = nil
-	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
+	directClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
 	var headlessFetcher fetch.URLFetcher = nil
 	if headlessEnabled.Get() {
 		headlessClient := headless.MustChromeClient(ctx, userAgent.Get().String(), 6)
 		headlessFetcher = trafilatura.MustNew(headlessClient)
 	}
 
-	// TODO: Implement options pattern for NewScrapeServer
-	ss, _ := server.NewScrapeServer(
+	ss := server.MustScrapeServer(
 		ctx,
-		dbh,
-		trafilatura.MustNew(normalClient),
-		headlessFetcher,
+		server.WithURLFetcher(
+			internal.NewStorageBackedFetcher(
+				trafilatura.MustNew(directClient),
+				storage.NewURLDataStore(dbh),
+			),
+		),
+		server.WithHeadlessIf(headlessFetcher),
+		server.WithAuthorizationIf(*signingKey.Get()),
 	)
 
-	if sk := *signingKey.Get(); len(sk) > 0 {
-		ss.SigningKey = sk
+	if ss.AuthEnabled() {
 		slog.Info("scrape-server authorization via JWT is enabled")
 	} else {
 		slog.Info("scrape-server authorization is disabled, running in open access mode")
