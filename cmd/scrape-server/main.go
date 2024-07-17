@@ -67,8 +67,8 @@ func main() {
 				storage.NewURLDataStore(dbh),
 			),
 		),
-		server.WithHeadless(headlessFetcher),
-		server.WithAuthorizationIfKey(*signingKey.Get()),
+		server.WithHeadlessIf(headlessFetcher),
+		server.WithAuthorizationIf(*signingKey.Get()),
 	)
 
 	if ss.AuthEnabled() {

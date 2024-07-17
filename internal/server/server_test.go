@@ -179,7 +179,7 @@ func TestSingleHandler(t *testing.T) {
 	ss := MustScrapeServer(
 		context.Background(),
 		WithURLFetcher(&mockUrlFetcher{fetchMethod: resource.DefaultClient}),
-		WithHeadless(&mockUrlFetcher{fetchMethod: resource.HeadlessChromium}),
+		WithHeadlessIf(&mockUrlFetcher{fetchMethod: resource.HeadlessChromium}),
 	)
 	tests := []struct {
 		name         string

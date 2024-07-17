@@ -30,8 +30,11 @@ func WithURLFetcher(f fetch.URLFetcher) option {
 	}
 }
 
-func WithHeadless(hf fetch.URLFetcher) option {
+func WithHeadlessIf(hf fetch.URLFetcher) option {
 	return func(s *scrapeServer) error {
+		if hf == nil {
+			return nil
+		}
 		if err := hf.Open(s.ctx); err != nil {
 			return err
 		}
@@ -53,7 +56,7 @@ func WithFeedFetcher(ff fetch.FeedFetcher) option {
 	}
 }
 
-func WithAuthorizationIfKey(key auth.HMACBase64Key) option {
+func WithAuthorizationIf(key auth.HMACBase64Key) option {
 	return func(s *scrapeServer) error {
 		if len(key) > 0 {
 			s.signingKey = key
@@ -105,39 +108,6 @@ type scrapeServer struct {
 	feedFetcher     fetch.FeedFetcher
 	signingKey      auth.HMACBase64Key
 }
-
-// When the context passed here is cancelled, the associated fetcher will
-// close and release any resources they have open.
-// func NewScrapeServer(
-// 	ctx context.Context,
-// 	dbh *database.DBHandle,
-// 	directFetcher fetch.URLFetcher,
-// 	headlessFetcher fetch.URLFetcher,
-// ) (*scrapeServer, error) {
-// 	urlFetcher, err := internal.NewStorageBackedFetcher(
-// 		directFetcher,
-// 		storage.NewURLDataStore(dbh),
-// 	)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	feedFetcher := feed.NewFeedFetcher(feed.DefaultOptions)
-// 	handler := &scrapeServer{
-// 		urlFetcher:      urlFetcher,
-// 		feedFetcher:     feedFetcher,
-// 		headlessFetcher: headlessFetcher,
-// 	}
-// 	err = handler.urlFetcher.Open(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	err = feedFetcher.Open(ctx)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return handler, nil
-// }
 
 func (ss scrapeServer) SigningKey() auth.HMACBase64Key {
 	return ss.signingKey

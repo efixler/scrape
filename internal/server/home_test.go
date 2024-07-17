@@ -34,7 +34,7 @@ func TestMustTemplate(t *testing.T) {
 		ss := MustScrapeServer(
 			context.Background(),
 			WithURLFetcher(&mockUrlFetcher{}),
-			WithAuthorizationIfKey(test.key),
+			WithAuthorizationIf(test.key),
 		)
 		tmpl := mustHomeTemplate(ss)
 		tmpl, err := tmpl.Parse("{{AuthToken}}")

@@ -103,7 +103,7 @@ func TestHomeHandlerAuth(t *testing.T) {
 		ss := MustScrapeServer(
 			context.Background(),
 			WithURLFetcher(&mockUrlFetcher{}),
-			WithAuthorizationIfKey(test.key),
+			WithAuthorizationIf(test.key),
 		)
 		req := httptest.NewRequest("GET", "http://foo.bar/", nil)
 		w := httptest.NewRecorder()
@@ -125,7 +125,7 @@ func TestAPIRoutesAreProtected(t *testing.T) {
 	ss := MustScrapeServer(
 		context.Background(),
 		WithURLFetcher(&mockUrlFetcher{}),
-		WithAuthorizationIfKey(auth.MustNewHS256SigningKey()),
+		WithAuthorizationIf(auth.MustNewHS256SigningKey()),
 	)
 	tests := []struct {
 		name    string
