@@ -15,7 +15,7 @@ func TestWellknown(t *testing.T) {
 	//ctx, cancel := context.WithCancel(context.Background())
 	//defer cancel()
 
-	mux, err := InitMux(&scrapeServer{}, nil)
+	mux, err := InitMux(&scrapeServer{}, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestExtractErrors(t *testing.T) {
 		WithURLFetcher(trafilatura.MustNew(nil)),
 	)
 
-	mux, err := InitMux(ss, nil)
+	mux, err := InitMux(ss, nil, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,12 +105,14 @@ func TestHomeHandlerAuth(t *testing.T) {
 			WithURLFetcher(&mockUrlFetcher{}),
 			WithAuthorizationIf(test.key),
 		)
-		req := httptest.NewRequest("GET", "http://foo.bar/", nil)
-		w := httptest.NewRecorder()
-		homeHandler(ss)(w, req)
-		resp := w.Result()
-		if resp.StatusCode != test.expectedResult {
-			t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
+		for _, openHome := range []bool{true, false} {
+			req := httptest.NewRequest("GET", "http://foo.bar/", nil)
+			w := httptest.NewRecorder()
+			homeHandler(ss, openHome)(w, req)
+			resp := w.Result()
+			if resp.StatusCode != test.expectedResult {
+				t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
+			}
 		}
 	}
 }
