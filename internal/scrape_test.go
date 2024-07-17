@@ -43,10 +43,8 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 	dbh := database.New(sqlite.MustNew(sqlite.InMemoryDB()))
 	storage := storage.NewURLDataStore(dbh)
 
-	fetcher, err := NewStorageBackedFetcher(tf, storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	fetcher := NewStorageBackedFetcher(tf, storage)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err = fetcher.Open(ctx)
@@ -168,10 +166,8 @@ func TestFetchUnstored(t *testing.T) {
 	}
 	dbh := database.New(sqlite.MustNew(sqlite.InMemoryDB()))
 	storage := storage.NewURLDataStore(dbh)
-	fetcher, err := NewStorageBackedFetcher(tf, storage)
-	if err != nil {
-		t.Fatal(err)
-	}
+	fetcher := NewStorageBackedFetcher(tf, storage)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err = fetcher.Open(ctx)
