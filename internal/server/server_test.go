@@ -106,7 +106,7 @@ func TestBatchReponseIsValid(t *testing.T) {
 		WithURLFetcher(fetcher),
 	)
 
-	mux, err := InitMux(ss, nil, false)
+	mux, err := InitMux(ss, nil, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
