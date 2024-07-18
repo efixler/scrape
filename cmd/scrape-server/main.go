@@ -78,13 +78,15 @@ func main() {
 		slog.Info("scrape-server authorization is disabled, running in open access mode")
 	}
 
-	mux, err := server.InitMux(ss, dbh, publicHome.Get())
+	mux, err := server.InitMux(
+		ss,
+		dbh,
+		publicHome.Get(),
+		profile.Get(),
+	)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
-	}
-	if profile.Get() {
-		server.EnableProfiling(mux)
 	}
 	s := &http.Server{
 		Addr:           fmt.Sprintf(":%d", port.Get()),

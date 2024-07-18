@@ -15,7 +15,7 @@ func TestWellknown(t *testing.T) {
 	//ctx, cancel := context.WithCancel(context.Background())
 	//defer cancel()
 
-	mux, err := InitMux(&scrapeServer{}, nil, false)
+	mux, err := InitMux(&scrapeServer{}, nil, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestExtractErrors(t *testing.T) {
 		WithURLFetcher(trafilatura.MustNew(nil)),
 	)
 
-	mux, err := InitMux(ss, nil, false)
+	mux, err := InitMux(ss, nil, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
