@@ -280,7 +280,7 @@
         },
         async clearToken() {
           localStorage.removeItem('scrapeToken');
-          document.getElementById('token').value = '';
+          this.authToken = '';
         },
       }
     }
