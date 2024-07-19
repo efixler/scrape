@@ -87,7 +87,7 @@
       gap: 0.3rem;
     }
 
-    .token-header a {
+    .token-link {
       font-size: 1.0rem;
       font-family: Verdana, Arial, Helvetica, sans-serif;
       text-decoration: none;
@@ -101,6 +101,12 @@
       font-weight: bold;
       line-height: 0.8rem;
       cursor: pointer;
+    }
+
+    .hovered-link,
+    .token-toggle:hover,
+    .token-link:hover {
+      color: royalblue;
     }
 
     .token-controls {
@@ -172,11 +178,13 @@
     <div class="token-container" x-data="tokenHandler()">
       <div class="token-header">
         <!-- TODO: Convert <a> to button, link hover color/state of +/- and button -->
-        <span @click="isCollapsed = !isCollapsed" class="token-toggle">
+        <span class="token-toggle" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
+          @mouseleave="controlHovered = false" @click="isCollapsed = !isCollapsed">
           <span x-show="isCollapsed">&#x002B;</span>
           <span x-show="!isCollapsed">&#x2212;</span>
         </span>
-        <a href="#" class="toggle-link" @click.prevent="isCollapsed = !isCollapsed">Enter Token</a>
+        <a href="#" class="token-link" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
+          @mouseleave="controlHovered = false" @click.prevent="isCollapsed = !isCollapsed">Enter Token</a>
       </div>
       <div x-show="!isCollapsed" class="token-controls" x-transition.scale>
         <div class="token-entry">
@@ -238,6 +246,7 @@
     function tokenHandler() {
       return {
         isCollapsed: true,
+        controlHovered: false,
         authToken: localStorage.getItem('scrapeToken') || '{{AuthToken}}',
         async saveToken() {
           try {
