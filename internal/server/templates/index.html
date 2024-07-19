@@ -33,6 +33,7 @@
       padding-bottom: 0.1rem;
     }
 
+
     .page-container {
       display: flex;
       flex-direction: column;
@@ -82,9 +83,16 @@
 
     .token-header {
       display: flex;
-      justify-content: start;
+      justify-content: space-between;
       align-items: center;
       gap: 0.3rem;
+    }
+
+    .inline-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      line-height: 0.8rem;
     }
 
     .token-link {
@@ -92,15 +100,21 @@
       font-family: Verdana, Arial, Helvetica, sans-serif;
       text-decoration: none;
       margin-bottom: 1px;
-      line-height: 0.8rem;
       color: #000000;
     }
 
     .token-toggle {
       font-size: 1.6rem;
       font-weight: bold;
-      line-height: 0.8rem;
       cursor: pointer;
+    }
+
+    .token-status {
+      font-family: "Courier New", monospace;
+      font-size: 2.0rem;
+      transform: translateY(0.1rem);
+      line-height: 0.8rem;
+      color: seagreen;
     }
 
     .hovered-link,
@@ -177,15 +191,20 @@
     <!-- {{if ShowTokenWidget}}  -->
     <div class="token-container" x-data="tokenHandler()">
       <div class="token-header">
-        <span class="token-toggle" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
-          @mouseleave="controlHovered = false" @click="isCollapsed = !isCollapsed">
-          <span x-show="isCollapsed">&#x002B;</span>
-          <span x-show="!isCollapsed">&#x2212;</span>
+        <span class="inline-group">
+          <span class="token-toggle" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
+            @mouseleave="controlHovered = false" @click="isCollapsed = !isCollapsed">
+            <span x-show="isCollapsed">&#x002B;</span>
+            <span x-show="!isCollapsed">&#x2212;</span>
+          </span>
+          <!-- TODO: Convert <a> to button -->
+          <a href="#" class="token-link" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
+            @mouseleave="controlHovered = false" @click.prevent="isCollapsed = !isCollapsed">Enter Token</a>
         </span>
-        <!-- TODO: Convert <a> to button -->
-        <a href="#" class="token-link" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
-          @mouseleave="controlHovered = false" @click.prevent="isCollapsed = !isCollapsed">Enter Token</a>
+        <!-- TODO: Actually check token status, display expiration time if application -->
+        <span x-show="!!authToken" class="token-status">&#10003;</span>
       </div>
+
       <div x-init="isCollapsed = !!authToken" x-show="!isCollapsed" class="token-controls" x-transition.scale>
         <div class="token-entry">
           <textarea x-model="authToken" class="token-textarea" id="token" rows="2"
