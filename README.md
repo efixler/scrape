@@ -245,7 +245,7 @@ Command line options:
 
 ### Web Interface
 
-The root path of the server (`/`) is browsable and provides a simple url to test URLs and results.
+The root path of the server (`/`) is browsable and provides a simple way to test URLs and results.
 
 ![Alt text](internal/server/assets/test-console-with-token.png)
 
