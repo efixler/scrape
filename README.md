@@ -229,6 +229,9 @@ Command line options:
   -profile
         Enable profiling at /debug/pprof
         Environment: SCRAPE_PROFILE
+  -public-home
+        Enable the homepage without requiring a token (when auth is enabled)
+        Environment: SCRAPE_PUBLIC_HOME
   -signing-key value
         Base64 encoded HS256 key to verify JWT tokens. Required for JWT auth, and enables JWT auth if set.
         Environment: SCRAPE_SIGNING_KEY
@@ -244,10 +247,11 @@ Command line options:
 
 The root path of the server (`/`) is browsable and provides a simple url to test URLs and results.
 
-![Alt text](internal/server/assets/webui-control.png)
+![Alt text](internal/server/assets/test-console-with-token.png)
 
-The pulldown on the right lets you select between loading results for a page url or for a feed, or scraping a page
-using a headless browser instead of a direct http client.
+The select on the left lets you select between loading results for a page url or for a feed, or scraping a page using the headless browser instead of a direct http client.
+
+Token entry is shown here when the server is running with token authorization. For instructions on setting up authorization, [see below](#authorization)
 
 ### API 
 
@@ -420,7 +424,7 @@ When enabled, `scrape` will check the following qualities of the token, and reje
 3. The token's issuer is `scrape`
 4. The token is not expired
 
-Healthcheck paths don't require authorization, and neither does the web interface at the root URL. (The test console uses a short-lived key to authorize requests -- it _is_ possible to lift a key from here and use it for a little while; trying to strike a balance here between securing access and making exercising the server easy. You will also need to reload the test console periodically or calls from here will 401 as well)
+Healthcheck paths don't require authorization. The test console at the root url normally follows the server's authorization configuration, bit it can be configured to allow open access while endpoints require tokens via the `-public-home` flag. When this flag is enabled, the server delivers short-lived tokens to the web client when loading the page. As such, this setting is primarily intended for convenience in development environments.
 
 ## Database Options
 
