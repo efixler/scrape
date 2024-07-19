@@ -109,6 +109,10 @@ func NewHS256SigningKey() (HMACBase64Key, error) {
 
 type HMACBase64Key []byte
 
+func (b HMACBase64Key) String() string {
+	return base64.StdEncoding.EncodeToString([]byte(b))
+}
+
 func (b HMACBase64Key) MarshalText() ([]byte, error) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(b))
 	return []byte(encoded), nil

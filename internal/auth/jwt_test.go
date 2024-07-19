@@ -113,6 +113,9 @@ func TestHMACBase64Key(t *testing.T) {
 		if !slices.Equal(k, kd) {
 			t.Errorf("[%s] Round-trip mismatch %q, got %q", tt.name, string(k), string(kd))
 		}
+		if k.String() != string(encoded) {
+			t.Errorf("[%s] String/MarshalText mismatch string: %q, marshaled: %q", tt.name, string(encoded), k.String())
+		}
 	}
 }
 
