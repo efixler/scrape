@@ -1,3 +1,3 @@
-const COMMIT_HASH = '91e804e';
+const COMMIT_HASH = 'c257faa';
 const TAG = 'v0.8.4';
 
