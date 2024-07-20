@@ -1,4 +1,4 @@
-const COMMIT_HASH = '91e804e';
+const COMMIT_HASH = 'a3c2aa0';
 const TAG = 'v0.8.4';
 
 console.log(`Commit Hash: ${COMMIT_HASH}`);
