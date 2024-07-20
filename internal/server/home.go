@@ -11,7 +11,7 @@ import (
 	"github.com/efixler/scrape/internal/auth"
 )
 
-//go:embed templates/index.html
+//go:embed htdocs/index.html
 var home embed.FS
 
 // mustHomeTemplate creates a template for the home page.
@@ -50,7 +50,7 @@ func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 		"ShowTokenWidget": showTokenWidget,
 	}
 	tmpl = tmpl.Funcs(funcMap)
-	homeSource, _ := home.ReadFile("templates/index.html")
+	homeSource, _ := home.ReadFile("htdocs/index.html")
 	tmpl = template.Must(tmpl.Parse(string(homeSource)))
 	return tmpl
 }

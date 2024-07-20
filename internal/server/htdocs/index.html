@@ -6,7 +6,7 @@
   <title>scrape</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="/assets/js/version.js"></script>
+  <script src="assets/js/version.js"></script>
   <style>
     body,
     html {
@@ -45,8 +45,16 @@
 
     .logotype {
       font-family: Monaco, monospace;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       font-weight: lighter;
+    }
+
+    .linkbar {
+      display: flex;
+      justify-content: end;
+      align-items: center;
+      gap: 0.6rem;
+      padding-right: 0.1rem;
     }
 
     .version-info {
@@ -190,7 +198,9 @@
         <span class="logotype">scrape</span>
         <span x-data="{ version: typeof TAG !== 'undefined' ? TAG : '' }" x-text="version" class="version-info"></span>
       </span>
-      <span class="logotype"><a href="/.well-known/health">health</a></span>
+      <span class="linkbar logotype">
+        <a href="/.well-known/health">health</a>
+      </span>
     </div>
     <div class="controls-container">
       <form x-data="formHandler" @submit.prevent="handleSubmit">
