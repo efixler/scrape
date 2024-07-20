@@ -1,5 +1,5 @@
 #!/bin/sh
-# pre-commit hook to add version info to the JavaScript file in assets/js
+# pre-commit hook to add version info to the JavaScript file in htdocs/assets/js
 
 TARGET_FILE="internal/server/htdocs/assets/js/version.js"
 
