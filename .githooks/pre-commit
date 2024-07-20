@@ -1,0 +1,26 @@
+#!/bin/sh
+# pre-commit hook to add version info to the JavaScript file in assets/js
+
+TARGET_FILE="internal/server/htdocs/assets/js/version.js"
+
+# Get the current commit hash
+COMMIT_HASH=$(git rev-parse --short HEAD)
+
+# Get the current tag (if any)
+TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "no-tag")
+
+# Create a temp file
+tmpfile=$(mktemp /tmp/scrape-version-js.XXXXXX)
+
+# Update the JS version file with the commit hash and tag
+awk -v commit_hash="$COMMIT_HASH" -v tag="$TAG" '
+    /const COMMIT_HASH =/ { print "const COMMIT_HASH = \x27" commit_hash "\x27;"; next }
+    /const TAG =/ { print "const TAG = \x27" tag "\x27;"; next }
+    { print }
+' "$TARGET_FILE" > "$tmpfile"
+
+# Move the temporary file to replace the original file
+mv "$tmpfile" "$TARGET_FILE"
+
+# Add updated files to the commit
+git add $TARGET_FILE
