@@ -9,8 +9,24 @@ COMMIT_HASH=$(git rev-parse --short HEAD)
 # Get the current tag (if any)
 TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "no-tag")
 
-sed -i '' -E "s|^[[:space:]]*Commit[[:space:]]*=.*|    Commit = \"${COMMIT_HASH}\"|" "$TARGET_FILE"
-sed -i '' -E "s|^[[:space:]]*Tag[[:space:]]*=.*|    Tag = \"${TAG}\"|" "$TARGET_FILE"
+# Get the repository URL
+REPO_URL=$(git config --get remote.origin.url)
+
+# Format the repository URL for browser navigation
+if echo "$REPO_URL" | grep -q "git@"; then
+    # SSH URL case
+    REPO_URL=$(echo "$REPO_URL" | sed 's|git@github.com:|https://github.com/|' | sed 's|\.git$||')
+else
+    # HTTPS URL case
+    REPO_URL=$(echo "$REPO_URL" | sed 's|\.git$||')
+fi
+
+sed -i '' -E "s|^[[:space:]]*Commit[[:space:]]*=.*|     Commit = \"${COMMIT_HASH}\"|" "$TARGET_FILE"
+sed -i '' -E "s|^[[:space:]]*Tag[[:space:]]*=.*|        Tag = \"${TAG}\"|" "$TARGET_FILE"
+sed -i '' -E "s|^[[:space:]]*RepoURL[[:space:]]*=.*|    RepoURL = \"${REPO_URL}\"|" "$TARGET_FILE"
+
+gofmt -w "$TARGET_FILE"
+
 
 # Add updated files to the commit
 git add $TARGET_FILE

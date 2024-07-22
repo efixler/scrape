@@ -49,8 +49,6 @@ func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 	funcMap := template.FuncMap{
 		"AuthToken":       authTokenF,
 		"ShowTokenWidget": showTokenWidget,
-		"Commit":          func() string { return version.Commit },
-		"Tag":             func() string { return version.Tag },
 	}
 	tmpl = tmpl.Funcs(funcMap)
 	homeSource, _ := home.ReadFile("htdocs/index.html")
@@ -60,9 +58,19 @@ func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 
 func homeHandler(ss *scrapeServer, openHome bool) http.HandlerFunc {
 	tmpl := mustHomeTemplate(ss, openHome)
+	data := struct {
+		Commit  string
+		RepoURL string
+		Tag     string
+	}{
+		Commit:  version.Commit,
+		RepoURL: version.RepoURL,
+		Tag:     version.Tag,
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, nil); err != nil {
+		if err := tmpl.Execute(&buf, data); err != nil {
 			http.Error(w, "Error rendering home page", http.StatusInternalServerError)
 			return
 		}
