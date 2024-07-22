@@ -69,7 +69,6 @@ func main() {
 		slog.Error("Error initializing fetcher", "err", err)
 		os.Exit(1)
 	}
-	defer fetcher.Close()
 	args := getArgs()
 	if len(args) == 0 {
 		slog.Error("Error: At least one URL is required\n\n")
@@ -189,11 +188,6 @@ func initFetcher(dbh *database.DBHandle) (*internal.StorageBackedFetcher, error)
 		trafilatura.MustNew(client),
 		storage.NewURLDataStore(dbh),
 	)
-
-	err = fetcher.Open(dbh.Ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error opening storage backed fetcher: %s", err)
-	}
 	return fetcher, nil
 }
 

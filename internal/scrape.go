@@ -36,19 +36,15 @@ func NewStorageBackedFetcher(
 	}
 }
 
-// The context passed to Open() will be passed on to child components
-// so that they can hook into the context directly, specifically to
-// close and release resources on cancellation.
-func (f StorageBackedFetcher) Open(ctx context.Context) error {
-	err := f.Storage.Open(ctx)
-	if err != nil {
-		return err
-	}
-	context.AfterFunc(ctx, func() {
-		f.Close()
-	})
-	return nil
-}
+// // The context passed to Open() will be passed on to child components
+// // so that they can hook into the context directly, specifically to
+// // close and release resources on cancellation.
+// func (f StorageBackedFetcher) Open(ctx context.Context) error {
+// 	context.AfterFunc(ctx, func() {
+// 		f.Close()
+// 	})
+// 	return nil
+// }
 
 // WithAlternateURLFetcher returns new SBF using the same storage but a different url fetcher.
 // This is to support headless fetching, where we want to use a different underlying http client
@@ -124,10 +120,8 @@ func (f StorageBackedFetcher) Batch(urls []string, options fetch.BatchOptions) <
 	return rchan
 }
 
-// Close() will be invoked when the context sent to Open() is done
-// If that context doesn't get cancelled, Close() must be called to
-// release resources.
-func (f *StorageBackedFetcher) Close() error {
+// Wait() will block on pending saves.
+func (f *StorageBackedFetcher) Wait() error {
 	if f.closed {
 		return nil
 	}
@@ -135,7 +129,6 @@ func (f *StorageBackedFetcher) Close() error {
 		f.closed = true
 	}()
 	f.saving.Wait()
-	f.Storage.Close()
 	return nil
 }
 

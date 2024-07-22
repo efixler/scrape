@@ -49,17 +49,17 @@ func NewURLDataStore(dbh *database.DBHandle) *URLDataStore {
 
 // Open and Close are provided here temporarily for compatibility
 
-func (s *URLDataStore) Open(ctx context.Context) error {
-	err := s.dbh.Open(ctx)
-	if err == database.ErrDatabaseAlreadyOpen {
-		return nil
-	}
-	return err
-}
+// func (s *URLDataStore) Open(ctx context.Context) error {
+// 	err := s.dbh.Open(ctx)
+// 	if err == database.ErrDatabaseAlreadyOpen {
+// 		return nil
+// 	}
+// 	return err
+// }
 
-func (s *URLDataStore) Close() error {
-	return s.dbh.Close()
-}
+// func (s *URLDataStore) Close() error {
+// 	return s.dbh.Close()
+// }
 
 // Save the data for a URL. Will overwrite data where the URL is the same.
 // Save() will use the canonical url of the passed resource both for the key

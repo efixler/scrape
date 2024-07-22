@@ -4,7 +4,6 @@
 package store
 
 import (
-	"context"
 	"errors"
 	nurl "net/url"
 
@@ -22,8 +21,6 @@ var (
 // It add Save() and Delete() methods to the fetch.URLFetcher interface.
 type URLDataStore interface {
 	fetch.URLFetcher
-	Open(context.Context) error
-	Close() error
 	Save(*resource.WebPage) (uint64, error)
 	Delete(*nurl.URL) (bool, error)
 }

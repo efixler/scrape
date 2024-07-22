@@ -17,8 +17,7 @@ func getURLDataStore(t *testing.T) *URLDataStore {
 	engine := getTestDatabaseEngine()
 	db := database.New(engine)
 	urlStore := NewURLDataStore(db)
-	// TODO: material storage should not be opening/closing the database
-	err := urlStore.Open(context.TODO())
+	err := db.Open(context.TODO())
 	if err != nil {
 		t.Fatalf("Error opening database: %v", err)
 	}
@@ -27,7 +26,7 @@ func getURLDataStore(t *testing.T) *URLDataStore {
 		if err := db.MigrateReset(); err != nil {
 			t.Errorf("Error resetting test db: %v", err)
 		}
-		urlStore.Close()
+		db.Close()
 	})
 	if err := db.MigrateUp(); err != nil {
 		t.Fatalf("Error creating test db via migration: %v", err)
