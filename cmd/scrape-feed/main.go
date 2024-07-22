@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -30,10 +29,7 @@ func main() {
 		flags.Usage()
 		os.Exit(1)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	feedFetcher := feed.NewFeedFetcher(feed.DefaultOptions)
-	feedFetcher.Open(ctx)
 	resource, err := feedFetcher.Fetch(feedUrl)
 	if err != nil {
 		slog.Error("Error fetching", "url", feedUrl, "err", err)

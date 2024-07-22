@@ -53,6 +53,11 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	dbh := dbFlags.MustDatabase()
 	dbFlags = nil
+	if err := dbh.Open(ctx); err != nil {
+		slog.Error("scrape-server error opening database", "database", dbh, "error", err)
+		os.Exit(1)
+	}
+
 	directClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
 	var headlessFetcher fetch.URLFetcher = nil
 	if headlessEnabled.Get() {
@@ -60,14 +65,14 @@ func main() {
 		headlessFetcher = trafilatura.MustNew(headlessClient)
 	}
 
+	sbf := internal.NewStorageBackedFetcher(
+		trafilatura.MustNew(directClient),
+		storage.NewURLDataStore(dbh),
+	)
+
 	ss := server.MustScrapeServer(
 		ctx,
-		server.WithURLFetcher(
-			internal.NewStorageBackedFetcher(
-				trafilatura.MustNew(directClient),
-				storage.NewURLDataStore(dbh),
-			),
-		),
+		server.WithURLFetcher(sbf),
 		server.WithHeadlessIf(headlessFetcher),
 		server.WithAuthorizationIf(*signingKey.Get()),
 	)

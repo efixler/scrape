@@ -29,30 +29,26 @@ func NewStorageBackedFetcher(
 	fetcher fetch.URLFetcher,
 	storage store.URLDataStore,
 ) *StorageBackedFetcher {
-	return &StorageBackedFetcher{
+	s := &StorageBackedFetcher{
 		Fetcher: fetcher,
 		Storage: storage,
 		saving:  new(sync.WaitGroup),
 	}
+	s.Storage.Database().AddCloseListener(func() {
+		s.Wait()
+	})
+	return s
 }
 
-// The context passed to Open() will be passed on to child components
-// so that they can hook into the context directly, specifically to
-// close and release resources on cancellation.
-func (f StorageBackedFetcher) Open(ctx context.Context) error {
-	err := f.Fetcher.Open(ctx)
-	if err != nil {
-		return err
-	}
-	err = f.Storage.Open(ctx)
-	if err != nil {
-		return err
-	}
-	context.AfterFunc(ctx, func() {
-		f.Close()
-	})
-	return nil
-}
+// // The context passed to Open() will be passed on to child components
+// // so that they can hook into the context directly, specifically to
+// // close and release resources on cancellation.
+// func (f StorageBackedFetcher) Open(ctx context.Context) error {
+// 	context.AfterFunc(ctx, func() {
+// 		f.Close()
+// 	})
+// 	return nil
+// }
 
 // WithAlternateURLFetcher returns new SBF using the same storage but a different url fetcher.
 // This is to support headless fetching, where we want to use a different underlying http client
@@ -68,9 +64,6 @@ func (f *StorageBackedFetcher) WithAlternateURLFetcher(ctx context.Context, uf f
 		Fetcher: uf,
 		Storage: f.Storage,
 		saving:  f.saving,
-	}
-	if err := clone.Fetcher.Open(ctx); err != nil {
-		return nil, err
 	}
 	// Don't patch in a function to close the context here, because we only really need this to close the DB, which is already
 	// hooked by the parent. We also share the parent's WaitGroup for async saves for this reason.
@@ -131,10 +124,8 @@ func (f StorageBackedFetcher) Batch(urls []string, options fetch.BatchOptions) <
 	return rchan
 }
 
-// Close() will be invoked when the context sent to Open() is done
-// If that context doesn't get cancelled, Close() must be called to
-// release resources.
-func (f *StorageBackedFetcher) Close() error {
+// Wait() will block on pending saves.
+func (f *StorageBackedFetcher) Wait() error {
 	if f.closed {
 		return nil
 	}
@@ -142,8 +133,6 @@ func (f *StorageBackedFetcher) Close() error {
 		f.closed = true
 	}()
 	f.saving.Wait()
-	f.Fetcher.Close()
-	f.Storage.Close()
 	return nil
 }
 

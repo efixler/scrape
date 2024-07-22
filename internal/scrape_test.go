@@ -47,7 +47,7 @@ func TestFetchStoresAndRetrieves(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = fetcher.Open(ctx)
+	err = dbh.Open(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestFetchUnstored(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = fetcher.Open(ctx)
+	err = dbh.Open(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

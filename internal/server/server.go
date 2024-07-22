@@ -22,9 +22,6 @@ func WithURLFetcher(f fetch.URLFetcher) option {
 		if f == nil {
 			return errors.New("nil fetcher provided")
 		}
-		if err := f.Open(s.ctx); err != nil {
-			return err
-		}
 		s.urlFetcher = f
 		return nil
 	}
@@ -35,9 +32,6 @@ func WithHeadlessIf(hf fetch.URLFetcher) option {
 		if hf == nil {
 			return nil
 		}
-		if err := hf.Open(s.ctx); err != nil {
-			return err
-		}
 		s.headlessFetcher = hf
 		return nil
 	}
@@ -47,9 +41,6 @@ func WithFeedFetcher(ff fetch.FeedFetcher) option {
 	return func(s *scrapeServer) error {
 		if ff == nil {
 			return errors.New("nil feed fetcher provided")
-		}
-		if err := ff.Open(s.ctx); err != nil {
-			return err
 		}
 		s.feedFetcher = ff
 		return nil
@@ -90,10 +81,6 @@ func NewScrapeServer(ctx context.Context, opts ...option) (*scrapeServer, error)
 	}
 	if ss.feedFetcher == nil {
 		ss.feedFetcher = feed.NewFeedFetcher(feed.DefaultOptions)
-		err := ss.feedFetcher.Open(ctx)
-		if err != nil {
-			return nil, err
-		}
 	}
 	return ss, nil
 }
@@ -311,7 +298,7 @@ func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
 		return
 	}
-	resource, err := h.feedFetcher.Fetch(req.URL)
+	resource, err := h.feedFetcher.FetchContext(r.Context(), req.URL)
 	if err != nil {
 		var httpErr fetch.HttpError
 		if errors.As(err, &httpErr) {

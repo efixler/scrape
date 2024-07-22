@@ -41,8 +41,9 @@ func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 
 type mockFeedFetcher struct{}
 
-func (m *mockFeedFetcher) Open(ctx context.Context) error { return nil }
-func (m *mockFeedFetcher) Close() error                   { return nil }
+func (m *mockFeedFetcher) FetchContext(ctx context.Context, url *nurl.URL) (*resource.Feed, error) {
+	return m.Fetch(url)
+}
 func (m *mockFeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
 	errCode, atoiErr := strconv.Atoi(strings.TrimPrefix(url.Path, "/"))
 	if errCode != 0 {
