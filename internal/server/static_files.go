@@ -6,11 +6,11 @@ import (
 	"net/http"
 )
 
-//go:embed assets/*
+//go:embed htdocs/assets/*
 var assetsDir embed.FS
 
 func assetsHandler() http.Handler {
-	d, err := fs.Sub(assetsDir, "assets")
+	d, err := fs.Sub(assetsDir, "htdocs/assets")
 	if err != nil {
 		panic(err)
 	}

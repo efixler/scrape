@@ -11,7 +11,7 @@ CONTAINER_REGISTRY ?= docker.io
 
 .DEFAULT_GOAL := build
 
-.PHONY: fmt vet build clean test-mysql
+.PHONY: fmt vet build clean test-mysql setup-githooks help
 
 
 build: vet ## build the binaries, to the build/ folder (default target)
@@ -86,7 +86,9 @@ cognitive: ## run the cognitive complexity checker
 	@echo "Running gocognit..."
 	@gocognit  -ignore "_test|testdata" -top 5 .
 
+setup-githooks: ## setup the git hooks
+	@$(MAKE) -C .githooks
+
 help: ## show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% 0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
 

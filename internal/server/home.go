@@ -9,9 +9,10 @@ import (
 	"time"
 
 	"github.com/efixler/scrape/internal/auth"
+	"github.com/efixler/scrape/internal/server/version"
 )
 
-//go:embed templates/index.html
+//go:embed htdocs/index.html
 var home embed.FS
 
 // mustHomeTemplate creates a template for the home page.
@@ -50,16 +51,26 @@ func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 		"ShowTokenWidget": showTokenWidget,
 	}
 	tmpl = tmpl.Funcs(funcMap)
-	homeSource, _ := home.ReadFile("templates/index.html")
+	homeSource, _ := home.ReadFile("htdocs/index.html")
 	tmpl = template.Must(tmpl.Parse(string(homeSource)))
 	return tmpl
 }
 
 func homeHandler(ss *scrapeServer, openHome bool) http.HandlerFunc {
 	tmpl := mustHomeTemplate(ss, openHome)
+	data := struct {
+		Commit  string
+		RepoURL string
+		Tag     string
+	}{
+		Commit:  version.Commit,
+		RepoURL: version.RepoURL,
+		Tag:     version.Tag,
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		var buf bytes.Buffer
-		if err := tmpl.Execute(&buf, nil); err != nil {
+		if err := tmpl.Execute(&buf, data); err != nil {
 			http.Error(w, "Error rendering home page", http.StatusInternalServerError)
 			return
 		}
