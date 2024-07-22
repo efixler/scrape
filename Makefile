@@ -11,7 +11,7 @@ CONTAINER_REGISTRY ?= docker.io
 
 .DEFAULT_GOAL := build
 
-.PHONY: fmt vet build clean test-mysql
+.PHONY: fmt vet build clean test-mysql setup-githooks help
 
 
 build: vet ## build the binaries, to the build/ folder (default target)
