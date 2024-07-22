@@ -29,11 +29,15 @@ func NewStorageBackedFetcher(
 	fetcher fetch.URLFetcher,
 	storage store.URLDataStore,
 ) *StorageBackedFetcher {
-	return &StorageBackedFetcher{
+	s := &StorageBackedFetcher{
 		Fetcher: fetcher,
 		Storage: storage,
 		saving:  new(sync.WaitGroup),
 	}
+	s.Storage.Database().AddCloseListener(func() {
+		s.Wait()
+	})
+	return s
 }
 
 // // The context passed to Open() will be passed on to child components

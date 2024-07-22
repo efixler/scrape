@@ -7,6 +7,7 @@ import (
 	"errors"
 	nurl "net/url"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
 )
@@ -21,6 +22,7 @@ var (
 // It add Save() and Delete() methods to the fetch.URLFetcher interface.
 type URLDataStore interface {
 	fetch.URLFetcher
+	Database() *database.DBHandle
 	Save(*resource.WebPage) (uint64, error)
 	Delete(*nurl.URL) (bool, error)
 }

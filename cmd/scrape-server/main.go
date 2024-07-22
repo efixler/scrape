@@ -70,7 +70,6 @@ func main() {
 		storage.NewURLDataStore(dbh),
 	)
 
-	dbh.AddCloseListener(func() { sbf.Wait() })
 	ss := server.MustScrapeServer(
 		ctx,
 		server.WithURLFetcher(sbf),
