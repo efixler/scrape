@@ -40,11 +40,7 @@ func NewStorageBackedFetcher(
 // so that they can hook into the context directly, specifically to
 // close and release resources on cancellation.
 func (f StorageBackedFetcher) Open(ctx context.Context) error {
-	err := f.Fetcher.Open(ctx)
-	if err != nil {
-		return err
-	}
-	err = f.Storage.Open(ctx)
+	err := f.Storage.Open(ctx)
 	if err != nil {
 		return err
 	}
@@ -68,9 +64,6 @@ func (f *StorageBackedFetcher) WithAlternateURLFetcher(ctx context.Context, uf f
 		Fetcher: uf,
 		Storage: f.Storage,
 		saving:  f.saving,
-	}
-	if err := clone.Fetcher.Open(ctx); err != nil {
-		return nil, err
 	}
 	// Don't patch in a function to close the context here, because we only really need this to close the DB, which is already
 	// hooked by the parent. We also share the parent's WaitGroup for async saves for this reason.
@@ -142,7 +135,6 @@ func (f *StorageBackedFetcher) Close() error {
 		f.closed = true
 	}()
 	f.saving.Wait()
-	f.Fetcher.Close()
 	f.Storage.Close()
 	return nil
 }

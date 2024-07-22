@@ -32,7 +32,6 @@ type Options struct {
 
 type FeedFetcher struct {
 	parser  *gofeed.Parser
-	ctx     context.Context
 	timeout time.Duration
 }
 
@@ -53,17 +52,13 @@ func NewFeedFetcher(options Options) *FeedFetcher {
 	}
 }
 
-func (f *FeedFetcher) Open(ctx context.Context) error {
-	f.ctx = ctx
-	context.AfterFunc(ctx, func() {
-		f.Close()
-	})
-	return nil
+func (f *FeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), f.timeout)
+	defer cancel()
+	return f.FetchContext(ctx, url)
 }
 
-func (f *FeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
-	ctx, cancel := context.WithTimeout(f.ctx, f.timeout)
-	defer cancel()
+func (f *FeedFetcher) FetchContext(ctx context.Context, url *nurl.URL) (*resource.Feed, error) {
 	feed, err := f.parser.ParseURLWithContext(url.String(), ctx)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -79,8 +74,4 @@ func (f *FeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
 		Feed:         *feed,
 		RequestedURL: url.String(),
 	}, nil
-}
-
-func (f *FeedFetcher) Close() error {
-	return nil
 }

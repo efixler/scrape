@@ -1,7 +1,6 @@
 package feed
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -36,8 +35,6 @@ func TestFetchCancelsOnTimeout(t *testing.T) {
 	options.Timeout = timeout
 	options.Client = client
 	fetcher := NewFeedFetcher(options)
-	fetcher.Open(context.Background())
-	defer fetcher.Close()
 	url, _ := nurl.Parse(ts.URL)
 	_, err := fetcher.Fetch(url)
 	if err == nil {
@@ -65,8 +62,6 @@ func TestFetchReturnsRequestedURL(t *testing.T) {
 	options := DefaultOptions
 	options.Client = client
 	fetcher := NewFeedFetcher(options)
-	fetcher.Open(context.Background())
-	defer fetcher.Close()
 	url, _ := nurl.Parse(ts.URL)
 	feed, err := fetcher.Fetch(url)
 	if err != nil {
