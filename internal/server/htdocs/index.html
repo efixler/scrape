@@ -6,7 +6,7 @@
   <title>scrape</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <script src="assets/js/version.js"></script>
+
   <style>
     body,
     html {
@@ -196,7 +196,7 @@
     <div class="token-header">
       <span>
         <span class="logotype">scrape</span>
-        <span x-data="{ version: typeof TAG !== 'undefined' ? TAG : '' }" x-text="version" class="version-info"></span>
+        <span x-data="{ version: '{{Tag}}' }" x-text="version" class="version-info"></span>
       </span>
       <span class="linkbar logotype">
         <a href="/.well-known/health">health</a>

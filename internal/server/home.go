@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/efixler/scrape/internal/auth"
+	"github.com/efixler/scrape/internal/server/version"
 )
 
 //go:embed htdocs/index.html
@@ -48,6 +49,8 @@ func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 	funcMap := template.FuncMap{
 		"AuthToken":       authTokenF,
 		"ShowTokenWidget": showTokenWidget,
+		"Commit":          func() string { return version.Commit },
+		"Tag":             func() string { return version.Tag },
 	}
 	tmpl = tmpl.Funcs(funcMap)
 	homeSource, _ := home.ReadFile("htdocs/index.html")
