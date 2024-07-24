@@ -1,0 +1,252 @@
+{{ define "head" }}
+<style>
+  body,
+  html {
+    height: 100vh;
+  }
+
+  pre {
+    width: 100%;
+  }
+
+  .page-container {
+    height: 100%;
+  }
+
+  .controls-container {
+    width: 100%;
+    background-color: #ffffff;
+    border: 1px solid #414141;
+    padding: 0.6rem;
+  }
+
+  .controls-container form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .controls-container label {
+    padding-bottom: 0.3rem;
+  }
+
+  .url-entry-container {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .url-entry-container input[type="url"] {
+    flex-grow: 1;
+  }
+
+  .url-entry-container input[type="submit"] {
+    padding-inline: 0.6rem;
+  }
+
+  .token-container {
+    background-color: #ffffff;
+    border: 1px solid #414141;
+    padding: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .inline-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    line-height: 0.8rem;
+  }
+
+  .token-link {
+    font-size: 1.0rem;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    text-decoration: none;
+    margin-bottom: 1px;
+    color: #000000;
+  }
+
+  .token-toggle {
+    font-size: 1.6rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  .token-status {
+    font-family: "Courier New", monospace;
+    font-size: 2.0rem;
+    transform: translateY(0.1rem);
+    line-height: 0.8rem;
+    color: seagreen;
+  }
+
+  .hovered-link,
+  .token-toggle:hover,
+  .token-link:hover {
+    color: royalblue;
+  }
+
+  .token-controls {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .token-entry {
+    flex-grow: 1;
+    margin-right: 0.6rem;
+  }
+
+  .token-textarea {
+    box-sizing: border-box;
+    resize: vertical;
+    width: 100%;
+    height: 100%;
+  }
+
+  .token-info {
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .token-info button {
+    width: 100%;
+    padding: 0.1rem 1.0rem;
+    cursor: pointer;
+  }
+
+  .token-info button:first-child {
+    margin-top: 0.1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .response-container {
+    width: 100%;
+    flex: 1;
+    overflow: auto;
+    border: 0.1rem inset #ccc;
+    padding-block: 0.2rem;
+    padding-inline: 0.4rem;
+    user-select: text;
+  }
+</style>
+{{ end }}
+
+{{ define "content" }}
+<div class="controls-container">
+  <form x-data="formHandler" @submit.prevent="handleSubmit">
+    <label for="url">Enter a URL:</label>
+    <div class="url-entry-container">
+      <select title="URL Type" x-model="formAction">
+        <option value="/extract">Page</option>
+        <option value="/extract/headless">Headless</option>
+        <option value="/feed">Feed</option>
+      </select>
+      <input type="url" name="url" id="url" value="https://" maxlength="200" pattern="https?://.*" required title="URL">
+      <input type="submit" value="Hit It">
+      <input type="hidden" name="pp" value="1">
+    </div>
+  </form>
+</div><!-- controls-container -->
+<!-- {{if ShowTokenWidget}}  -->
+<div class="token-container" x-data="tokenHandler()">
+  <div class="panel-header">
+    <span class="inline-group">
+      <span class="token-toggle" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
+        @mouseleave="controlHovered = false" @click="isCollapsed = !isCollapsed">
+        <span x-show="isCollapsed">&#x002B;</span>
+        <span x-show="!isCollapsed">&#x2212;</span>
+      </span>
+      <!-- TODO: Convert <a> to button -->
+      <a href="#" class="token-link" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
+        @mouseleave="controlHovered = false" @click.prevent="isCollapsed = !isCollapsed">Enter Token</a>
+    </span>
+    <!-- TODO: Actually check token status, display expiration time if application -->
+    <span x-show="!!authToken" class="token-status">&#10003;</span>
+  </div>
+
+  <div x-init="isCollapsed = !!authToken" x-show="!isCollapsed" class="token-controls" x-transition.scale>
+    <div class="token-entry">
+      <textarea x-model="authToken" class="token-textarea" id="token" rows="2"
+        placeholder="Enter your access token here"></textarea>
+    </div>
+    <div class="token-info">
+      <button @click="saveToken()">Save Token</button>
+      <button @click="clearToken()">Clear Token</button>
+    </div>
+  </div>
+</div>
+<!-- {{end}} -->
+<div class="response-container">
+  <pre x-ref="responseContent" id="responseContent"></pre>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script type="text/javascript">
+  function formHandler() {
+    return {
+      formAction: '/extract',
+      async handleSubmit(event) {
+        const form = event.target;
+        const headers = new Headers();
+        const token = document.getElementById('token')?.value ?? '';
+        if (token) {
+          headers.append('Authorization', `Bearer ${token}`);
+        }
+        const formData = new FormData(form);
+        try {
+          const response = await fetch(this.formAction, {
+            method: 'POST',
+            headers: headers,
+            body: formData
+          })
+
+          if (response.ok) {
+            const json = await response.json();
+            const jsonStr = JSON.stringify(json, null, 2);
+            this.updateContent(jsonStr);
+          } else {
+            const text = await response.text();
+            this.updateContent(`Error ${response.status}:\n${text}`);
+            throw new Error(`${response.status} - ${text}`);
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      },
+      updateContent(content) {
+        document.getElementById('responseContent').textContent = content;
+        // following should work but doesn't
+        // this.$refs.responseContent.textContent = content;
+      }
+    }
+  }
+</script>
+<script type="text/javascript">
+  function tokenHandler() {
+    return {
+      isCollapsed: true,
+      controlHovered: false,
+      authToken: localStorage.getItem('scrapeToken') || '{{AuthToken}}',
+      async saveToken() {
+        try {
+          const token = document.getElementById('token').value;
+          if (token) {
+            localStorage.setItem('scrapeToken', token);
+            alert('Token saved');
+          }
+        } catch (e) {
+          console.error('Error saving token to local storage', e);
+        }
+      },
+      async clearToken() {
+        localStorage.removeItem('scrapeToken');
+        this.authToken = '';
+      },
+    }
+  }
+</script>
+{{ end}}

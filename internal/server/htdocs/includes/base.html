@@ -3,19 +3,24 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>scrape</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>scrape {{ block "title" . }}{{end}}</title>
   <link rel="stylesheet" href="assets/css/global.css">
   <script src="assets/js/global.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-  <style></style>
+  {{ block "head" . }}{{ end }}
 </head>
 
 <body>
   <div class="page-container">
-    <div class="panel-header" x-data="fragment('assets/menubar.html')" x-init="load()" x-html="content"></div>
-    Settings
+    <div class="panel-header">
+      {{ template "menubar.html" . }}
+    </div>
+    {{ block "content" . }}
+    This space unintentionally left blank.
+    {{end}}
   </div>
+  {{ block "scripts" . }}{{ end }}
 </body>
 
 </html>

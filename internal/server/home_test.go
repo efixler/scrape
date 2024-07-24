@@ -3,6 +3,9 @@ package server
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/efixler/scrape/internal/auth"
@@ -72,4 +75,32 @@ func TestMustTemplate(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestMustBaseTemplate(t *testing.T) {
+	tmpl := mustBaseTemplate()
+	if tmpl == nil {
+		t.Fatal("Expected non-nil template")
+	}
+	fmt.Println(tmpl.Name())
+	fmt.Println(tmpl.DefinedTemplates())
+	for _, t := range tmpl.Templates() {
+		fmt.Println(t.Name())
+	}
+}
+
+func TestSettingsHandler(t *testing.T) {
+	handler := settingsHandler()
+	if handler == nil {
+		t.Fatal("Expected non-nil handler")
+	}
+	req := httptest.NewRequest("GET", "http://foo.bar/", nil)
+	w := httptest.NewRecorder()
+	handler(w, req)
+	resp := w.Result()
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected 200 status code, got %d", resp.StatusCode)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
 }

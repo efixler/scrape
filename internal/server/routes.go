@@ -22,6 +22,7 @@ func InitMux(
 ) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /{$}", homeHandler(ss, openHome))
+	// mux.HandleFunc("GET /settings", settingsHandler())
 	mux.Handle("/assets/", assetsHandler())
 	h := ss.singleHandler()
 	mux.HandleFunc("GET /extract", h)

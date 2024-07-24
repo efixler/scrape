@@ -10,6 +10,13 @@ div {
     box-sizing: border-box;
 }
 
+.page-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.6rem;
+  }
+
 pre {
     white-space: pre-wrap;
 }
