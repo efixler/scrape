@@ -5,35 +5,18 @@
   <meta charset="utf-8" />
   <title>scrape</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/css/global.css">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
   <style>
     body,
     html {
-      margin: 0;
-      padding: 0;
       height: 100vh;
     }
 
-    div {
-      box-sizing: border-box;
-    }
-
     pre {
-      white-space: pre-wrap;
       width: 100%;
     }
-
-    label {
-      display: block;
-      font-family: Verdana, Arial, Helvetica, sans-serif;
-      font-size: 1.0rem;
-    }
-
-    input {
-      padding-bottom: 0.1rem;
-    }
-
 
     .page-container {
       display: flex;
@@ -41,26 +24,6 @@
       gap: 0.6rem;
       height: 100%;
       padding: 0.6rem;
-    }
-
-    .logotype {
-      font-family: Monaco, monospace;
-      font-size: 0.8rem;
-      font-weight: lighter;
-    }
-
-    .linkbar {
-      display: flex;
-      justify-content: end;
-      align-items: center;
-      gap: 0.6rem;
-      padding-right: 0.1rem;
-    }
-
-    .version-info {
-      font-family: Monaco, monospace;
-      font-size: 0.7rem;
-      font-weight: lighter;
     }
 
     .controls-container {
@@ -100,13 +63,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.6rem;
-    }
-
-    .token-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.3rem;
     }
 
     .inline-group {
@@ -193,7 +149,7 @@
 
 <body>
   <div class="page-container">
-    <div class="token-header">
+    <div class="panel-header">
       <span>
         <span class="logotype">scrape</span>
         <span x-data="{ version: '{{.Tag}}' }" x-text="version" class="version-info"></span>
@@ -221,7 +177,7 @@
     </div><!-- controls-container -->
     <!-- {{if ShowTokenWidget}}  -->
     <div class="token-container" x-data="tokenHandler()">
-      <div class="token-header">
+      <div class="panel-header">
         <span class="inline-group">
           <span class="token-toggle" :class="{ 'hovered-link': controlHovered }" @mouseenter="controlHovered = true"
             @mouseleave="controlHovered = false" @click="isCollapsed = !isCollapsed">

@@ -1,0 +1,55 @@
+/* scrape global styles */
+
+body,
+html {
+  margin: 0;
+  padding: 0;
+}
+
+div {
+    box-sizing: border-box;
+}
+
+pre {
+    white-space: pre-wrap;
+}
+
+label {
+    display: block;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-size: 1.0rem;
+}
+
+input {
+    padding-bottom: 0.1rem;
+}
+
+/* menubar styles to follow */
+.logotype {
+    font-family: Monaco, monospace;
+    font-size: 0.8rem;
+    font-weight: lighter;
+}
+
+.linkbar {
+    display: flex;
+    justify-content: end;
+    align-items: center;
+    gap: 0.6rem;
+    padding-right: 0.1rem;
+}
+
+.version-info {
+    font-family: Monaco, monospace;
+    font-size: 0.7rem;
+    font-weight: lighter;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* end of menubar styles */
