@@ -44,6 +44,12 @@ func newAdminServer() *adminServer {
 	}
 }
 
+// mustBaseTemplate returns a template for the base template. The returned template
+// is cloned so that the base template's namespace is not modified by the material
+// pages calling it.
+// Any .html files dropped into the includes folder will be included in the base template.
+// It is possible that it's important that base.html is the first file included in the template.
+// This sorts relatively high right now because it starts with a b.
 func (a *adminServer) mustBaseTemplate() *template.Template {
 	if a.baseTemplate != nil {
 		goto CloneAndReturn
@@ -66,6 +72,8 @@ CloneAndReturn:
 	return clone
 }
 
+// Return a template for the given (base) name, from the htdocs directory. Funcs must be provided
+// before parsing the template; if no funcs are needed, pass nil.
 func (a *adminServer) mustTemplate(name string, funcs template.FuncMap) *template.Template {
 	tmpl := a.mustBaseTemplate()
 	if funcs != nil {
