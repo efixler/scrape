@@ -23,34 +23,51 @@ var htdocs embed.FS
 //go:embed htdocs/includes/*.html
 var includes embed.FS
 
-var baseTemplate *template.Template
+type codeData struct {
+	Commit  string
+	RepoURL string
+	Tag     string
+}
+type adminServer struct {
+	mutex        sync.Mutex
+	baseTemplate *template.Template
+	data         codeData
+}
 
-var tmu sync.Mutex
+func newAdminServer() *adminServer {
+	return &adminServer{
+		data: codeData{
+			Commit:  version.Commit,
+			RepoURL: version.RepoURL,
+			Tag:     version.Tag,
+		},
+	}
+}
 
-func mustBaseTemplate() *template.Template {
-	if baseTemplate != nil {
+func (a *adminServer) mustBaseTemplate() *template.Template {
+	if a.baseTemplate != nil {
 		goto CloneAndReturn
 	}
-	tmu.Lock()
-	defer tmu.Unlock()
-	if baseTemplate == nil {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+	if a.baseTemplate == nil {
 		d, err := fs.Sub(includes, "htdocs/includes")
 		if err != nil {
 			panic(err)
 		}
-		baseTemplate = template.Must(template.New("base").ParseFS(d, "*.html"))
-		baseTemplate = baseTemplate.Option("missingkey=zero")
+		a.baseTemplate = template.Must(template.New("base").ParseFS(d, "*.html"))
+		a.baseTemplate = a.baseTemplate.Option("missingkey=zero")
 	}
 CloneAndReturn:
-	clone, err := baseTemplate.Clone()
+	clone, err := a.baseTemplate.Clone()
 	if err != nil {
 		panic(err)
 	}
 	return clone
 }
 
-func mustTemplate(name string, funcs template.FuncMap) *template.Template {
-	tmpl := mustBaseTemplate()
+func (a *adminServer) mustTemplate(name string, funcs template.FuncMap) *template.Template {
+	tmpl := a.mustBaseTemplate()
 	if funcs != nil {
 		tmpl = tmpl.Funcs(funcs)
 	}
@@ -61,7 +78,7 @@ func mustTemplate(name string, funcs template.FuncMap) *template.Template {
 // mustHomeTemplate creates a template for the home page.
 // To enable usage of the home page without a token when auth is enabled,
 // for API endpoint, set openHome to true.
-func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
+func (a *adminServer) mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 	var authTokenF = func() string { return "" }
 	var showTokenWidget = func() bool {
 		// when openHome is true don't show the token entry widget
@@ -92,56 +109,23 @@ func mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
 		"AuthToken":       authTokenF,
 		"ShowTokenWidget": showTokenWidget,
 	}
-	tmpl := mustTemplate("index_block.html", funcMap)
+	tmpl := a.mustTemplate("index.html", funcMap)
 	return tmpl
 }
 
-func homeHandler(ss *scrapeServer, openHome bool) http.HandlerFunc {
-	tmpl := mustHomeTemplate(ss, openHome)
-	data := struct {
-		Commit  string
-		RepoURL string
-		Tag     string
-	}{
-		Commit:  version.Commit,
-		RepoURL: version.RepoURL,
-		Tag:     version.Tag,
-	}
-
+func (a *adminServer) homeHandler(ss *scrapeServer, openHome bool) http.HandlerFunc {
+	tmpl := a.mustHomeTemplate(ss, openHome)
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := tmpl.ExecuteTemplate(w, baseTemplateName, data); err != nil {
+		if err := tmpl.ExecuteTemplate(w, baseTemplateName, a.data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
-
-	// return func(w http.ResponseWriter, r *http.Request) {
-	// 	var buf bytes.Buffer
-	// 	if err := tmpl.Execute(&buf, data); err != nil {
-	// 		http.Error(w, "Error rendering home page", http.StatusInternalServerError)
-	// 		return
-	// 	}
-	// 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	// 	w.WriteHeader(http.StatusOK)
-	// 	w.Write(buf.Bytes())
-	// }
 }
 
-func settingsHandler() http.HandlerFunc {
-	//tmpl := mustBaseTemplate()
-	//tmpl = template.Must(tmpl.ParseFS(htdocs, "htdocs/settings.html"))
-	tmpl := mustTemplate("settings.html", nil)
-	data := struct {
-		Commit  string
-		RepoURL string
-		Tag     string
-	}{
-		Commit:  version.Commit,
-		RepoURL: version.RepoURL,
-		Tag:     version.Tag,
-	}
-
+func (a *adminServer) settingsHandler() http.HandlerFunc {
+	tmpl := a.mustTemplate("settings.html", nil)
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := tmpl.ExecuteTemplate(w, baseTemplateName, data); err != nil {
+		if err := tmpl.ExecuteTemplate(w, baseTemplateName, a.data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}

@@ -1,7 +1,7 @@
 package version
 
 const (
-	Commit  = "84accea"
+	Commit  = "e1325d4"
 	Tag     = "v0.8.4"
 	RepoURL = "https://github.com/efixler/scrape"
 )
