@@ -36,6 +36,7 @@ const (
 
 var (
 	flags           flag.FlagSet
+	host            *envflags.Value[string]
 	port            *envflags.Value[int]
 	signingKey      *envflags.Value[*auth.HMACBase64Key]
 	ttl             *envflags.Value[time.Duration]
@@ -48,7 +49,7 @@ var (
 )
 
 func main() {
-	slog.Info("scrape-server starting up", "port", port.Get())
+	slog.Info("scrape-server starting up", "addr", fmt.Sprintf("%s:%d", host.Get(), port.Get()))
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
 	dbh := dbFlags.MustDatabase()
@@ -94,7 +95,7 @@ func main() {
 		os.Exit(1)
 	}
 	s := &http.Server{
-		Addr:           fmt.Sprintf(":%d", port.Get()),
+		Addr:           fmt.Sprintf("%s:%d", host.Get(), port.Get()),
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   120 * time.Second, // some feed/batch requests can be slow to complete
@@ -124,6 +125,9 @@ func init() {
 
 	headlessEnabled = envflags.NewBool("ENABLE_HEADLESS", false)
 	headlessEnabled.AddTo(&flags, "enable-headless", "Enable headless browser extraction functionality")
+
+	host = envflags.NewString("HOST", "")
+	host.AddTo(&flags, "host", "TCP address to listen on (empty for all interfaces)")
 
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")

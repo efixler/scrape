@@ -220,6 +220,9 @@ Command line options:
   -enable-headless
         Enable headless browser extraction functionality
         Environment: SCRAPE_ENABLE_HEADLESS
+  -host value
+        TCP address to listen on (empty for all interfaces)
+        Environment: SCRAPE_HOST
   -log-level value
         Set the log level [debug|error|info|warn]
         Environment: SCRAPE_LOG_LEVEL (default info)
@@ -485,6 +488,8 @@ Usage:
   test-mysql       run the MySQL integration tests
   vet              fmt, vet, and staticcheck
   cognitive        run the cognitive complexity checker
+  setup-githooks   setup the git hooks
+  watch-server     Start a hot-update scrape-server (requires entr)
   help             show this help message
 ```
 

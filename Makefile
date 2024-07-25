@@ -91,9 +91,6 @@ cognitive: ## run the cognitive complexity checker
 setup-githooks: ## setup the git hooks
 	@$(MAKE) -C .githooks
 
-help: ## show this help message
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% 0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
 watch-server: ## Start a hot-update scrape-server (requires entr)
 	@echo "\nStarting hot-update scrape-server. Only templates are watched."
 	@echo "[space] to restart, q to quit."
@@ -104,7 +101,7 @@ build-and-restart-server:
 		if [ $$? -eq 0 ]; then \
 			echo "\nBuild successful, restarting the server..."; \
 			pkill -f "$(BUILD_DIR)/scrape-server"; \
-			$(BUILD_DIR)/scrape-server & \
+			$(BUILD_DIR)/scrape-server -host 127.0.0.1 & \
 		else \
 			echo "\nBuild failed, details below:\n"; \
 			cat $(BUILD_DIR)/build.log; \
@@ -112,3 +109,7 @@ build-and-restart-server:
 		fi)
 	@rm -f $(BUILD_DIR)/build.log  # Clean up build.log if the build was successful
 	@echo ""
+
+help: ## show this help message
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% 0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+	
