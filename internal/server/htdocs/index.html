@@ -180,7 +180,8 @@
 </div>
 <!-- {{end}} -->
 <div class="response-container">
-  <pre x-ref="responseContent" id="responseContent"></pre>
+  <pre id="responseContent"></pre>
+  <!-- <pre x-data x-html="$store.api_result" id="responseContent"></pre> -->
 </div>
 {{ end }}
 
@@ -218,12 +219,14 @@
         }
       },
       updateContent(content) {
+        // Alpine.store('api_result', content);
         document.getElementById('responseContent').textContent = content;
-        // following should work but doesn't
-        // this.$refs.responseContent.textContent = content;
       }
     }
   }
+  // document.addEventListener('alpine:init', () => {
+  //   Alpine.store('api_result', 'results will appear here');
+  // })
 </script>
 <script type="text/javascript">
   function tokenHandler() {
