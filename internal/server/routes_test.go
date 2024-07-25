@@ -108,7 +108,7 @@ func TestHomeHandlerAuth(t *testing.T) {
 		for _, openHome := range []bool{true, false} {
 			req := httptest.NewRequest("GET", "http://foo.bar/", nil)
 			w := httptest.NewRecorder()
-			homeHandler(ss, openHome)(w, req)
+			newAdminServer().homeHandler(ss, openHome)(w, req)
 			resp := w.Result()
 			if resp.StatusCode != test.expectedResult {
 				t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
