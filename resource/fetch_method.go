@@ -10,13 +10,13 @@ type FetchClient int
 const (
 	Unspecified FetchClient = iota
 	DefaultClient
-	HeadlessChrome
+	HeadlessChromium
 )
 
 var fetchMethods = map[FetchClient]string{
-	Unspecified:    "Unspecified",
-	DefaultClient:  "DefaultClient",
-	HeadlessChrome: "HeadlessChrome",
+	Unspecified:      "unspecified",
+	DefaultClient:    "direct",
+	HeadlessChromium: "chromium-headless",
 }
 
 var ErrNoSuchFetchMethod = errors.New("no such FetchMethod")

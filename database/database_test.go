@@ -10,27 +10,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// Embedded type for testing
-type materialDB struct {
-	DBHandle[string]
-}
-
-func (m *materialDB) Open(ctx context.Context) error {
-	err := m.DBHandle.Open(ctx)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func newDB(driver DriverName, dsnSource DataSource) *materialDB {
-	return &materialDB{
-		DBHandle: DBHandle[string]{
-			Driver:    driver,
-			DSNSource: dsnSource,
-			stmts:     make(map[string]*sql.Stmt, 8),
-		},
-	}
+func newDB(driver DriverName, dsnSource DataSource) *DBHandle {
+	e := NewEngine(string(driver), dsnSource, nil)
+	return New(e)
 }
 
 func TestMaintenanceRunsAndsStops(t *testing.T) {
@@ -39,8 +21,8 @@ func TestMaintenanceRunsAndsStops(t *testing.T) {
 	defer func() { MinMaintenanceInterval = oldMinInterval }()
 	MinMaintenanceInterval = 1 * time.Millisecond
 	count := 0
-	mfunc := func(ctx context.Context, db *sql.DB, tm time.Time) error {
-		t.Logf("Maintenance ran at %s", tm)
+	mfunc := func(dbh *DBHandle) error {
+		t.Logf("Maintenance ran at %s", time.Now())
 		count++
 		return nil
 	}
@@ -71,8 +53,8 @@ func TestMaintenanceStopsOnError(t *testing.T) {
 	defer func() { MinMaintenanceInterval = oldMinInterval }()
 	MinMaintenanceInterval = 1 * time.Millisecond
 	count := 0
-	mfunc := func(ctx context.Context, db *sql.DB, tm time.Time) error {
-		t.Logf("Maintenance ran at %s", tm)
+	mfunc := func(dbh *DBHandle) error {
+		t.Logf("Maintenance ran at %s", time.Now())
 		count++
 		return errors.New("test error")
 	}
@@ -115,27 +97,26 @@ func TestDBClosedOnContextCancel(t *testing.T) {
 }
 
 type mockDBHandleForCloseTest struct {
-	DBHandle[string]
+	*DBHandle
 	maintCount int
 }
 
 func TestDBCloseExpectations(t *testing.T) {
 	t.Parallel()
+	engine := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
+
+	dbh := New(&engine)
 
 	mdbh := &mockDBHandleForCloseTest{
-		DBHandle[string]{
-			Driver:    SQLite,
-			DSNSource: NewDSN(":memory:"),
-			stmts:     make(map[string]*sql.Stmt, 8),
-		},
-		0,
+		DBHandle: dbh,
 	}
+
 	// we don't want to cancel the context for this test
 	err := mdbh.Open(context.Background())
 	if err != nil {
 		t.Fatalf("Error opening database: %s", err)
 	}
-	mf := func(ctx context.Context, db *sql.DB, tm time.Time) error {
+	mf := func(dbh *DBHandle) error {
 		mdbh.maintCount++
 		return nil
 	}
@@ -184,5 +165,154 @@ func TestConnParams(t *testing.T) {
 	}
 	if dbh.DB.Stats().MaxLifetimeClosed != 0 {
 		t.Errorf("Expected 0 MaxLifetimeClosed, got %d", dbh.DB.Stats().MaxLifetimeClosed)
+	}
+}
+
+type testStmtKey int
+
+func TestStatement(t *testing.T) {
+	dbh := newDB(
+		SQLite,
+		NewDSN(
+			":memory:",
+			WithMaxConnections(1),
+			WithConnMaxLifetime(-1),
+		),
+	)
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	t.Cleanup(func() {
+		dbh.Close()
+	})
+	genCallCount := 0
+
+	gen := func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		genCallCount++
+		return db.PrepareContext(ctx, "SELECT 1")
+	}
+
+	stmt1, err := dbh.Statement(testStmtKey(1), gen)
+	if err != nil {
+		t.Fatalf("Error preparing statement: %s", err)
+	}
+	defer stmt1.Close()
+	if genCallCount != 1 {
+		t.Errorf("Expected 1 generator call, got %d", genCallCount)
+	}
+
+	stmt2, err := dbh.Statement(testStmtKey(1), gen)
+	if err != nil {
+		t.Fatalf("Error retrieving preparing statement: %s", err)
+	}
+	defer stmt2.Close()
+	if genCallCount != 1 {
+		t.Errorf("Expected 1 generator call, got %d", genCallCount)
+	}
+	if stmt1 != stmt2 {
+		t.Errorf("Expected same prepared statement, got a different one")
+	}
+	stmt3, err := dbh.Statement(1, gen)
+	if err != nil {
+		t.Fatalf("Error retrieving preparing statement: %s", err)
+	}
+	defer stmt3.Close()
+	if genCallCount != 2 {
+		t.Errorf("Expected 2 generator calls, got %d", genCallCount)
+	}
+	if stmt1 == stmt3 {
+		t.Errorf("Expected different prepared statement, got the same one")
+	}
+	_, err = dbh.Statement(2, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return nil, errors.New("test error")
+	})
+	if err == nil {
+		t.Errorf("Expected error on failed statement creation, got nil")
+	}
+	if len(dbh.stmts) != 2 {
+		t.Errorf("Expected 2 statements in cache, got %d", len(dbh.stmts))
+	}
+}
+
+func TestInvalidMaintenanceInterval(t *testing.T) {
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	defer dbh.Close()
+	err = dbh.Maintenance(0, nil)
+	if err != ErrInvalidDuration {
+		t.Errorf("Expected error on invalid maintenance interval, got %v", err)
+	}
+}
+
+type engineWithAfterOpen struct {
+	Engine
+	afterOpenCallCount int
+}
+
+func (e *engineWithAfterOpen) AfterOpen(dbh *DBHandle) error {
+	e.afterOpenCallCount++
+	return nil
+}
+
+func TestAfterOpenGetCalledWhenEngineImplements(t *testing.T) {
+	ee := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
+	engine := &engineWithAfterOpen{Engine: ee}
+	dbh := New(engine)
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	defer dbh.Close()
+	if engine.afterOpenCallCount != 1 {
+		t.Errorf("Expected AfterOpen to be called once, got %d", engine.afterOpenCallCount)
+	}
+}
+
+func TestCloseListenersInvoked(t *testing.T) {
+	engine := NewEngine(string(SQLite), NewDSN(":memory:"), nil)
+	dbh := New(engine)
+	err := dbh.Open(context.Background())
+	if err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	closeCount := 0
+	closeF := func() {
+		closeCount++
+	}
+	for i := 0; i < closeListenerCapacity; i++ {
+		if err = dbh.AddCloseListener(closeF); err != nil {
+			t.Fatalf("Error adding close listener: %s", err)
+		}
+	}
+	if err := dbh.AddCloseListener(closeF); err != ErrCloseListenersFull {
+		t.Errorf("Expected error on adding close listener when capacity reached, got %v", err)
+	}
+	dbh.Close()
+	if closeCount != closeListenerCapacity {
+		t.Errorf("Expected %d close listeners to be called, got %d", closeListenerCapacity, closeCount)
+	}
+	if err = dbh.AddCloseListener(closeF); err != ErrDatabaseClosed {
+		t.Errorf("Expected error on adding close listener when already closed, got %v", err)
+	}
+}
+
+func TestPing(t *testing.T) {
+	dbh := newDB(SQLite, NewDSN(":memory:", WithMaxConnections(1), WithConnMaxLifetime(-1)))
+	if err := dbh.Ping(); err != ErrDatabaseNotOpen {
+		t.Errorf("Expected error pinging unopened database, got %v", err)
+	}
+	if err := dbh.Open(context.Background()); err != nil {
+		t.Fatalf("Error opening database: %s", err)
+	}
+	if err := dbh.Ping(); err != nil {
+		t.Errorf("Error pinging database: %s", err)
+	}
+	dbh.Close()
+	if err := dbh.Ping(); err != ErrDatabaseClosed {
+		t.Errorf("Expected error pinging closed database")
 	}
 }

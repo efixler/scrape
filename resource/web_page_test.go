@@ -252,17 +252,17 @@ func TestFetchMethod(t *testing.T) {
 		{
 			name: "Client",
 			f:    DefaultClient,
-			want: "DefaultClient",
+			want: "direct",
 		},
 		{
 			name: "Headless",
-			f:    HeadlessChrome,
-			want: "HeadlessChrome",
+			f:    HeadlessChromium,
+			want: "chromium-headless",
 		},
 		{
 			name: "Unknown",
 			f:    0,
-			want: "Unspecified",
+			want: "unspecified",
 		},
 	}
 	for _, tt := range tests {

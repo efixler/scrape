@@ -25,12 +25,8 @@ var (
 	}
 )
 
-type Factory func() (URLFetcher, error)
-
 type URLFetcher interface {
-	Open(context.Context) error
 	Fetch(*nurl.URL) (*resource.WebPage, error)
-	Close() error
 }
 
 type BatchURLFetcher interface {
@@ -42,9 +38,8 @@ type BatchOptions struct {
 }
 
 type FeedFetcher interface {
-	Open(context.Context) error
 	Fetch(*nurl.URL) (*resource.Feed, error)
-	Close() error
+	FetchContext(context.Context, *nurl.URL) (*resource.Feed, error)
 }
 
 type HttpError struct {

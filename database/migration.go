@@ -1,53 +1,73 @@
 package database
 
 import (
+	"embed"
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 
 	"github.com/pressly/goose/v3"
 )
 
-// Execute an up migration using goose. migrationDir is the path within
-// migrationFS where the migration files are stored.
+const (
+	MigrationDir = "migrations" // Default directory for migration files (in the embed.FS)
+)
+
+var (
+	ErrNoMigrationFS = fmt.Errorf("migration filesystem is not set")
+)
+
+// Execute an up migration using goose.
 // The environment variables are set before running the migration.
 // This may be used in conjunction with Goose's EnvSubOn directive.
-func (d *DBHandle[T]) DoMigrateUp(
-	migrationFS fs.FS,
-	migrationDir string,
-	env ...string,
-) error {
-	if clearF, err := d.prepareForMigration(migrationFS, env...); err != nil {
-		return err
-	} else {
-		defer clearF()
-	}
-	if err := goose.Up(d.DB, migrationDir); err != nil {
+func (d *DBHandle) MigrateUp(env ...string) error {
+	clearF, err := d.prepareForMigration(env...)
+	if err != nil {
 		return err
 	}
-	return nil
+	defer clearF()
+	if bm, ok := d.Engine.(BeforeMigrateUpHook); ok {
+		fmt.Println("Running BeforeMigrateUp hook")
+		err := bm.BeforeMigrateUp(d)
+		if err != nil {
+			return err
+		}
+	}
+	return goose.Up(d.DB, ".")
+
 }
 
-func (d DBHandle[T]) DoMigrateReset(
-	migrationFS fs.FS,
-	migrationDir string,
-	env ...string) error {
-	if clearF, err := d.prepareForMigration(migrationFS, env...); err != nil {
+func (d DBHandle) MigrateReset(env ...string) error {
+	clearF, err := d.prepareForMigration(env...)
+	if err != nil {
 		return err
-	} else {
-		defer clearF()
 	}
-	return goose.Reset(d.DB, migrationDir)
+	defer clearF()
+	return goose.Reset(d.DB, ".")
 }
 
-func (d DBHandle[T]) prepareForMigration(migrationFS fs.FS, env ...string) (func(), error) {
-	if err := goose.SetDialect(string(d.Driver)); err != nil {
+func (d DBHandle) prepareForMigration(env ...string) (func(), error) {
+	if d.Engine.MigrationFS() == nil {
+		return nil, ErrNoMigrationFS
+	}
+
+	if err := goose.SetDialect(string(d.Engine.Driver())); err != nil {
 		return nil, err
 	}
+	if mes, ok := d.Engine.(MigrationEnvSetter); ok {
+		env = append(mes.MigrationEnv(), env...)
+	}
+
 	if (len(env) % 2) != 0 {
 		return nil, fmt.Errorf("environment variables must be key-value pairs")
 	}
-	goose.SetBaseFS(migrationFS)
+	migFS, _, err := extractMigrationFS(d.Engine.MigrationFS())
+	if err != nil {
+		return nil, err
+	}
+
+	goose.SetBaseFS(migFS)
 
 	envRestore := make(map[string]string, len(env)/2)
 	clearF := func() {
@@ -70,13 +90,51 @@ func (d DBHandle[T]) prepareForMigration(migrationFS fs.FS, env ...string) (func
 	return clearF, nil
 }
 
-func (d DBHandle[T]) PrintMigrationStatus(migrationFS fs.FS, migrationDir string) error {
-	if err := goose.SetDialect(string(d.Driver)); err != nil {
+func (d DBHandle) PrintMigrationStatus() error {
+	if err := goose.SetDialect(string(d.Engine.Driver())); err != nil {
 		return err
 	}
-	goose.SetBaseFS(migrationFS)
-	if err := goose.Status(d.DB, migrationDir); err != nil {
+	migFS, _, err := extractMigrationFS(d.Engine.MigrationFS())
+	if err != nil {
+		return err
+	}
+	goose.SetBaseFS(migFS)
+	if err := goose.Status(d.DB, "."); err != nil {
 		return err
 	}
 	return nil
+}
+
+func extractMigrationFS(migrationFS *embed.FS) (fs.FS, string, error) {
+	if migrationFS == nil {
+		return nil, "", ErrNoMigrationFS
+	}
+	return findMigrationsDir(migrationFS, ".")
+}
+
+func findMigrationsDir(fsys fs.FS, currentPath string) (fs.FS, string, error) {
+	entries, err := fs.ReadDir(fsys, currentPath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			if entry.Name() == MigrationDir {
+				fullPath := path.Join(currentPath, entry.Name())
+				subFS, err := fs.Sub(fsys, fullPath)
+				if err != nil {
+					return nil, "", err
+				}
+				return subFS, fullPath, nil
+			}
+			// Recursively search in subdirectories
+			foundFS, foundPath, err := findMigrationsDir(fsys, path.Join(currentPath, entry.Name()))
+			if err == nil && foundFS != nil {
+				return foundFS, foundPath, nil
+			}
+		}
+	}
+
+	return nil, "", ErrNoMigrationFS
 }

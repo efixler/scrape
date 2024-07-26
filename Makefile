@@ -1,4 +1,7 @@
-MODULE_NAME := $(shell go list -m)
+MODULE_NAME := scrape
+ifneq ($(shell command -v go >/dev/null 2>&1 && echo yes),)
+    MODULE_NAME := $(shell go list -m)
+endif
 DOCKER_IMAGE_NAME := ${shell basename ${MODULE_NAME}}-bookworm-slim
 CWD := $(shell pwd)
 BUILD_DIR := build
@@ -8,7 +11,9 @@ CONTAINER_REGISTRY ?= docker.io
 
 .DEFAULT_GOAL := build
 
-.PHONY: fmt vet build clean test-mysql
+.PHONY: fmt vet build clean test-mysql setup-githooks help \
+		cognitive build-and-restart-server watch-server \
+		docker-build docker-push push-tag release-tag latest-release-tag
 
 
 build: vet ## build the binaries, to the build/ folder (default target)
@@ -72,7 +77,7 @@ test: ## run the tests
 
 test-mysql: ## run the MySQL integration tests
 	@echo "Running MySQL tests..."
-	@go test -tags mysql -coverprofile=mysql_coverage.out ./internal/storage ./internal/storage/mysql
+	@go test -tags mysql -coverprofile=mysql_coverage.out ./internal/storage ./database/mysql
 
 vet: fmt ## fmt, vet, and staticcheck
 	@echo "Running go vet and staticcheck..."
@@ -83,7 +88,28 @@ cognitive: ## run the cognitive complexity checker
 	@echo "Running gocognit..."
 	@gocognit  -ignore "_test|testdata" -top 5 .
 
+setup-githooks: ## setup the git hooks
+	@$(MAKE) -C .githooks
+
+watch-server: ## Start a hot-update scrape-server (requires entr)
+	@echo "\nStarting hot-update scrape-server. Only templates are watched."
+	@echo "[space] to restart, q to quit."
+	@find ./internal/server/htdocs -type f | entr -r make build-and-restart-server
+
+build-and-restart-server:
+	@(make > $(BUILD_DIR)/build.log 2>&1; \
+		if [ $$? -eq 0 ]; then \
+			echo "\nBuild successful, restarting the server..."; \
+			pkill -f "$(BUILD_DIR)/scrape-server"; \
+			$(BUILD_DIR)/scrape-server -host 127.0.0.1 & \
+		else \
+			echo "\nBuild failed, details below:\n"; \
+			cat $(BUILD_DIR)/build.log; \
+			exit 1; \
+		fi)
+	@rm -f $(BUILD_DIR)/build.log  # Clean up build.log if the build was successful
+	@echo ""
+
 help: ## show this help message
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% 0-9a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
-
-
+	

@@ -7,42 +7,22 @@ import (
 	"errors"
 	nurl "net/url"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
 )
 
 var (
-	ErrCantCreateDatabase = errors.New("can't create the database")
-	ErrorDatabaseNotFound = errors.New("database not found")
-	ErrorResourceNotFound = errors.New("resource not found in data store")
-	ErrorValueNotAllowed  = errors.New("value not allowed")
-	ErrMappingNotFound    = errors.New("id mapping not found")
+	ErrResourceNotFound = errors.New("resource not found in data store")
+	ErrValueNotAllowed  = errors.New("value not allowed")
+	ErrMappingNotFound  = errors.New("id mapping not found")
 )
 
-type Factory func() (URLDataStore, error)
-
 // This interface is the contract for storing and retrieving WebPage resources.
-// It adds a Store() method to the fetch.URLFetcher interface.
-// The fmt.Stringer interface is mainly to provide a way for the store to represent itself
-// in log messages, e.g. a safe version of the DSN.
+// It add Save() and Delete() methods to the fetch.URLFetcher interface.
 type URLDataStore interface {
 	fetch.URLFetcher
+	Database() *database.DBHandle
 	Save(*resource.WebPage) (uint64, error)
-	Ping() error
 	Delete(*nurl.URL) (bool, error)
-}
-
-// This interface adds create/clear/maintain methods to the URLDataStore interface.
-// URLDataStores may support these methods to create, clear, and maintain the store.
-type Maintainable interface {
-	Clear() error
-	Maintain() error
-	Migrate() error
-	Reset() error
-	MigrationStatus() error
-}
-
-// This interface is to expose a method to supply data to healthchecks.
-type Observable interface {
-	Stats() (any, error)
 }

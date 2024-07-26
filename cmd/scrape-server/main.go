@@ -19,10 +19,12 @@ import (
 	"github.com/efixler/envflags"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/trafilatura"
+	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/ua"
 	"github.com/efixler/webutil/graceful"
@@ -34,6 +36,7 @@ const (
 
 var (
 	flags           flag.FlagSet
+	host            *envflags.Value[string]
 	port            *envflags.Value[int]
 	signingKey      *envflags.Value[*auth.HMACBase64Key]
 	ttl             *envflags.Value[time.Duration]
@@ -41,48 +44,58 @@ var (
 	dbFlags         *cmd.DatabaseFlags
 	headlessEnabled *envflags.Value[bool]
 	profile         *envflags.Value[bool]
+	publicHome      *envflags.Value[bool]
 	logWriter       io.Writer
 )
 
 func main() {
-	slog.Info("scrape-server starting up", "port", port.Get())
+	slog.Info("scrape-server starting up", "addr", fmt.Sprintf("%s:%d", host.Get(), port.Get()))
 	// use this context to handle resources hanging off mux handlers
 	ctx, cancel := context.WithCancel(context.Background())
-	dbFactory := dbFlags.MustDatabase()
+	dbh := dbFlags.MustDatabase()
 	dbFlags = nil
-	normalClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
-	defaultFetcherFactory := trafilatura.Factory(normalClient)
+	if err := dbh.Open(ctx); err != nil {
+		slog.Error("scrape-server error opening database", "database", dbh, "error", err)
+		os.Exit(1)
+	}
+
+	directClient := fetch.MustClient(fetch.WithUserAgent(userAgent.Get().String()))
 	var headlessFetcher fetch.URLFetcher = nil
 	if headlessEnabled.Get() {
 		headlessClient := headless.MustChromeClient(ctx, userAgent.Get().String(), 6)
-		headlessFetcher, _ = trafilatura.Factory(headlessClient)()
+		headlessFetcher = trafilatura.MustNew(headlessClient)
 	}
 
-	// TODO: Implement options pattern for NewScrapeServer
-	ss, _ := server.NewScrapeServer(
-		ctx,
-		dbFactory,
-		defaultFetcherFactory,
-		headlessFetcher,
+	sbf := internal.NewStorageBackedFetcher(
+		trafilatura.MustNew(directClient),
+		storage.NewURLDataStore(dbh),
 	)
 
-	if sk := *signingKey.Get(); len(sk) > 0 {
-		ss.SigningKey = sk
+	ss := server.MustScrapeServer(
+		ctx,
+		server.WithURLFetcher(sbf),
+		server.WithHeadlessIf(headlessFetcher),
+		server.WithAuthorizationIf(*signingKey.Get()),
+	)
+
+	if ss.AuthEnabled() {
 		slog.Info("scrape-server authorization via JWT is enabled")
 	} else {
 		slog.Info("scrape-server authorization is disabled, running in open access mode")
 	}
 
-	mux, err := server.InitMux(ss)
+	mux, err := server.InitMux(
+		ss,
+		dbh,
+		publicHome.Get(),
+		profile.Get(),
+	)
 	if err != nil {
 		slog.Error("scrape-server error initializing the server's mux", "error", err)
 		os.Exit(1)
 	}
-	if profile.Get() {
-		server.EnableProfiling(mux)
-	}
 	s := &http.Server{
-		Addr:           fmt.Sprintf(":%d", port.Get()),
+		Addr:           fmt.Sprintf("%s:%d", host.Get(), port.Get()),
 		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   120 * time.Second, // some feed/batch requests can be slow to complete
@@ -113,6 +126,9 @@ func init() {
 	headlessEnabled = envflags.NewBool("ENABLE_HEADLESS", false)
 	headlessEnabled.AddTo(&flags, "enable-headless", "Enable headless browser extraction functionality")
 
+	host = envflags.NewString("HOST", "")
+	host.AddTo(&flags, "host", "TCP address to listen on (empty for all interfaces)")
+
 	port = envflags.NewInt("PORT", DefaultPort)
 	port.AddTo(&flags, "port", "Port to run the server on")
 
@@ -132,6 +148,9 @@ func init() {
 
 	profile = envflags.NewBool("PROFILE", false)
 	profile.AddTo(&flags, "profile", "Enable profiling at /debug/pprof")
+
+	publicHome = envflags.NewBool("PUBLIC_HOME", false)
+	publicHome.AddTo(&flags, "public-home", "Enable the homepage without requiring a token (when auth is enabled)")
 
 	logLevel := envflags.NewLogLevel("LOG_LEVEL", slog.LevelInfo)
 	logLevel.AddTo(&flags, "log-level", "Set the log level [debug|error|info|warn]")

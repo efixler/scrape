@@ -20,11 +20,12 @@ type TrafilaturaFetcher struct {
 	fallback trafilatura.FallbackConfig
 }
 
-// Factory function for new fetcher.
-func Factory(client fetch.Client) func() (fetch.URLFetcher, error) {
-	return func() (fetch.URLFetcher, error) {
-		return New(client)
+func MustNew(client fetch.Client) fetch.URLFetcher {
+	f, err := New(client)
+	if err != nil {
+		panic(err)
 	}
+	return f
 }
 
 func New(client fetch.Client) (*TrafilaturaFetcher, error) {
