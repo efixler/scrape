@@ -14,10 +14,10 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
-// type stmtIndex int
+type stmtIndex int
 
 const (
-	_ = iota
+	_ stmtIndex = iota
 	save
 	saveId
 	lookupId
