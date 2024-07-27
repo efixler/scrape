@@ -35,10 +35,6 @@ const (
 	// qClearId  = `DELETE FROM id_map where canonical_id = ?`
 )
 
-// TODO: Stop embedding the database handle this way;
-// the URLDataStore is currently opening and closing the
-// database connection (via this interface), which prevents
-// other entities from using the same connection.
 type URLDataStore struct {
 	dbh *database.DBHandle
 }

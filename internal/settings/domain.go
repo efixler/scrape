@@ -4,6 +4,8 @@ package settings
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/efixler/scrape/database"
@@ -12,27 +14,44 @@ import (
 	"github.com/efixler/scrape/ua"
 )
 
-type DomainStorage struct {
-	*database.DBHandle[int]
+type stmtKey int
+
+const (
+	_ stmtKey = iota
+	delete
+	fetch
+	save
+)
+
+var (
+	ErrDomainRequired = errors.New("domain is required")
+)
+
+type DomainSettings struct {
+	Domain      string               `json:"-"`
+	Sitename    string               `json:"sitename,omitempty"`
+	FetchClient resource.FetchClient `json:"fetch_client,omitempty"`
+	UserAgent   ua.UserAgent         `json:"user_agent,omitempty"`
+	Headers     map[string]string    `json:"headers,omitempty"`
 }
 
-type Domain struct {
-	Domain        string
-	PublisherName string
-	FetchClient   resource.FetchClient
-	UserAgent     ua.UserAgent
-	Headers       map[string]string
-}
-
-func DomainSettings(domain string) (*Domain, error) {
-	d := &Domain{
+func NewDomainSettings(domain string) *DomainSettings {
+	d := &DomainSettings{
 		Domain: domain,
 	}
-	return d, nil
+	return d
 }
 
-func (d DomainStorage) Delete(domain string) (bool, error) {
-	stmt, err := d.Statement(100, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+type DomainSettingsStorage struct {
+	*database.DBHandle
+}
+
+func NewDomainSettingsStorage(dbh *database.DBHandle) *DomainSettingsStorage {
+	return &DomainSettingsStorage{DBHandle: dbh}
+}
+
+func (d DomainSettingsStorage) Delete(domain string) (bool, error) {
+	stmt, err := d.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
 			`DELETE FROM domain_settings WHERE domain = ?`,
@@ -59,11 +78,11 @@ func (d DomainStorage) Delete(domain string) (bool, error) {
 	}
 }
 
-func (d DomainStorage) Fetch(domain string) (*Domain, error) {
-	stmt, err := d.Statement(101, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+func (d DomainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
+	stmt, err := d.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
-			`SELECT publisher_name, fetch_client, user_agent, headers 
+			`SELECT sitename, fetch_client, user_agent, headers 
 			FROM domain_settings WHERE domain = ?`,
 		)
 	})
@@ -76,38 +95,49 @@ func (d DomainStorage) Fetch(domain string) (*Domain, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, store.ErrorResourceNotFound
+		return nil, store.ErrResourceNotFound
 	}
-	ds := &Domain{Domain: domain}
-	err = rows.Scan(&ds.PublisherName, &ds.FetchClient, &ds.UserAgent, &ds.Headers)
+	ds := &DomainSettings{Domain: domain}
+	var headers string
+	err = rows.Scan(&ds.Sitename, &ds.FetchClient, &ds.UserAgent, &headers)
 	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(headers), &ds.Headers); err != nil {
 		return nil, err
 	}
 	return ds, nil
 }
 
-func (d DomainStorage) FetchAll(domain string) ([]*Domain, error) {
+func (d DomainSettingsStorage) FetchAll(domain string) ([]*DomainSettings, error) {
 	return nil, nil
 }
 
-func (d DomainStorage) Save(domain *Domain) error {
-	stmt, err := d.Statement(102, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+func (d DomainSettingsStorage) Save(domain *DomainSettings) error {
+	if domain.Domain == "" {
+		return ErrDomainRequired
+	}
+	stmt, err := d.Statement(save, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
-			`REPLACE INTO domain_settings (domain, publisher_name, fetch_client, user_agent, headers) 
+			`REPLACE INTO domain_settings (domain, sitename, fetch_client, user_agent, headers) 
 			VALUES (?, ?, ?, ?, ?)`,
 		)
 	})
 	if err != nil {
 		return err
 	}
+	hb, err := json.Marshal(domain.Headers)
+	if err != nil {
+		return err
+	}
 	_, err = stmt.ExecContext(
 		d.Ctx,
 		domain.Domain,
-		domain.PublisherName,
+		domain.Sitename,
 		domain.FetchClient,
 		domain.UserAgent,
-		domain.Headers,
+		string(hb),
 	)
 	if err != nil {
 		return err
