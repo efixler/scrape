@@ -97,19 +97,46 @@ func (d DomainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
 	if !rows.Next() {
 		return nil, store.ErrResourceNotFound
 	}
-	ds := &DomainSettings{Domain: domain}
-	var headers string
-	err = rows.Scan(&ds.Sitename, &ds.FetchClient, &ds.UserAgent, &headers)
+	ds, err := d.loadSettingFromRow(rows)
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal([]byte(headers), &ds.Headers); err != nil {
-		return nil, err
-	}
-	return ds, nil
+	ds.Domain = domain
+	return &ds, nil
 }
 
-func (d DomainSettingsStorage) FetchAll(domain string) ([]*DomainSettings, error) {
+func (d *DomainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (DomainSettings, error) {
+	ds := &DomainSettings{}
+	var headers string
+	err := rows.Scan(&ds.Sitename, &ds.FetchClient, &ds.UserAgent, &headers)
+	if err != nil {
+		return *ds, err
+	}
+	if err := json.Unmarshal([]byte(headers), &ds.Headers); err != nil {
+		return *ds, err
+	}
+	return *ds, nil
+}
+
+func (d DomainSettingsStorage) FetchAll() ([]*DomainSettings, error) {
+	stmt, err := d.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return db.PrepareContext(
+			ctx,
+			`SELECT sitename, fetch_client, user_agent, headers 
+			FROM domain_settings ORDER BY domain ASC`,
+		)
+	})
+	if err != nil {
+		return nil, err
+	}
+	rows, err := stmt.QueryContext(d.Ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	// continue here
+	// var domains []*DomainSettings
+
 	return nil, nil
 }
 
