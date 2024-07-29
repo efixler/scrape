@@ -239,6 +239,38 @@ func TestStoreAndRetrieve(t *testing.T) {
 	}
 }
 
+// validateDomain checks that the domain is a valid domain name.
+func TestValidateDomain(t *testing.T) {
+	tests := []struct {
+		name   string
+		domain string
+		valid  bool
+	}{
+		{"basic", "example.com", true},
+		{"subdomain", "sub.example.com", true},
+		{"long", "this.is.a.very.long.domain.name.that.is.valid.dev", true},
+		{"long, invalid tld", "this.is.a.very.long.domain.name.that.is.inva1id", false},
+		{"no tld", "example", false},
+		{"has valid dashes", "example-pie.com", true},
+		{"invalid dash and end of element", "example-.com", false},
+		{"invalid dash at start of element", "www.-example.com", false},
+		{"double dash", "example--pie.com", false},
+		{"empty element", "example..com", false},
+		{"empty domain", "", false},
+		{"invalid char", "example!.com", false},
+		{"dot at end", "example.com.", false},
+		{"numerals", "www3.example.com.", false},
+	}
+	for _, test := range tests {
+		err := validateDomain(test.domain)
+		if test.valid && err != nil {
+			t.Errorf("[%s]: domain %q should be valid: %v", test.name, test.domain, err)
+		} else if !test.valid && err == nil {
+			t.Errorf("[%s]: domain %q should be invalid", test.name, test.domain)
+		}
+	}
+}
+
 // We only use the random domain generator for testing but we can still
 // just make sure that it's returning valid domains.
 func TestRandomDomainGenerator(t *testing.T) {

@@ -207,7 +207,7 @@ func validateDomain(domain string) error {
 	}
 	elem = elem[:len(elem)-1]
 	for _, e := range elem {
-		if len(e) <= 1 {
+		if len(e) == 0 {
 			return errors.Join(
 				ErrInvalidDomain,
 				fmt.Errorf("domain element too short; %s", e),
