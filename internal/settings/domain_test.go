@@ -286,12 +286,12 @@ var tlds = []string{
 	"com", "net", "org", "io", "gov", "edu", "co", "us", "co", "dev",
 }
 
-var letters = []rune("abcdefghijklmnopqrstuvwxyz")
+var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 func randomString(l int) string {
 	b := make([]rune, l)
 	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
+		b[i] = chars[rand.Intn(len(chars))]
 	}
 	return string(b)
 }
