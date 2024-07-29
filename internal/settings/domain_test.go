@@ -3,6 +3,8 @@ package settings
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/efixler/scrape/database"
@@ -235,5 +237,36 @@ func TestStoreAndRetrieve(t *testing.T) {
 			}
 		}
 	}
+}
 
+// We only use the random domain generator for testing but we can still
+// just make sure that it's returning valid domains.
+func TestRandomDomainGenerator(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		d := randomDomain()
+		if err := validateDomain(d); err != nil {
+			t.Errorf("Error validating domain: %v", err)
+		}
+	}
+}
+
+var tlds = []string{
+	"com", "net", "org", "io", "gov", "edu", "co", "us", "co", "dev",
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyz")
+
+func randomString(l int) string {
+	b := make([]rune, l)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+func randomDomain() string {
+	domLen := rand.Intn(32) + 3
+	subLen := rand.Intn(16) + 3
+	tld := tlds[rand.Intn(len(tlds))]
+	return fmt.Sprintf("%s.%s.%s", randomString(subLen), randomString(domLen), tld)
 }

@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/resource"
@@ -25,6 +27,7 @@ const (
 
 var (
 	ErrDomainRequired = errors.New("domain is required")
+	ErrInvalidDomain  = errors.New("invalid domain")
 )
 
 type DomainSettings struct {
@@ -35,11 +38,16 @@ type DomainSettings struct {
 	Headers     map[string]string    `json:"headers,omitempty"`
 }
 
-func NewDomainSettings(domain string) *DomainSettings {
+// Domain names will be case-folded to lower case.
+func NewDomainSettings(domain string) (*DomainSettings, error) {
+	if err := validateDomain(domain); err != nil {
+		return nil, err
+	}
+	domain = strings.ToLower(domain)
 	d := &DomainSettings{
 		Domain: domain,
 	}
-	return d
+	return d, nil
 }
 
 type DomainSettingsStorage struct {
@@ -168,6 +176,55 @@ func (d DomainSettingsStorage) Save(domain *DomainSettings) error {
 	)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+var validDomainChars = regexp.MustCompile(`^[a-zA-Z0-9.-]{4,253}$`)
+var validTLDChars = regexp.MustCompile(`^[a-zA-Z]{2,63}$`)
+var validDomainElem = regexp.MustCompile(`^[a-zA-Z0-9]{1}[a-zA-Z0-9-]{0,62}$`)
+
+func validateDomain(domain string) error {
+	if !validDomainChars.MatchString(domain) {
+		return errors.Join(
+			ErrInvalidDomain,
+			fmt.Errorf("domain contains invalid characters and/or length; %s", domain),
+		)
+	}
+	elem := strings.Split(domain, ".")
+	if len(elem) <= 1 {
+		return errors.Join(
+			ErrInvalidDomain,
+			fmt.Errorf("domain must have at least one dot; %s", domain),
+		)
+	}
+	tld := elem[len(elem)-1]
+	if !validTLDChars.MatchString(tld) {
+		return errors.Join(
+			ErrInvalidDomain,
+			fmt.Errorf("invalid TLD; %s", tld),
+		)
+	}
+	elem = elem[:len(elem)-1]
+	for _, e := range elem {
+		if len(e) <= 1 {
+			return errors.Join(
+				ErrInvalidDomain,
+				fmt.Errorf("domain element too short; %s", e),
+			)
+		}
+		if !validDomainElem.MatchString(e) {
+			return errors.Join(
+				ErrInvalidDomain,
+				fmt.Errorf("invalid domain element; %s", e),
+			)
+		}
+		if strings.HasSuffix(e, "-") || strings.Contains(e, "--") {
+			return errors.Join(
+				ErrInvalidDomain,
+				fmt.Errorf("invalid domain element (dashes); %s", e),
+			)
+		}
 	}
 	return nil
 }
