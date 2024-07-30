@@ -1,14 +1,56 @@
-package server
+package admin
 
 import (
 	"bytes"
-	"context"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/efixler/scrape/internal/auth"
-	"golang.org/x/net/html"
 )
+
+type mockAuthzProvider auth.HMACBase64Key
+
+func (m mockAuthzProvider) AuthEnabled() bool {
+	return len(m) > 0
+}
+
+func (m mockAuthzProvider) SigningKey() auth.HMACBase64Key {
+	return auth.HMACBase64Key(m)
+}
+
+// HomeHander is open by intent
+func TestHomeHandlerAuth(t *testing.T) {
+	tests := []struct {
+		name           string
+		key            auth.HMACBase64Key
+		expectedResult int
+	}{
+		{
+			name:           "no key",
+			key:            nil,
+			expectedResult: 200,
+		},
+		{
+			name:           "good key",
+			key:            auth.MustNewHS256SigningKey(),
+			expectedResult: 200,
+		},
+	}
+	for _, test := range tests {
+		authz := mockAuthzProvider(test.key)
+
+		for _, openHome := range []bool{true, false} {
+			req := httptest.NewRequest("GET", "http://foo.bar/", nil)
+			w := httptest.NewRecorder()
+			MustServer(nil).homeHandler(authz, openHome)(w, req)
+			// newAdminServer().homeHandler(ss, openHome)(w, req)
+			resp := w.Result()
+			if resp.StatusCode != test.expectedResult {
+				t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
+			}
+		}
+	}
+}
 
 func TestHomeTemplateAuthSettings(t *testing.T) {
 	tests := []struct {
@@ -43,14 +85,11 @@ func TestHomeTemplateAuthSettings(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		as := newAdminServer()
+		as := MustServer(nil)
 
-		ss := MustScrapeServer(
-			context.Background(),
-			WithURLFetcher(&mockUrlFetcher{}),
-			WithAuthorizationIf(test.key),
-		)
-		tmpl := as.mustHomeTemplate(ss, test.openHome)
+		authz := mockAuthzProvider(test.key)
+
+		tmpl := as.mustHomeTemplate(authz, test.openHome)
 		tmpl, err := tmpl.Parse("{{AuthToken}}")
 		if err != nil {
 			t.Fatalf("[%s] Error parsing template: %s", test.name, err)
@@ -75,51 +114,5 @@ func TestHomeTemplateAuthSettings(t *testing.T) {
 				}
 			}
 		}
-	}
-}
-
-func TestMustBaseTemplate(t *testing.T) {
-	as := newAdminServer()
-	tmpl := as.mustBaseTemplate()
-	if tmpl == nil {
-		t.Fatal("Expected non-nil template")
-	}
-	requiredTemplates := map[string]bool{
-		"base.html":    false,
-		"menubar.html": false,
-		// following are blocks expected to be defined
-		"content": false,
-		"head":    false,
-		"scripts": false,
-		"title":   false,
-	}
-	for _, t := range tmpl.Templates() {
-		requiredTemplates[t.Name()] = true
-	}
-	for k, v := range requiredTemplates {
-		if !v {
-			t.Errorf("Expected template %s to be defined", k)
-		}
-	}
-	if tmpl == as.baseTemplate {
-		t.Error("Expected returned base template to be a clone baseTemplate")
-	}
-}
-
-func TestSettingsHandler(t *testing.T) {
-	as := newAdminServer()
-	handler := as.settingsHandler()
-	if handler == nil {
-		t.Fatal("Expected non-nil handler")
-	}
-	req := httptest.NewRequest("GET", "http://foo.bar/", nil)
-	w := httptest.NewRecorder()
-	handler(w, req)
-	resp := w.Result()
-	if resp.StatusCode != 200 {
-		t.Errorf("Expected 200 status code, got %d", resp.StatusCode)
-	}
-	if _, err := html.Parse(resp.Body); err != nil {
-		t.Errorf("Error parsing settings rendered content body: %s", err)
 	}
 }

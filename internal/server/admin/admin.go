@@ -1,4 +1,4 @@
-package server
+package admin
 
 import (
 	"embed"
@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/server/version"
@@ -15,7 +14,13 @@ import (
 
 const (
 	baseTemplateName = "base.html"
+	DefaultBasePath  = "/admin"
 )
+
+type AuthzProvider interface {
+	AuthEnabled() bool
+	SigningKey() auth.HMACBase64Key
+}
 
 //go:embed htdocs/*.html
 var htdocs embed.FS
@@ -34,14 +39,80 @@ type adminServer struct {
 	data         codeData
 }
 
-func newAdminServer() *adminServer {
-	return &adminServer{
+type config struct {
+	basePath string
+	authz    AuthzProvider
+	openHome bool
+	profile  bool
+}
+
+type option func(*config) error
+
+func WithBasePath(basePath string) option {
+	return func(c *config) error {
+		c.basePath = basePath
+		return nil
+	}
+}
+
+func WithAuthz(authz AuthzProvider) option {
+	return func(c *config) error {
+		c.authz = authz
+		return nil
+	}
+}
+
+func WithOpenHome(openHome bool) option {
+	return func(c *config) error {
+		c.openHome = openHome
+		return nil
+	}
+}
+
+func WithProfiling(profile bool) option {
+	return func(c *config) error {
+		c.profile = profile
+		return nil
+	}
+}
+
+func MustServer(mux *http.ServeMux, options ...option) *adminServer {
+	s, err := NewServer(mux, options...)
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
+func NewServer(mux *http.ServeMux, options ...option) (*adminServer, error) {
+	c := &config{
+		basePath: DefaultBasePath,
+	}
+
+	for _, o := range options {
+		if err := o(c); err != nil {
+			slog.Error("AdminServer: Error applying option", "error", err)
+			return nil, err
+		}
+	}
+	as := &adminServer{
 		data: codeData{
 			Commit:  version.Commit,
 			RepoURL: version.RepoURL,
 			Tag:     version.Tag,
 		},
 	}
+	// TODO: nil mux provided for some tests (some in server that should move)
+	if mux != nil {
+		// home handler is always at root
+		mux.HandleFunc("/", as.homeHandler(c.authz, c.openHome))
+		mux.Handle("/assets/", assetsHandler())
+		if c.profile {
+			initPProf(mux, c.basePath)
+		}
+		mux.HandleFunc(c.basePath+"/settings", as.settingsHandler())
+	}
+	return as, nil
 }
 
 // mustBaseTemplate returns a template for the base template. The returned template
@@ -81,53 +152,6 @@ func (a *adminServer) mustTemplate(name string, funcs template.FuncMap) *templat
 	}
 	tmpl = template.Must(tmpl.ParseFS(htdocs, "htdocs/"+name))
 	return tmpl
-}
-
-// mustHomeTemplate creates a template for the home page.
-// To enable usage of the home page without a token when auth is enabled,
-// for API endpoint, set openHome to true.
-func (a *adminServer) mustHomeTemplate(ss *scrapeServer, openHome bool) *template.Template {
-	var authTokenF = func() string { return "" }
-	var showTokenWidget = func() bool {
-		// when openHome is true don't show the token entry widget
-		if openHome {
-			return false
-		}
-		return ss.AuthEnabled()
-	}
-	if ss.AuthEnabled() && openHome {
-		authTokenF = func() string {
-			c, err := auth.NewClaims(
-				auth.WithSubject("home"),
-				auth.ExpiresIn(60*time.Minute),
-			)
-			if err != nil {
-				slog.Error("Error creating claims for home view", "error", err)
-				return ""
-			}
-			s, err := c.Sign(ss.SigningKey())
-			if err != nil {
-				slog.Error("Error signing claims for home view", "error", err)
-				return ""
-			}
-			return s
-		}
-	}
-	funcMap := template.FuncMap{
-		"AuthToken":       authTokenF,
-		"ShowTokenWidget": showTokenWidget,
-	}
-	tmpl := a.mustTemplate("index.html", funcMap)
-	return tmpl
-}
-
-func (a *adminServer) homeHandler(ss *scrapeServer, openHome bool) http.HandlerFunc {
-	tmpl := a.mustHomeTemplate(ss, openHome)
-	return func(w http.ResponseWriter, r *http.Request) {
-		if err := tmpl.ExecuteTemplate(w, baseTemplateName, a.data); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
 }
 
 func (a *adminServer) settingsHandler() http.HandlerFunc {

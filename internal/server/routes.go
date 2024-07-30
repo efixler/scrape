@@ -2,9 +2,9 @@ package server
 
 import (
 	"net/http"
-	"net/http/pprof"
 
 	"github.com/efixler/scrape/database"
+	"github.com/efixler/scrape/internal/server/admin"
 	"github.com/efixler/scrape/internal/server/healthchecks"
 )
 
@@ -21,10 +21,19 @@ func InitMux(
 	enableProfiling bool,
 ) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	as := newAdminServer()
-	mux.HandleFunc("GET /{$}", as.homeHandler(ss, openHome))
 	// mux.HandleFunc("GET /settings", as.settingsHandler())
-	mux.Handle("/assets/", assetsHandler())
+
+	admin.MustServer(
+		mux,
+		admin.WithAuthz(ss),
+		admin.WithOpenHome(openHome),
+		admin.WithProfiling(enableProfiling),
+	)
+	// as := newAdminServer()
+	// mux.HandleFunc("GET /{$}", as.homeHandler(ss, openHome))
+	// mux.Handle("/assets/", assetsHandler())
+
+	// API routes
 	h := ss.singleHandler()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
@@ -36,18 +45,8 @@ func InitMux(
 	h = ss.feedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
-	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", db))
-	if enableProfiling {
-		initPProf(mux)
-	}
-	return mux, nil
-}
 
-func initPProf(mux *http.ServeMux) {
-	// pprof
-	mux.HandleFunc("GET /debug/pprof/", http.HandlerFunc(pprof.Index))
-	mux.HandleFunc("GET /debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-	mux.HandleFunc("GET /debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	mux.HandleFunc("GET /debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	mux.HandleFunc("GET /debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+	// healthchecks
+	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", db))
+	return mux, nil
 }

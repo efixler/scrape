@@ -250,7 +250,7 @@ Command line options:
 
 The root path of the server (`/`) is browsable and provides a simple way to test URLs and results.
 
-![Alt text](internal/server/assets/test-console-with-token.png)
+![Alt text](internal/server/admin/htdocs/assets/test-console-with-token.png)
 
 The select on the left lets you select between loading results for a page url or for a feed, or scraping a page using the headless browser instead of a direct http client.
 
