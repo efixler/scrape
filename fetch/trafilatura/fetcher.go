@@ -16,8 +16,7 @@ import (
 )
 
 type TrafilaturaFetcher struct {
-	client   fetch.Client
-	fallback trafilatura.FallbackConfig
+	client fetch.Client
 }
 
 func MustNew(client fetch.Client) fetch.URLFetcher {
@@ -36,8 +35,7 @@ func New(client fetch.Client) (*TrafilaturaFetcher, error) {
 		}
 	}
 	fetcher := &TrafilaturaFetcher{
-		fallback: trafilatura.FallbackConfig{},
-		client:   client,
+		client: client,
 	}
 	return fetcher, nil
 }
@@ -93,7 +91,8 @@ func (f *TrafilaturaFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		}
 	}
 	topts := trafilatura.Options{
-		FallbackCandidates: &f.fallback,
+		EnableFallback:     true,
+		FallbackCandidates: &trafilatura.FallbackCandidates{},
 		OriginalURL:        url,
 		IncludeImages:      true,
 	}
