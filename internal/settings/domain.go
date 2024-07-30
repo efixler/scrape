@@ -40,7 +40,7 @@ type DomainSettings struct {
 
 // Domain names will be case-folded to lower case.
 func NewDomainSettings(domain string) (*DomainSettings, error) {
-	if err := validateDomain(domain); err != nil {
+	if err := ValidateDomain(domain); err != nil {
 		return nil, err
 	}
 	domain = strings.ToLower(domain)
@@ -189,11 +189,11 @@ var validDomainChars = regexp.MustCompile(`^[a-zA-Z0-9.-]{4,253}$`)
 var validTLDChars = regexp.MustCompile(`^[a-zA-Z]{2,63}$`)
 var validDomainElem = regexp.MustCompile(`^[a-zA-Z0-9]{1}[a-zA-Z0-9-]{0,62}$`)
 
-func validateDomain(domain string) error {
+func ValidateDomain(domain string) error {
 	if !validDomainChars.MatchString(domain) {
 		return errors.Join(
 			ErrInvalidDomain,
-			fmt.Errorf("domain contains invalid characters and/or length; %s", domain),
+			fmt.Errorf("domain contains non-allowed characters and/or length; %s", domain),
 		)
 	}
 	elem := strings.Split(domain, ".")
@@ -221,13 +221,13 @@ func validateDomain(domain string) error {
 		if !validDomainElem.MatchString(e) {
 			return errors.Join(
 				ErrInvalidDomain,
-				fmt.Errorf("invalid domain element; %s", e),
+				fmt.Errorf("illegal domain element; %s", e),
 			)
 		}
 		if strings.HasSuffix(e, "-") || strings.Contains(e, "--") {
 			return errors.Join(
 				ErrInvalidDomain,
-				fmt.Errorf("invalid domain element (dashes); %s", e),
+				fmt.Errorf("illegal domain element (dashes); %s", e),
 			)
 		}
 	}

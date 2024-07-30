@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"errors"
+
 	nurl "net/url"
 )
 
@@ -40,9 +41,9 @@ func (sur *singleURLRequest) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-type domainSettingsRequest struct {
-	Domain string `json:"domain"`
-	Query  string `json:"q,omitempty"`
-	Offset int    `json:"offset,omitempty"`
-	Limit  int    `json:"limit,omitempty"`
-}
+// type domainSettingsRequest struct {
+// 	Domain string `json:"domain"`
+// 	Query  string `json:"q,omitempty"`
+// 	Offset int    `json:"offset,omitempty"`
+// 	Limit  int    `json:"limit,omitempty"`
+// }

@@ -9,10 +9,12 @@ import (
 	"net/http"
 	nurl "net/url"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/auth"
+	"github.com/efixler/scrape/internal/settings"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/webutil/jsonarray"
 )
@@ -43,6 +45,16 @@ func WithFeedFetcher(ff fetch.FeedFetcher) option {
 			return errors.New("nil feed fetcher provided")
 		}
 		s.feedFetcher = ff
+		return nil
+	}
+}
+
+func WithSettingsStorage(db *database.DBHandle) option {
+	return func(s *scrapeServer) error {
+		if db == nil {
+			return errors.New("nil database handle provided")
+		}
+		s.settingsStorage = settings.NewDomainSettingsStorage(db)
 		return nil
 	}
 }
@@ -94,6 +106,7 @@ type scrapeServer struct {
 	headlessFetcher fetch.URLFetcher
 	feedFetcher     fetch.FeedFetcher
 	signingKey      auth.HMACBase64Key
+	settingsStorage *settings.DomainSettingsStorage
 }
 
 func (ss scrapeServer) SigningKey() auth.HMACBase64Key {
@@ -314,19 +327,4 @@ func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
 	v := BatchRequest{Urls: links}
 	r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, &v))
 	h.batch(w, r)
-}
-
-func (ss *scrapeServer) getSettings(w http.ResponseWriter, r *http.Request) {
-	// GET /settings/domain/{domain}
-	// or
-	// GET /settings/domain?domain={domain}
-	// multi =
-	// GET /settings/domain/*
-	// or
-	// GET /settings/domain/*/10/0
-	// or
-	// GET /settings/domain/?q=foo&limit=10&offset=0
-	// q, limit, offset := r.FormValue("q"), r.FormValue
-	// ("limit"), r.FormValue("offset")
-	//dsr := new(domainSettingsRequest)
 }

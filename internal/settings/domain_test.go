@@ -344,7 +344,7 @@ func TestValidateDomain(t *testing.T) {
 		{"numerals", "www3.example.com.", false},
 	}
 	for _, test := range tests {
-		err := validateDomain(test.domain)
+		err := ValidateDomain(test.domain)
 		if test.valid && err != nil {
 			t.Errorf("[%s]: domain %q should be valid: %v", test.name, test.domain, err)
 		} else if !test.valid && err == nil {
@@ -358,7 +358,7 @@ func TestValidateDomain(t *testing.T) {
 func TestRandomDomainGenerator(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		d := randomDomain()
-		if err := validateDomain(d); err != nil {
+		if err := ValidateDomain(d); err != nil {
 			t.Errorf("Error validating domain: %v", err)
 		}
 	}
