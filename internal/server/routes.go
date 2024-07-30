@@ -42,6 +42,8 @@ func InitMux(
 	h = ss.feedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
+	// settings
+	mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.getSettings)
 
 	// healthchecks
 	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", db))

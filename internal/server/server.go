@@ -315,3 +315,18 @@ func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
 	r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, &v))
 	h.batch(w, r)
 }
+
+func (ss *scrapeServer) getSettings(w http.ResponseWriter, r *http.Request) {
+	// GET /settings/domain/{domain}
+	// or
+	// GET /settings/domain?domain={domain}
+	// multi =
+	// GET /settings/domain/*
+	// or
+	// GET /settings/domain/*/10/0
+	// or
+	// GET /settings/domain/?q=foo&limit=10&offset=0
+	// q, limit, offset := r.FormValue("q"), r.FormValue
+	// ("limit"), r.FormValue("offset")
+	//dsr := new(domainSettingsRequest)
+}
