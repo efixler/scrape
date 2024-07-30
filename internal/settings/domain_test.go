@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math/rand"
+	"sort"
 	"testing"
 
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/database/sqlite"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/ua"
+	"github.com/pressly/goose/v3"
 )
 
 func TestJSONUnmarshal(t *testing.T) {
@@ -239,6 +242,50 @@ func TestStoreAndRetrieve(t *testing.T) {
 	}
 }
 
+func TestFetchRange(t *testing.T) {
+	engine := sqlite.MustNew(sqlite.InMemoryDB())
+	db := database.New(engine)
+	if err := db.Open(context.Background()); err != nil {
+		t.Fatalf("Error opening database: %v", err)
+	}
+	t.Cleanup(func() {
+		db.Close()
+	})
+	dss := NewDomainSettingsStorage(db)
+
+	domains, err := populateTestDB(db, 100)
+	if err != nil {
+		t.Fatalf("can't populate test database: %v", err)
+	}
+	sort.Strings(domains)
+	limit := 10
+	for i := 0; i < len(domains); i += limit {
+		ds, err := dss.FetchRange(i, limit)
+		if err != nil {
+			t.Fatalf("can't fetch range: %v", err)
+		}
+		for j := i; j < 10; j++ {
+			if ds[j].Domain != domains[j] {
+				t.Errorf("expected %q, got %q", domains[j], ds[j].Domain)
+			}
+		}
+	}
+	// now check a set that's smaller than limit
+	domains = domains[len(domains)-5:]
+	ds, err := dss.FetchRange(95, limit)
+	if err != nil {
+		t.Fatalf("can't fetch range: %v", err)
+	}
+	if len(ds) != len(domains) {
+		t.Fatalf("expected %d domains, got %d", len(domains), len(ds))
+	}
+	for i := range ds {
+		if ds[i].Domain != domains[i] {
+			t.Errorf("expected %q, got %q", domains[i], ds[i].Domain)
+		}
+	}
+}
+
 // validateDomain checks that the domain is a valid domain name.
 func TestValidateDomain(t *testing.T) {
 	tests := []struct {
@@ -301,4 +348,9 @@ func randomDomain() string {
 	subLen := rand.Intn(16) + 3
 	tld := tlds[rand.Intn(len(tlds))]
 	return fmt.Sprintf("%s.%s.%s", randomString(subLen), randomString(domLen), tld)
+}
+
+func init() {
+	goose.SetLogger(goose.NopLogger())
+	slog.SetLogLoggerLevel(slog.LevelWarn)
 }
