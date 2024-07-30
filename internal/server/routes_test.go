@@ -50,7 +50,7 @@ func TestExtractErrors(t *testing.T) {
 		expectedStatus int
 	}
 	tests := []data{
-		// {url: "/", expectedStatus: 404}, TODO: this is a bug, figure out why it's not 404
+		{url: "/", expectedStatus: 404},
 		{url: "", expectedStatus: 400},
 		{url: "?url=", expectedStatus: 400},
 		{url: "?url=foo_scheme:invalidurl", expectedStatus: 400},
