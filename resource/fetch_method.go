@@ -1,5 +1,7 @@
 package resource
 
+// TODO: Move FetchClient to a more sensible package
+
 import (
 	"errors"
 	"fmt"
