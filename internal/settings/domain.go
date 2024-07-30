@@ -62,7 +62,7 @@ func (d DomainSettingsStorage) Delete(domain string) (bool, error) {
 	stmt, err := d.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
-			`DELETE FROM domain_settings WHERE domain = ?`,
+			`DELETE FROM domain_settings WHERE LOWER(domain) = LOWER(?)`,
 		)
 	})
 	if err != nil {
@@ -156,6 +156,7 @@ func (d DomainSettingsStorage) Save(domain *DomainSettings) error {
 	if domain.Domain == "" {
 		return ErrDomainRequired
 	}
+	domain.Domain = strings.ToLower(domain.Domain)
 	stmt, err := d.Statement(save, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,

@@ -12,6 +12,7 @@ import (
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/database/sqlite"
 	"github.com/efixler/scrape/resource"
+	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/ua"
 	"github.com/pressly/goose/v3"
 )
@@ -286,6 +287,40 @@ func TestFetchRange(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	engine := sqlite.MustNew(sqlite.InMemoryDB())
+	db := database.New(engine)
+	if err := db.Open(context.Background()); err != nil {
+		t.Fatalf("Error opening database: %v", err)
+	}
+	t.Cleanup(func() {
+		db.Close()
+	})
+
+	domains, err := populateTestDB(db, 1)
+	if err != nil {
+		t.Fatalf("can't populate test database: %v", err)
+	}
+	dss := NewDomainSettingsStorage(db)
+
+	if deleted, err := dss.Delete(domains[0]); err != nil {
+		t.Fatalf("can't delete domain: %v", err)
+	} else if !deleted {
+		t.Errorf("expected domain %v to be deleted", domains[0])
+	}
+
+	if _, err = dss.Fetch(domains[0]); err != store.ErrResourceNotFound {
+		t.Errorf("expected domain %v to be deleted, it wasn't", domains[0])
+	}
+
+	if deleted, err := dss.Delete(domains[0]); err != nil {
+		t.Fatalf("can't delete domain: %v", err)
+	} else if deleted {
+		t.Errorf("expected domain %v to already be deleted", domains[0])
+	}
+
+}
+
 // validateDomain checks that the domain is a valid domain name.
 func TestValidateDomain(t *testing.T) {
 	tests := []struct {
@@ -333,7 +368,7 @@ var tlds = []string{
 	"com", "net", "org", "io", "gov", "edu", "co", "us", "co", "dev",
 }
 
-var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+var chars = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 
 func randomString(l int) string {
 	b := make([]rune, l)
