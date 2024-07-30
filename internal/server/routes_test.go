@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -69,50 +70,15 @@ func TestExtractErrors(t *testing.T) {
 	defer ts.Close()
 	client := ts.Client()
 	urlPath := "/extract"
-	targetUrl := ts.URL + urlPath
+	baseUrl := ts.URL + urlPath
 	for i, test := range tests {
-		resp, err := client.Get(targetUrl + test.url)
+		targetUrl := baseUrl + test.url
+		resp, err := client.Get(targetUrl)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if resp.StatusCode != test.expectedStatus {
-			t.Errorf("Expected %d status code for test %d, got %d", test.expectedStatus, i, resp.StatusCode)
-		}
-	}
-}
-
-// HomeHander is open by intent
-func TestHomeHandlerAuth(t *testing.T) {
-	tests := []struct {
-		name           string
-		key            auth.HMACBase64Key
-		expectedResult int
-	}{
-		{
-			name:           "no key",
-			key:            nil,
-			expectedResult: 200,
-		},
-		{
-			name:           "good key",
-			key:            auth.MustNewHS256SigningKey(),
-			expectedResult: 200,
-		},
-	}
-	for _, test := range tests {
-		ss := MustScrapeServer(
-			context.Background(),
-			WithURLFetcher(&mockUrlFetcher{}),
-			WithAuthorizationIf(test.key),
-		)
-		for _, openHome := range []bool{true, false} {
-			req := httptest.NewRequest("GET", "http://foo.bar/", nil)
-			w := httptest.NewRecorder()
-			newAdminServer().homeHandler(ss, openHome)(w, req)
-			resp := w.Result()
-			if resp.StatusCode != test.expectedResult {
-				t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
-			}
+			t.Errorf("Expected %d status code for test %d (%s), got %d", test.expectedStatus, i, targetUrl, resp.StatusCode)
 		}
 	}
 }
@@ -179,4 +145,8 @@ func TestAPIRoutesAreProtected(t *testing.T) {
 			t.Fatalf("[%s] Expected 401, got %d", test.name, resp.StatusCode)
 		}
 	}
+}
+
+func init() {
+	slog.SetLogLoggerLevel(slog.LevelError)
 }

@@ -94,7 +94,7 @@ setup-githooks: ## setup the git hooks
 watch-server: ## Start a hot-update scrape-server (requires entr)
 	@echo "\nStarting hot-update scrape-server. Only templates are watched."
 	@echo "[space] to restart, q to quit."
-	@find ./internal/server/htdocs -type f | entr -r make build-and-restart-server
+	@find ./internal/server/admin/htdocs -type f | entr -r make build-and-restart-server
 
 build-and-restart-server:
 	@(make > $(BUILD_DIR)/build.log 2>&1; \
