@@ -21,17 +21,14 @@ func InitMux(
 	enableProfiling bool,
 ) (*http.ServeMux, error) {
 	mux := http.NewServeMux()
-	// mux.HandleFunc("GET /settings", as.settingsHandler())
 
+	// Admin routes (and home)
 	admin.MustServer(
 		mux,
 		admin.WithAuthz(ss),
 		admin.WithOpenHome(openHome),
 		admin.WithProfiling(enableProfiling),
 	)
-	// as := newAdminServer()
-	// mux.HandleFunc("GET /{$}", as.homeHandler(ss, openHome))
-	// mux.Handle("/assets/", assetsHandler())
 
 	// API routes
 	h := ss.singleHandler()

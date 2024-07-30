@@ -8,16 +8,6 @@ import (
 	"github.com/efixler/scrape/internal/auth"
 )
 
-type mockAuthzProvider auth.HMACBase64Key
-
-func (m mockAuthzProvider) AuthEnabled() bool {
-	return len(m) > 0
-}
-
-func (m mockAuthzProvider) SigningKey() auth.HMACBase64Key {
-	return auth.HMACBase64Key(m)
-}
-
 // HomeHander is open by intent
 func TestHomeHandlerAuth(t *testing.T) {
 	tests := []struct {
@@ -37,7 +27,7 @@ func TestHomeHandlerAuth(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		authz := mockAuthzProvider(test.key)
+		authz := authzShim(test.key)
 
 		for _, openHome := range []bool{true, false} {
 			req := httptest.NewRequest("GET", "http://foo.bar/", nil)
@@ -87,7 +77,7 @@ func TestHomeTemplateAuthSettings(t *testing.T) {
 	for _, test := range tests {
 		as := MustServer(nil)
 
-		authz := mockAuthzProvider(test.key)
+		authz := authzShim(test.key)
 
 		tmpl := as.mustHomeTemplate(authz, test.openHome)
 		tmpl, err := tmpl.Parse("{{AuthToken}}")

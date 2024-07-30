@@ -2,10 +2,12 @@ package admin
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/efixler/scrape/internal/auth"
@@ -20,6 +22,16 @@ const (
 type AuthzProvider interface {
 	AuthEnabled() bool
 	SigningKey() auth.HMACBase64Key
+}
+
+type authzShim auth.HMACBase64Key
+
+func (a authzShim) AuthEnabled() bool {
+	return len(a) > 0
+}
+
+func (a authzShim) SigningKey() auth.HMACBase64Key {
+	return auth.HMACBase64Key(a)
 }
 
 //go:embed htdocs/*.html
@@ -50,6 +62,9 @@ type option func(*config) error
 
 func WithBasePath(basePath string) option {
 	return func(c *config) error {
+		if !strings.HasPrefix(basePath, "/") {
+			return fmt.Errorf("BasePath must start with a /")
+		}
 		c.basePath = basePath
 		return nil
 	}
@@ -57,6 +72,9 @@ func WithBasePath(basePath string) option {
 
 func WithAuthz(authz AuthzProvider) option {
 	return func(c *config) error {
+		if authz == nil {
+			authz = authzShim{}
+		}
 		c.authz = authz
 		return nil
 	}
@@ -87,6 +105,7 @@ func MustServer(mux *http.ServeMux, options ...option) *adminServer {
 func NewServer(mux *http.ServeMux, options ...option) (*adminServer, error) {
 	c := &config{
 		basePath: DefaultBasePath,
+		authz:    authzShim{},
 	}
 
 	for _, o := range options {
