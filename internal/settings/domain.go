@@ -69,6 +69,9 @@ func NewDomainSettingsStorage(dbh *database.DBHandle) *DomainSettingsStorage {
 }
 
 func (d DomainSettingsStorage) Delete(domain string) (bool, error) {
+	if err := ValidateDomain(domain); err != nil {
+		return false, err
+	}
 	stmt, err := d.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,

@@ -230,6 +230,83 @@ func TestPutDomainSettings(t *testing.T) {
 	}
 }
 
+func TestExtractBatchDomainSettings(t *testing.T) {
+	tests := []struct {
+		name         string
+		queryString  string
+		expectStatus int
+		expect       batchDomainSettingsRequest
+	}{
+		{
+			name:         "empty",
+			queryString:  "",
+			expectStatus: 200,
+			expect:       batchDomainSettingsRequest{Limit: MaxDomainSettingsBatchSize},
+		},
+		{
+			name:         "fully populated",
+			queryString:  "q=foo&offset=1&limit=2",
+			expectStatus: 200,
+			expect:       batchDomainSettingsRequest{Query: "foo", Offset: 1, Limit: 2},
+		},
+		{
+			name:         "limit too high",
+			queryString:  "limit=1001",
+			expectStatus: 200,
+			expect:       batchDomainSettingsRequest{Limit: MaxDomainSettingsBatchSize},
+		},
+		{
+			name:         "negative offset",
+			queryString:  "offset=-1",
+			expectStatus: 400,
+			expect:       batchDomainSettingsRequest{},
+		},
+		{
+			name:         "case folding query",
+			queryString:  "q=FOO",
+			expectStatus: 200,
+			expect:       batchDomainSettingsRequest{Query: "foo", Limit: MaxDomainSettingsBatchSize},
+		},
+	}
+
+	okHandler := func(testname string, expect batchDomainSettingsRequest) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			ds, _ := r.Context().Value(dsKey{}).(*batchDomainSettingsRequest)
+			if ds.Query != expect.Query {
+				t.Errorf("[%s]: got query %q, want %q", testname, ds.Query, expect.Query)
+			}
+			if ds.Offset != expect.Offset {
+				t.Errorf("[%s]: got offset %d, want %d", testname, ds.Offset, expect.Offset)
+			}
+			if ds.Limit != expect.Limit {
+				t.Errorf("[%s]: got limit %d, want %d", testname, ds.Limit, expect.Limit)
+			}
+		}
+	}
+
+	// for _, tt := range tests {
+	// 	r := httptest.NewRequest("GET", "/foo/bar/{DOMAIN}", nil)
+	// 	r.SetPathValue("DOMAIN", tt.domain)
+	// 	w := httptest.NewRecorder()
+	// 	chain := Chain(okHandler(tt.name, tt.domain), extractDomainFromPath(dsKey{}))
+	// 	chain(w, r)
+	// 	if w.Code != tt.expectStatus {
+	// 		t.Errorf("[%s]: got status %d, want %d", tt.name, w.Code, tt.expectStatus)
+	// 	}
+	// }
+
+	for _, tt := range tests {
+		r := httptest.NewRequest("GET", "/foo/bar?"+tt.queryString, nil)
+		w := httptest.NewRecorder()
+		chain := Chain(okHandler(tt.name, tt.expect), extractBatchDomainSettingsQuery(dsKey{}))
+		chain(w, r)
+		if w.Code != tt.expectStatus {
+			t.Errorf("[%s]: got status %d, want %d", tt.name, w.Code, tt.expectStatus)
+		}
+	}
+}
+
 func init() {
 	goose.SetLogger(goose.NopLogger())
 }

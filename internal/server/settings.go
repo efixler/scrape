@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -52,19 +53,6 @@ func (ss *scrapeServer) getSingleDomainSettings(w http.ResponseWriter, r *http.R
 		return
 	}
 	writeJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
-
-	// GET /settings/domain/{domain}
-	// or
-	// GET /settings/domain?domain={domain}
-	// multi =
-	// GET /settings/domain/*
-	// or
-	// GET /settings/domain/*/10/0
-	// or
-	// GET /settings/domain/?q=foo&limit=10&offset=0
-	// q, limit, offset := r.FormValue("q"), r.FormValue
-	// ("limit"), r.FormValue("offset")
-	//dsr := new(domainSettingsRequest)
 }
 
 func (ss *scrapeServer) putDomainSettingsHandler() http.HandlerFunc {
@@ -163,9 +151,25 @@ func extractBatchDomainSettingsQuery(key ...any) middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			v := new(batchDomainSettingsRequest)
 			v.Query = strings.ToLower(r.FormValue("q"))
-			offset, err := strconv.Atoi(r.FormValue("offset"))
-			if err != nil {
-				offset = 0
+			var (
+				err    error
+				offset int = 0
+			)
+			switch r.FormValue("offset") {
+			case "":
+			// no offset specified, use the default
+			default:
+				offset, err = strconv.Atoi(r.FormValue("offset"))
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte(fmt.Sprintf("Invalid offset: %s", err)))
+					return
+				}
+				if offset < 0 {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte(fmt.Sprintf("Invalid offset %d: must be >= 0", offset)))
+					return
+				}
 			}
 			v.Offset = offset
 			limit := MaxDomainSettingsBatchSize
@@ -188,4 +192,23 @@ func extractBatchDomainSettingsQuery(key ...any) middleware {
 			next(w, r)
 		}
 	}
+}
+
+func (ss *scrapeServer) deleteDomainSettingsHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(MaxBytes(4096), extractDomainFromPath(dsKey{}))
+	return Chain(ss.deleteDomainSettings, ms...)
+}
+
+func (ss *scrapeServer) deleteDomainSettings(w http.ResponseWriter, r *http.Request) {
+	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
+	if _, err := ss.settingsStorage.Delete(req.Domain); err != nil {
+		if errors.Is(err, settings.ErrInvalidDomain) {
+			w.WriteHeader(http.StatusBadRequest)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		w.Write([]byte(err.Error()))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

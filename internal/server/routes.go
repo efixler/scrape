@@ -47,6 +47,7 @@ func InitMux(
 		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.getSingleDomainSettingsHandler())
 		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.putDomainSettingsHandler())
 		mux.HandleFunc("GET /settings/domain", ss.getBatchDomainSettingsHandler())
+		mux.HandleFunc("DELETE /settings/domain/{DOMAIN}", ss.deleteDomainSettingsHandler())
 	} else {
 		mux.HandleFunc("/settings/domain/", serviceUnavailable)
 	}
