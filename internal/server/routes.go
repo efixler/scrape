@@ -45,6 +45,7 @@ func InitMux(
 	// settings
 	if ss.settingsStorage != nil {
 		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.singleDomainSettingsHandler())
+		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.putDomainSettingsHandler())
 	} else {
 		mux.HandleFunc("/settings/domain/", serviceUnavailable)
 	}

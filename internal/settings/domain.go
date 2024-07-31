@@ -35,7 +35,7 @@ type DomainSettings struct {
 	Sitename    string               `json:"sitename,omitempty"`
 	FetchClient resource.FetchClient `json:"fetch_client,omitempty"`
 	UserAgent   ua.UserAgent         `json:"user_agent,omitempty"`
-	Headers     map[string]string    `json:"headers,omitempty"`
+	Headers     MIMEHeader           `json:"headers,omitempty"`
 }
 
 // Domain names will be case-folded to lower case.

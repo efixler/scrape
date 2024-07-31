@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math/rand"
+	"net/textproto"
 	"sort"
 	"testing"
 
@@ -112,11 +113,11 @@ func TestJSONMarshal(t *testing.T) {
 				Headers:     map[string]string{"x-special": "special"},
 			},
 			expectErr:         false,
-			expectJSON:        `{"sitename":"example","fetch_client":"chromium-headless","user_agent":"Mozilla/5.0","headers":{"x-special":"special"}}`,
+			expectJSON:        `{"sitename":"example","fetch_client":"chromium-headless","user_agent":"Mozilla/5.0","headers":{"X-Special":"special"}}`,
 			expectSitename:    "example",
 			expectFetchClient: resource.HeadlessChromium,
 			expectUserAgent:   ua.UserAgent("Mozilla/5.0"),
-			expectHeaders:     map[string]string{"x-special": "special"},
+			expectHeaders:     map[string]string{"X-Special": "special"},
 		},
 	}
 	for _, test := range tests {
@@ -148,7 +149,7 @@ func TestJSONMarshal(t *testing.T) {
 			t.Errorf("%s: Headers: got %v, want %v", test.name, ds.Headers, test.expectHeaders)
 			continue
 		}
-		for k := range ds.Headers {
+		for k := range test.expectHeaders {
 			if test.expectHeaders[k] != ds.Headers[k] {
 				t.Errorf(
 					"%s: Headers[%q]: got %q, want %q",
@@ -169,7 +170,6 @@ func TestStoreAndRetrieve(t *testing.T) {
 		t.Fatalf("Error opening database: %v", err)
 	}
 	t.Cleanup(func() {
-		t.Logf("Cleaning up test database %v", engine.DSNSource())
 		db.Close()
 	})
 	dss := NewDomainSettingsStorage(db)
@@ -191,7 +191,7 @@ func TestStoreAndRetrieve(t *testing.T) {
 				Sitename:    "example",
 				FetchClient: resource.DefaultClient,
 				UserAgent:   ua.UserAgent("Mozilla/5.0"),
-				Headers:     map[string]string{"x-special": "special"},
+				Headers:     MIMEHeader{"x-special": "special"},
 			},
 		},
 	}
@@ -229,8 +229,8 @@ func TestStoreAndRetrieve(t *testing.T) {
 			t.Errorf("%s: Headers: got %v, want %v", test.name, ds.Headers, test.settings.Headers)
 			continue
 		}
-		for k := range ds.Headers {
-			if test.settings.Headers[k] != ds.Headers[k] {
+		for k := range test.settings.Headers {
+			if test.settings.Headers[textproto.CanonicalMIMEHeaderKey(k)] != ds.Headers[k] {
 				t.Errorf(
 					"%s: Headers[%q]: got %q, want %q",
 					test.name,

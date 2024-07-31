@@ -15,18 +15,15 @@ type singleDomainRequest struct {
 	PrettyPrint bool   `json:"pp,omitempty"`
 }
 
+type dsKey struct{}
+
 func (ss *scrapeServer) singleDomainSettingsHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(4096), parseSingleDomain())
+	ms := ss.withAuthIfEnabled(MaxBytes(4096), extractDomainFromPath(dsKey{}))
 	return Chain(ss.singleDomainSettings, ms...)
 }
 
 func (ss *scrapeServer) singleDomainSettings(w http.ResponseWriter, r *http.Request) {
-	req, ok := r.Context().Value(payloadKey{}).(*singleDomainRequest)
-	if !ok {
-		http.Error(w, "Can't process request, no data", http.StatusInternalServerError)
-		return
-	}
-
+	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
 	ds, err := ss.settingsStorage.Fetch(req.Domain)
 	if err != nil {
 		switch err {
@@ -60,7 +57,34 @@ func (ss *scrapeServer) singleDomainSettings(w http.ResponseWriter, r *http.Requ
 	//dsr := new(domainSettingsRequest)
 }
 
-func parseSingleDomain() middleware {
+func (ss *scrapeServer) putDomainSettingsHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(
+		MaxBytes(4096),
+		extractDomainFromPath(dsKey{}),
+		DecodeJSONBody[settings.DomainSettings](),
+	)
+	return Chain(ss.putDomainSettings, ms...)
+}
+
+func (ss *scrapeServer) putDomainSettings(w http.ResponseWriter, r *http.Request) {
+	// for put we get the domain value from here
+	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
+	ds, _ := r.Context().Value(payloadKey{}).(*settings.DomainSettings)
+	ds.Domain = req.Domain
+	if err := ss.settingsStorage.Save(ds); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
+	}
+	writeJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
+}
+
+func extractDomainFromPath(key ...any) middleware {
+	var pkey any
+	pkey = payloadKey{}
+	if len(key) > 0 {
+		pkey = key[0]
+	}
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			pp := r.FormValue("pp") == "1"
@@ -82,8 +106,7 @@ func parseSingleDomain() middleware {
 				return
 			}
 			v.Domain = targetDomain
-			//slog.Debug("ParseSingleDomain", "domain", v.Domain, "pp", v.PrettyPrint, "encoding", r.Header.Get("Content-Type"))
-			r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, v))
+			r = r.WithContext(context.WithValue(r.Context(), pkey, v))
 			next(w, r)
 		}
 	}

@@ -149,11 +149,11 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
-		if !ok {
-			http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
-			return
-		}
+		req, _ := r.Context().Value(payloadKey{}).(*singleURLRequest)
+		// if !ok {
+		// 	http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
+		// 	return
+		// }
 		w.Header().Set("Content-Type", "application/json")
 		page, err := fetcher.Fetch(req.URL)
 		if err != nil {
@@ -327,4 +327,15 @@ func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
 	v := BatchRequest{Urls: links}
 	r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, &v))
 	h.batch(w, r)
+}
+
+func writeJSONOutput(w http.ResponseWriter, v any, pp bool, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	if pp {
+		encoder.SetIndent("", "  ")
+	}
+	encoder.Encode(v)
 }

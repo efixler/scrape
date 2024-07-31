@@ -93,7 +93,12 @@ func parseSinglePayload() middleware {
 	}
 }
 
-func DecodeJSONBody[T any]() middleware {
+func DecodeJSONBody[T any](key ...any) middleware {
+	var pkey any
+	pkey = payloadKey{}
+	if len(key) > 0 {
+		pkey = key[0]
+	}
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			decoder := json.NewDecoder(r.Body)
@@ -103,7 +108,7 @@ func DecodeJSONBody[T any]() middleware {
 			if !assertDecode(err, w) {
 				return
 			}
-			r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, v))
+			r = r.WithContext(context.WithValue(r.Context(), pkey, v))
 			next(w, r)
 		}
 	}
