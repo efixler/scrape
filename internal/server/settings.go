@@ -2,27 +2,43 @@ package server
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/efixler/scrape/internal/settings"
 	"github.com/efixler/scrape/store"
 )
 
+const MaxDomainSettingsBatchSize = 1000
+
 type singleDomainRequest struct {
 	Domain      string `json:"domain"`
 	PrettyPrint bool   `json:"pp,omitempty"`
 }
 
-type dsKey struct{}
-
-func (ss *scrapeServer) singleDomainSettingsHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(4096), extractDomainFromPath(dsKey{}))
-	return Chain(ss.singleDomainSettings, ms...)
+type batchDomainSettingsRequest struct {
+	Query  string `json:"q,omitempty"`
+	Offset int    `json:"offset,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
 }
 
-func (ss *scrapeServer) singleDomainSettings(w http.ResponseWriter, r *http.Request) {
+type batchDomainSettingsResponse struct {
+	Request  batchDomainSettingsRequest         `json:"request"`
+	Settings map[string]settings.DomainSettings `json:"settings"`
+}
+
+type dsKey struct{}
+
+func (ss *scrapeServer) getSingleDomainSettingsHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(MaxBytes(4096), extractDomainFromPath(dsKey{}))
+	return Chain(ss.getSingleDomainSettings, ms...)
+}
+
+func (ss *scrapeServer) getSingleDomainSettings(w http.ResponseWriter, r *http.Request) {
+	// if this value isn't here the request will have already been rejected
+	// by middleware.
 	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
 	ds, err := ss.settingsStorage.Fetch(req.Domain)
 	if err != nil {
@@ -35,13 +51,7 @@ func (ss *scrapeServer) singleDomainSettings(w http.ResponseWriter, r *http.Requ
 		w.Write([]byte(err.Error()))
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	encoder := json.NewEncoder(w)
-	encoder.SetEscapeHTML(false)
-	if req.PrettyPrint {
-		encoder.SetIndent("", "  ")
-	}
-	encoder.Encode(ds)
+	writeJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
 
 	// GET /settings/domain/{domain}
 	// or
@@ -106,6 +116,74 @@ func extractDomainFromPath(key ...any) middleware {
 				return
 			}
 			v.Domain = targetDomain
+			r = r.WithContext(context.WithValue(r.Context(), pkey, v))
+			next(w, r)
+		}
+	}
+}
+
+func (ss *scrapeServer) getBatchDomainSettingsHandler() http.HandlerFunc {
+	ms := ss.withAuthIfEnabled(
+		MaxBytes(4096),
+		extractBatchDomainSettingsQuery(),
+	)
+	return Chain(ss.getBatchDomainSettings, ms...)
+}
+
+func (ss *scrapeServer) getBatchDomainSettings(w http.ResponseWriter, r *http.Request) {
+	req, _ := r.Context().Value(payloadKey{}).(*batchDomainSettingsRequest)
+	dss, err := ss.settingsStorage.FetchRange(req.Offset, req.Limit, req.Query)
+	if err != nil {
+		switch err {
+		case settings.ErrInvalidQuery:
+			w.WriteHeader(http.StatusBadRequest)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		w.Write([]byte(err.Error()))
+		return
+	}
+	settingsMap := make(map[string]settings.DomainSettings, len(dss))
+	for _, ds := range dss {
+		settingsMap[ds.Domain] = *ds
+	}
+	writeJSONOutput(w, &batchDomainSettingsResponse{
+		Request:  *req,
+		Settings: settingsMap,
+	}, false, http.StatusOK)
+}
+
+func extractBatchDomainSettingsQuery(key ...any) middleware {
+	var pkey any
+	pkey = payloadKey{}
+	if len(key) > 0 {
+		pkey = key[0]
+	}
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			v := new(batchDomainSettingsRequest)
+			v.Query = strings.ToLower(r.FormValue("q"))
+			offset, err := strconv.Atoi(r.FormValue("offset"))
+			if err != nil {
+				offset = 0
+			}
+			v.Offset = offset
+			limit := MaxDomainSettingsBatchSize
+			switch r.FormValue("limit") {
+			case "":
+			// no limit specified, use the default
+			default:
+				limit, err = strconv.Atoi(r.FormValue("limit"))
+				if err != nil {
+					w.WriteHeader(http.StatusBadRequest)
+					w.Write([]byte(fmt.Sprintf("Invalid limit: %s", err)))
+					return
+				}
+				if limit > MaxDomainSettingsBatchSize {
+					limit = MaxDomainSettingsBatchSize
+				}
+			}
+			v.Limit = limit
 			r = r.WithContext(context.WithValue(r.Context(), pkey, v))
 			next(w, r)
 		}

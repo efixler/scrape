@@ -62,7 +62,6 @@ func TestExtractDomainFromPath(t *testing.T) {
 func TestGetDomainSettings(t *testing.T) {
 	tests := []struct {
 		name         string
-		domain       string
 		settings     *settings.DomainSettings
 		expectStatus int
 	}{
@@ -110,7 +109,7 @@ func TestGetDomainSettings(t *testing.T) {
 		r := httptest.NewRequest("GET", "/foo/bar/{DOMAIN}", nil)
 		w := httptest.NewRecorder()
 		chain := Chain(
-			ss.singleDomainSettings,
+			ss.getSingleDomainSettings,
 			domainExtractor,
 		)
 		chain(w, r)

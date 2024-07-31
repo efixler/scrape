@@ -261,7 +261,7 @@ func TestFetchRange(t *testing.T) {
 	sort.Strings(domains)
 	limit := 10
 	for i := 0; i < len(domains); i += limit {
-		ds, err := dss.FetchRange(i, limit)
+		ds, err := dss.FetchRange(i, limit, "")
 		if err != nil {
 			t.Fatalf("can't fetch range: %v", err)
 		}
@@ -273,7 +273,7 @@ func TestFetchRange(t *testing.T) {
 	}
 	// now check a set that's smaller than limit
 	domains = domains[len(domains)-5:]
-	ds, err := dss.FetchRange(95, limit)
+	ds, err := dss.FetchRange(95, limit, "")
 	if err != nil {
 		t.Fatalf("can't fetch range: %v", err)
 	}

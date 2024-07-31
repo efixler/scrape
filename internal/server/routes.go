@@ -44,8 +44,9 @@ func InitMux(
 	mux.HandleFunc("POST /feed", h)
 	// settings
 	if ss.settingsStorage != nil {
-		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.singleDomainSettingsHandler())
+		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.getSingleDomainSettingsHandler())
 		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.putDomainSettingsHandler())
+		mux.HandleFunc("GET /settings/domain", ss.getBatchDomainSettingsHandler())
 	} else {
 		mux.HandleFunc("/settings/domain/", serviceUnavailable)
 	}
