@@ -353,6 +353,88 @@ func TestValidateDomain(t *testing.T) {
 	}
 }
 
+func TestParseDomainQuery(t *testing.T) {
+	tests := []struct {
+		name      string
+		query     string
+		expect    string
+		expectErr bool
+	}{
+		{"empty", "", "%%", false}, // expected, harmless
+		{"basic", "example", "%example%", false},
+		{"valid chars", "sub.exa-mple", "%sub.exa-mple%", false},
+		{"invalid chars", "x:com", "", true},
+		{"leading wildcard", "*wee", "%wee", false},
+		{"trailing wildcard", "wee*", "wee%", false},
+		{"both wildcards", "*wee*", "%wee%", false},
+		{"no wildcards", "*wee*", "%wee%", false},
+	}
+	for _, test := range tests {
+		q, err := parseDomainQuery(test.query)
+		if err != nil {
+			if !test.expectErr {
+				t.Errorf("[%s]: unexpected error: %v", test.name, err)
+			}
+			continue
+		}
+		if q != test.expect {
+			t.Errorf("[%s]: expected %q, got %q", test.name, test.expect, q)
+		}
+	}
+}
+
+func TestFetchRangeWithQuery(t *testing.T) {
+	tests := []struct {
+		name        string
+		query       string
+		expectCount int
+	}{
+		{"empty", "", 260},
+		{"*", "*", 260},
+		{"a*", "a*", 10},
+		{"-1", "-1", 26},
+		{"c-1*", "c-1*", 1},
+		{"*.com", "*.com", 260},
+	}
+
+	engine := sqlite.MustNew(sqlite.InMemoryDB())
+	db := database.New(engine)
+	if err := db.Open(context.Background()); err != nil {
+		t.Fatalf("Error opening database: %v", err)
+	}
+	t.Cleanup(func() {
+		db.Close()
+	})
+	dss := NewDomainSettingsStorage(db)
+	runes := []rune("abcdefghijklmnopqrstuvwxyz")
+	for rune := range runes {
+		for i := 0; i < 10; i++ {
+			domain := fmt.Sprintf("%c-%d.com", runes[rune], i)
+			//fmt.Println(domain)
+			ds := &DomainSettings{
+				Domain:      domain,
+				Sitename:    "example",
+				FetchClient: resource.DefaultClient,
+				UserAgent:   ua.UserAgent("Mozilla/5.0"),
+				Headers:     MIMEHeader{"x-special": "special"},
+			}
+			if err := dss.Save(ds); err != nil {
+				t.Fatalf("can't save domain: %v", err)
+			}
+		}
+	}
+
+	for _, test := range tests {
+		ds, err := dss.FetchRange(0, 1000, test.query)
+		if err != nil {
+			t.Fatalf("[%s]: can't fetch range: %v", test.name, err)
+		}
+		if len(ds) != test.expectCount {
+			t.Errorf("[%s]: expected %d domains, got %d", test.name, test.expectCount, len(ds))
+		}
+	}
+}
+
 // We only use the random domain generator for testing but we can still
 // just make sure that it's returning valid domains.
 func TestRandomDomainGenerator(t *testing.T) {
