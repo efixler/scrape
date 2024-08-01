@@ -79,7 +79,7 @@ func NewDomainSettingsStorage(dbh *database.DBHandle) *domainSettingsStorage {
 	}
 }
 
-func (d domainSettingsStorage) Delete(domain string) (bool, error) {
+func (d *domainSettingsStorage) Delete(domain string) (bool, error) {
 	if err := ValidateDomain(domain); err != nil {
 		return false, err
 	}
@@ -110,7 +110,7 @@ func (d domainSettingsStorage) Delete(domain string) (bool, error) {
 	}
 }
 
-func (d domainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
+func (d *domainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
 	stmt, err := d.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
@@ -230,7 +230,7 @@ func parseDomainQuery(query string) (string, error) {
 	return query, nil
 }
 
-func (d domainSettingsStorage) Save(domain *DomainSettings) error {
+func (d *domainSettingsStorage) Save(domain *DomainSettings) error {
 	if domain.Domain == "" {
 		return ErrDomainRequired
 	}
