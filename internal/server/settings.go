@@ -131,10 +131,6 @@ func (ss *scrapeServer) getBatchDomainSettings(w http.ResponseWriter, r *http.Re
 		w.Write([]byte(err.Error()))
 		return
 	}
-	settingsMap := make(map[string]settings.DomainSettings, len(dss))
-	for _, ds := range dss {
-		settingsMap[ds.Domain] = *ds
-	}
 	writeJSONOutput(w, &batchDomainSettingsResponse{
 		Request:  *req,
 		Settings: dss,
