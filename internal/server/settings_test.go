@@ -301,7 +301,7 @@ func TestGetBatchDomainSettings(t *testing.T) {
 	tests := []struct {
 		name         string
 		error        error
-		settings     []*settings.DomainSettings
+		settings     []settings.DomainSettings
 		expectStatus int
 	}{
 		{
@@ -310,14 +310,14 @@ func TestGetBatchDomainSettings(t *testing.T) {
 		},
 		{
 			name: "single",
-			settings: []*settings.DomainSettings{
+			settings: []settings.DomainSettings{
 				{Domain: "example.com", Sitename: "example"},
 			},
 			expectStatus: 200,
 		},
 		{
 			name: "multiple",
-			settings: []*settings.DomainSettings{
+			settings: []settings.DomainSettings{
 				{Domain: "example.com", Sitename: "example"},
 				{Domain: "example2.org", Sitename: "example2"},
 			},
@@ -373,18 +373,18 @@ func TestGetBatchDomainSettings(t *testing.T) {
 }
 
 type mockDomainSettingsStorage struct {
-	settings []*settings.DomainSettings
+	settings []settings.DomainSettings
 	error    error
 }
 
-func (m *mockDomainSettingsStorage) Fetch(domain string) (*settings.DomainSettings, error) {
+func (m *mockDomainSettingsStorage) Fetch(domain string) (settings.DomainSettings, error) {
 	if m.error != nil {
-		return nil, m.error
+		return settings.DomainSettings{}, m.error
 	}
 	return m.settings[0], nil
 }
 
-func (m mockDomainSettingsStorage) FetchRange(offset, limit int, query string) ([]*settings.DomainSettings, error) {
+func (m mockDomainSettingsStorage) FetchRange(offset, limit int, query string) ([]settings.DomainSettings, error) {
 	if m.error != nil {
 		return nil, m.error
 	}

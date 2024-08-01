@@ -27,7 +27,7 @@ type batchDomainSettingsRequest struct {
 
 type batchDomainSettingsResponse struct {
 	Request  batchDomainSettingsRequest `json:"request"`
-	Settings []*settings.DomainSettings `json:"settings"`
+	Settings []settings.DomainSettings  `json:"settings"`
 }
 
 type dsKey struct{}

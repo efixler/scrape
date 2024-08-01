@@ -62,8 +62,8 @@ func NewDomainSettings(domain string) (*DomainSettings, error) {
 
 type DomainSettingsStore interface {
 	Delete(string) (bool, error)
-	Fetch(string) (*DomainSettings, error)
-	FetchRange(int, int, string) ([]*DomainSettings, error)
+	Fetch(string) (DomainSettings, error)
+	FetchRange(int, int, string) ([]DomainSettings, error)
 	Save(*DomainSettings) error
 }
 
@@ -110,7 +110,7 @@ func (d *domainSettingsStorage) Delete(domain string) (bool, error) {
 	}
 }
 
-func (d *domainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
+func (d *domainSettingsStorage) Fetch(domain string) (DomainSettings, error) {
 	stmt, err := d.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
@@ -119,25 +119,25 @@ func (d *domainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
 		)
 	})
 	if err != nil {
-		return nil, err
+		return DomainSettings{}, err
 	}
 	rows, err := stmt.QueryContext(d.Ctx, domain)
 	if err != nil {
-		return nil, err
+		return DomainSettings{}, err
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, store.ErrResourceNotFound
+		return DomainSettings{}, store.ErrResourceNotFound
 	}
 	ds, err := d.loadSettingFromRow(rows)
 	if err != nil {
-		return nil, err
+		return DomainSettings{}, err
 	}
 	return ds, nil
 }
 
-func (d *domainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSettings, error) {
-	ds := &DomainSettings{}
+func (d *domainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (DomainSettings, error) {
+	ds := DomainSettings{}
 	var headers string
 	err := rows.Scan(&ds.Domain, &ds.Sitename, &ds.FetchClient, &ds.UserAgent, &headers)
 	if err != nil {
@@ -153,7 +153,7 @@ func (d *domainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSetti
 // by the given limit. If query is not empty, it will be used to filter the results.
 // The query string may contain a leading and/or trailing * to match anything before or after the
 // rest of the query. Queries with no asterisks are treated as if they had an asterisk on both sides.
-func (d *domainSettingsStorage) FetchRange(offset int, limit int, query string) ([]*DomainSettings, error) {
+func (d *domainSettingsStorage) FetchRange(offset int, limit int, query string) ([]DomainSettings, error) {
 	switch limit {
 	case 0:
 		limit = DefaultDomainSettingsBatchSize
@@ -200,7 +200,7 @@ func (d *domainSettingsStorage) FetchRange(offset int, limit int, query string) 
 		return nil, err
 	}
 	defer rows.Close()
-	dss := make([]*DomainSettings, 0, limit)
+	dss := make([]DomainSettings, 0, limit)
 	for rows.Next() {
 		ds, err := d.loadSettingFromRow(rows)
 		if err != nil {

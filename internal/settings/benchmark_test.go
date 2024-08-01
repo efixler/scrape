@@ -39,17 +39,17 @@ func populateTestDB(dbh *database.DBHandle, count int) ([]string, error) {
 // Results: (saving here to reference on testings some possible improvements)
 // BenchmarkLoadDomainSetting
 // BenchmarkLoadDomainSetting/sqlite:memory:100
-// BenchmarkLoadDomainSetting/sqlite:memory:100-10         	  188026	      6101 ns/op	    2517 B/op	      51 allocs/op
+// BenchmarkLoadDomainSetting/sqlite:memory:100-10         	  177280	      5765 ns/op	    2474 B/op	      51 allocs/op
 // BenchmarkLoadDomainSetting/sqlite:memory:1000
-// BenchmarkLoadDomainSetting/sqlite:memory:1000-10        	  201190	      5862 ns/op	    2502 B/op	      51 allocs/op
+// BenchmarkLoadDomainSetting/sqlite:memory:1000-10        	  189783	      5909 ns/op	    2502 B/op	      51 allocs/op
 // BenchmarkLoadDomainSetting/sqlite:memory:10000
-// BenchmarkLoadDomainSetting/sqlite:memory:10000-10       	  184486	      6098 ns/op	    2506 B/op	      51 allocs/op
+// BenchmarkLoadDomainSetting/sqlite:memory:10000-10       	  195798	      6128 ns/op	    2503 B/op	      51 allocs/op
 // BenchmarkLoadDomainSetting/sqlite:tmpfile:100
-// BenchmarkLoadDomainSetting/sqlite:tmpfile:100-10        	  168121	      6753 ns/op	    2492 B/op	      51 allocs/op
+// BenchmarkLoadDomainSetting/sqlite:tmpfile:100-10        	  165363	      6763 ns/op	    2504 B/op	      51 allocs/op
 // BenchmarkLoadDomainSetting/sqlite:tmpfile:1000
-// BenchmarkLoadDomainSetting/sqlite:tmpfile:1000-10       	  161414	      7061 ns/op	    2508 B/op	      51 allocs/op
+// BenchmarkLoadDomainSetting/sqlite:tmpfile:1000-10       	  169336	      6967 ns/op	    2507 B/op	      51 allocs/op
 // BenchmarkLoadDomainSetting/sqlite:tmpfile:10000
-// BenchmarkLoadDomainSetting/sqlite:tmpfile:10000-10      	  166410	      7194 ns/op	    2510 B/op	      51 allocs/op
+// BenchmarkLoadDomainSetting/sqlite:tmpfile:10000-10      	  165699	      7159 ns/op	    2502 B/op	      51 allocs/op
 
 func BenchmarkLoadDomainSetting(b *testing.B) {
 	var tests = []struct {
@@ -91,21 +91,22 @@ func benchmarkLoadDomainSetting(b *testing.B, dss *domainSettingsStorage, domain
 // Results: (saving here to reference on testings some possible improvements)
 // BenchmarkLoadDomainBatch
 // BenchmarkLoadDomainBatch/sqlite:memory:100
-// BenchmarkLoadDomainBatch/sqlite:memory:100-10         	    3500	    332974 ns/op	  174834 B/op	    2426 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:memory:100-10         	    3529	    334731 ns/op	  180754 B/op	    2426 allocs/op
 // BenchmarkLoadDomainBatch/sqlite:memory:500
-// BenchmarkLoadDomainBatch/sqlite:memory:500-10         	     710	   1723392 ns/op	  872429 B/op	   12021 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:memory:500-10         	     712	   1691428 ns/op	  898205 B/op	   12019 allocs/op
 // BenchmarkLoadDomainBatch/sqlite:memory:1000
-// BenchmarkLoadDomainBatch/sqlite:memory:1000-10        	     350	   3495147 ns/op	 1732811 B/op	   24012 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:memory:1000-10        	     343	   3455747 ns/op	 1781367 B/op	   24010 allocs/op
 // BenchmarkLoadDomainBatch/sqlite:memory:10000
-// BenchmarkLoadDomainBatch/sqlite:memory:10000-10       	      31	  37701871 ns/op	17312000 B/op	  239880 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:memory:10000-10       	      32	  38905829 ns/op	17881840 B/op	  239885 allocs/op
 // BenchmarkLoadDomainBatch/sqlite:tmpfile:100
-// BenchmarkLoadDomainBatch/sqlite:tmpfile:100-10        	    3345	    336056 ns/op	  176154 B/op	    2426 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:tmpfile:100-10        	    3344	    332339 ns/op	  177914 B/op	    2428 allocs/op
 // BenchmarkLoadDomainBatch/sqlite:tmpfile:500
-// BenchmarkLoadDomainBatch/sqlite:tmpfile:500-10        	     702	   1693998 ns/op	  870600 B/op	   12021 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:tmpfile:500-10        	     712	   1712945 ns/op	  899061 B/op	   12020 allocs/op
 // BenchmarkLoadDomainBatch/sqlite:tmpfile:1000
-// BenchmarkLoadDomainBatch/sqlite:tmpfile:1000-10       	     348	   3427594 ns/op	 1721624 B/op	   24013 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:tmpfile:1000-10       	     346	   3436954 ns/op	 1782174 B/op	   24013 allocs/op
 // BenchmarkLoadDomainBatch/sqlite:tmpfile:10000
-// BenchmarkLoadDomainBatch/sqlite:tmpfile:10000-10      	      32	  37376171 ns/op	17297943 B/op	  239841 allocs/op
+// BenchmarkLoadDomainBatch/sqlite:tmpfile:10000-10      	      32	  37236333 ns/op	17836775 B/op	  239868 allocs/op
+
 func BenchmarkLoadDomainBatch(b *testing.B) {
 	var tests = []struct {
 		name string
