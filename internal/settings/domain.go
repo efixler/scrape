@@ -133,11 +133,11 @@ func (d *domainSettingsStorage) Fetch(domain string) (DomainSettings, error) {
 	if err != nil {
 		return DomainSettings{}, err
 	}
-	return *ds, nil
+	return ds, nil
 }
 
-func (d *domainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSettings, error) {
-	ds := &DomainSettings{}
+func (d *domainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (DomainSettings, error) {
+	ds := DomainSettings{}
 	var headers string
 	err := rows.Scan(&ds.Domain, &ds.Sitename, &ds.FetchClient, &ds.UserAgent, &headers)
 	if err != nil {
@@ -206,7 +206,7 @@ func (d *domainSettingsStorage) FetchRange(offset int, limit int, query string) 
 		if err != nil {
 			return nil, err
 		}
-		dss = append(dss, *ds)
+		dss = append(dss, ds)
 	}
 	return dss, rows.Err()
 }
