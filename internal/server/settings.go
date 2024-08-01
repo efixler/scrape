@@ -26,8 +26,8 @@ type batchDomainSettingsRequest struct {
 }
 
 type batchDomainSettingsResponse struct {
-	Request  batchDomainSettingsRequest         `json:"request"`
-	Settings map[string]settings.DomainSettings `json:"settings"`
+	Request  batchDomainSettingsRequest `json:"request"`
+	Settings []*settings.DomainSettings `json:"settings"`
 }
 
 type dsKey struct{}
@@ -137,7 +137,7 @@ func (ss *scrapeServer) getBatchDomainSettings(w http.ResponseWriter, r *http.Re
 	}
 	writeJSONOutput(w, &batchDomainSettingsResponse{
 		Request:  *req,
-		Settings: settingsMap,
+		Settings: dss,
 	}, false, http.StatusOK)
 }
 

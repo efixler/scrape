@@ -68,6 +68,7 @@ func TestJSONUnmarshal(t *testing.T) {
 			t.Errorf("%s: Headers: got %v, want %v", test.name, ds.Headers, test.expectHeaders)
 			continue
 		}
+		// NB: Unmarshaling doesn't change the case of the keys
 		for k := range ds.Headers {
 			if test.expectHeaders[k] != ds.Headers[k] {
 				t.Errorf(
@@ -113,7 +114,7 @@ func TestJSONMarshal(t *testing.T) {
 				Headers:     map[string]string{"x-special": "special"},
 			},
 			expectErr:         false,
-			expectJSON:        `{"sitename":"example","fetch_client":"chromium-headless","user_agent":"Mozilla/5.0","headers":{"X-Special":"special"}}`,
+			expectJSON:        `{"domain":"example.com","sitename":"example","fetch_client":"chromium-headless","user_agent":"Mozilla/5.0","headers":{"X-Special":"special"}}`,
 			expectSitename:    "example",
 			expectFetchClient: resource.HeadlessChromium,
 			expectUserAgent:   ua.UserAgent("Mozilla/5.0"),
@@ -367,7 +368,7 @@ func TestParseDomainQuery(t *testing.T) {
 		{"leading wildcard", "*wee", "%wee", false},
 		{"trailing wildcard", "wee*", "wee%", false},
 		{"both wildcards", "*wee*", "%wee%", false},
-		{"no wildcards", "*wee*", "%wee%", false},
+		{"no wildcards", "wee", "%wee%", false},
 	}
 	for _, test := range tests {
 		q, err := parseDomainQuery(test.query)
@@ -410,7 +411,6 @@ func TestFetchRangeWithQuery(t *testing.T) {
 	for rune := range runes {
 		for i := 0; i < 10; i++ {
 			domain := fmt.Sprintf("%c-%d.com", runes[rune], i)
-			//fmt.Println(domain)
 			ds := &DomainSettings{
 				Domain:      domain,
 				Sitename:    "example",

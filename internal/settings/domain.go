@@ -41,7 +41,7 @@ var (
 )
 
 type DomainSettings struct {
-	Domain      string               `json:"-"`
+	Domain      string               `json:"domain,omitempty"`
 	Sitename    string               `json:"sitename,omitempty"`
 	FetchClient resource.FetchClient `json:"fetch_client,omitempty"`
 	UserAgent   ua.UserAgent         `json:"user_agent,omitempty"`
@@ -58,6 +58,13 @@ func NewDomainSettings(domain string) (*DomainSettings, error) {
 		Domain: domain,
 	}
 	return d, nil
+}
+
+type DomainSettingsStore interface {
+	Delete(string) (bool, error)
+	Fetch(string) (*DomainSettings, error)
+	FetchRange(int, int, string) ([]*DomainSettings, error)
+	Save(*DomainSettings) error
 }
 
 type DomainSettingsStorage struct {

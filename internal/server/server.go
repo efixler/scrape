@@ -106,7 +106,7 @@ type scrapeServer struct {
 	headlessFetcher fetch.URLFetcher
 	feedFetcher     fetch.FeedFetcher
 	signingKey      auth.HMACBase64Key
-	settingsStorage *settings.DomainSettingsStorage
+	settingsStorage settings.DomainSettingsStore
 }
 
 func (ss scrapeServer) SigningKey() auth.HMACBase64Key {
@@ -150,10 +150,6 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		req, _ := r.Context().Value(payloadKey{}).(*singleURLRequest)
-		// if !ok {
-		// 	http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
-		// 	return
-		// }
 		w.Header().Set("Content-Type", "application/json")
 		page, err := fetcher.Fetch(req.URL)
 		if err != nil {

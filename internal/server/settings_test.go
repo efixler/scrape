@@ -285,17 +285,6 @@ func TestExtractBatchDomainSettings(t *testing.T) {
 		}
 	}
 
-	// for _, tt := range tests {
-	// 	r := httptest.NewRequest("GET", "/foo/bar/{DOMAIN}", nil)
-	// 	r.SetPathValue("DOMAIN", tt.domain)
-	// 	w := httptest.NewRecorder()
-	// 	chain := Chain(okHandler(tt.name, tt.domain), extractDomainFromPath(dsKey{}))
-	// 	chain(w, r)
-	// 	if w.Code != tt.expectStatus {
-	// 		t.Errorf("[%s]: got status %d, want %d", tt.name, w.Code, tt.expectStatus)
-	// 	}
-	// }
-
 	for _, tt := range tests {
 		r := httptest.NewRequest("GET", "/foo/bar?"+tt.queryString, nil)
 		w := httptest.NewRecorder()
