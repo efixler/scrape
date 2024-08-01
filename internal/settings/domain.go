@@ -67,15 +67,19 @@ type DomainSettingsStore interface {
 	Save(*DomainSettings) error
 }
 
-type DomainSettingsStorage struct {
+type domainSettingsStorage struct {
 	*database.DBHandle
+	maxBatchSize int
 }
 
-func NewDomainSettingsStorage(dbh *database.DBHandle) *DomainSettingsStorage {
-	return &DomainSettingsStorage{DBHandle: dbh}
+func NewDomainSettingsStorage(dbh *database.DBHandle) *domainSettingsStorage {
+	return &domainSettingsStorage{
+		DBHandle:     dbh,
+		maxBatchSize: MaxDomainSettingsBatchSize,
+	}
 }
 
-func (d DomainSettingsStorage) Delete(domain string) (bool, error) {
+func (d domainSettingsStorage) Delete(domain string) (bool, error) {
 	if err := ValidateDomain(domain); err != nil {
 		return false, err
 	}
@@ -106,7 +110,7 @@ func (d DomainSettingsStorage) Delete(domain string) (bool, error) {
 	}
 }
 
-func (d DomainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
+func (d domainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
 	stmt, err := d.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
@@ -132,7 +136,7 @@ func (d DomainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
 	return ds, nil
 }
 
-func (d *DomainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSettings, error) {
+func (d *domainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSettings, error) {
 	ds := &DomainSettings{}
 	var headers string
 	err := rows.Scan(&ds.Domain, &ds.Sitename, &ds.FetchClient, &ds.UserAgent, &headers)
@@ -149,13 +153,13 @@ func (d *DomainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSetti
 // by the given limit. If query is not empty, it will be used to filter the results.
 // The query string may contain a leading and/or trailing * to match anything before or after the
 // rest of the query. Queries with no asterisks are treated as if they had an asterisk on both sides.
-func (d DomainSettingsStorage) FetchRange(offset int, limit int, query string) ([]*DomainSettings, error) {
+func (d *domainSettingsStorage) FetchRange(offset int, limit int, query string) ([]*DomainSettings, error) {
 	switch limit {
 	case 0:
 		limit = DefaultDomainSettingsBatchSize
 	default:
-		if limit > MaxDomainSettingsBatchSize {
-			limit = MaxDomainSettingsBatchSize
+		if limit > d.maxBatchSize {
+			limit = d.maxBatchSize
 		}
 	}
 	var (
@@ -226,7 +230,7 @@ func parseDomainQuery(query string) (string, error) {
 	return query, nil
 }
 
-func (d DomainSettingsStorage) Save(domain *DomainSettings) error {
+func (d domainSettingsStorage) Save(domain *DomainSettings) error {
 	if domain.Domain == "" {
 		return ErrDomainRequired
 	}
