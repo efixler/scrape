@@ -9,10 +9,12 @@ import (
 	"net/http"
 	nurl "net/url"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/auth"
+	"github.com/efixler/scrape/internal/settings"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/webutil/jsonarray"
 )
@@ -43,6 +45,16 @@ func WithFeedFetcher(ff fetch.FeedFetcher) option {
 			return errors.New("nil feed fetcher provided")
 		}
 		s.feedFetcher = ff
+		return nil
+	}
+}
+
+func WithSettingsStorage(db *database.DBHandle) option {
+	return func(s *scrapeServer) error {
+		if db == nil {
+			return errors.New("nil database handle provided")
+		}
+		s.settingsStorage = settings.NewDomainSettingsStorage(db)
 		return nil
 	}
 }
@@ -94,6 +106,7 @@ type scrapeServer struct {
 	headlessFetcher fetch.URLFetcher
 	feedFetcher     fetch.FeedFetcher
 	signingKey      auth.HMACBase64Key
+	settingsStorage settings.DomainSettingsStore
 }
 
 func (ss scrapeServer) SigningKey() auth.HMACBase64Key {
@@ -136,11 +149,7 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
-		if !ok {
-			http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
-			return
-		}
+		req, _ := r.Context().Value(payloadKey{}).(*singleURLRequest)
 		w.Header().Set("Content-Type", "application/json")
 		page, err := fetcher.Fetch(req.URL)
 		if err != nil {
@@ -314,4 +323,15 @@ func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
 	v := BatchRequest{Urls: links}
 	r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, &v))
 	h.batch(w, r)
+}
+
+func writeJSONOutput(w http.ResponseWriter, v any, pp bool, status int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	if pp {
+		encoder.SetIndent("", "  ")
+	}
+	encoder.Encode(v)
 }

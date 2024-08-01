@@ -42,8 +42,21 @@ func InitMux(
 	h = ss.feedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
+	// settings
+	if ss.settingsStorage != nil {
+		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.getSingleDomainSettingsHandler())
+		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.putDomainSettingsHandler())
+		mux.HandleFunc("GET /settings/domain", ss.getBatchDomainSettingsHandler())
+		mux.HandleFunc("DELETE /settings/domain/{DOMAIN}", ss.deleteDomainSettingsHandler())
+	} else {
+		mux.HandleFunc("/settings/domain/", serviceUnavailable)
+	}
 
 	// healthchecks
 	mux.Handle("GET /.well-known/", healthchecks.Handler("/.well-known", db))
 	return mux, nil
+}
+
+func serviceUnavailable(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
 }

@@ -23,24 +23,34 @@ const (
 	delete
 	fetch
 	save
+	fetchRange
+	fetchRangeWithQuery
+)
+
+const (
+	// MaxDomainSettingsBatchSize is the maximum number of domain settings that can be
+	// fetched in a single batch.
+	DefaultDomainSettingsBatchSize = 100
+	MaxDomainSettingsBatchSize     = 1000
 )
 
 var (
 	ErrDomainRequired = errors.New("domain is required")
 	ErrInvalidDomain  = errors.New("invalid domain")
+	ErrInvalidQuery   = errors.New("illegal characters in query")
 )
 
 type DomainSettings struct {
-	Domain      string               `json:"-"`
+	Domain      string               `json:"domain,omitempty"`
 	Sitename    string               `json:"sitename,omitempty"`
 	FetchClient resource.FetchClient `json:"fetch_client,omitempty"`
 	UserAgent   ua.UserAgent         `json:"user_agent,omitempty"`
-	Headers     map[string]string    `json:"headers,omitempty"`
+	Headers     MIMEHeader           `json:"headers,omitempty"`
 }
 
 // Domain names will be case-folded to lower case.
 func NewDomainSettings(domain string) (*DomainSettings, error) {
-	if err := validateDomain(domain); err != nil {
+	if err := ValidateDomain(domain); err != nil {
 		return nil, err
 	}
 	domain = strings.ToLower(domain)
@@ -50,15 +60,29 @@ func NewDomainSettings(domain string) (*DomainSettings, error) {
 	return d, nil
 }
 
-type DomainSettingsStorage struct {
+type DomainSettingsStore interface {
+	Delete(string) (bool, error)
+	Fetch(string) (*DomainSettings, error)
+	FetchRange(int, int, string) ([]*DomainSettings, error)
+	Save(*DomainSettings) error
+}
+
+type domainSettingsStorage struct {
 	*database.DBHandle
+	maxBatchSize int
 }
 
-func NewDomainSettingsStorage(dbh *database.DBHandle) *DomainSettingsStorage {
-	return &DomainSettingsStorage{DBHandle: dbh}
+func NewDomainSettingsStorage(dbh *database.DBHandle) *domainSettingsStorage {
+	return &domainSettingsStorage{
+		DBHandle:     dbh,
+		maxBatchSize: MaxDomainSettingsBatchSize,
+	}
 }
 
-func (d DomainSettingsStorage) Delete(domain string) (bool, error) {
+func (d *domainSettingsStorage) Delete(domain string) (bool, error) {
+	if err := ValidateDomain(domain); err != nil {
+		return false, err
+	}
 	stmt, err := d.Statement(delete, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
@@ -86,7 +110,7 @@ func (d DomainSettingsStorage) Delete(domain string) (bool, error) {
 	}
 }
 
-func (d DomainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
+func (d *domainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
 	stmt, err := d.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
 		return db.PrepareContext(
 			ctx,
@@ -112,7 +136,7 @@ func (d DomainSettingsStorage) Fetch(domain string) (*DomainSettings, error) {
 	return ds, nil
 }
 
-func (d *DomainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSettings, error) {
+func (d *domainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSettings, error) {
 	ds := &DomainSettings{}
 	var headers string
 	err := rows.Scan(&ds.Domain, &ds.Sitename, &ds.FetchClient, &ds.UserAgent, &headers)
@@ -125,18 +149,53 @@ func (d *DomainSettingsStorage) loadSettingFromRow(rows *sql.Rows) (*DomainSetti
 	return ds, nil
 }
 
-func (d DomainSettingsStorage) FetchRange(offset int, limit int) ([]*DomainSettings, error) {
-	stmt, err := d.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
-		return db.PrepareContext(
-			ctx,
-			`SELECT domain, sitename, fetch_client, user_agent, headers 
-			FROM domain_settings ORDER BY domain ASC LIMIT ? OFFSET ?`,
-		)
-	})
+// FetchRange returns a slice of domain settings, offset by the given offset and limited
+// by the given limit. If query is not empty, it will be used to filter the results.
+// The query string may contain a leading and/or trailing * to match anything before or after the
+// rest of the query. Queries with no asterisks are treated as if they had an asterisk on both sides.
+func (d *domainSettingsStorage) FetchRange(offset int, limit int, query string) ([]*DomainSettings, error) {
+	switch limit {
+	case 0:
+		limit = DefaultDomainSettingsBatchSize
+	default:
+		if limit > d.maxBatchSize {
+			limit = d.maxBatchSize
+		}
+	}
+	var (
+		stmt        *sql.Stmt
+		err         error
+		queryParams []any
+	)
+	if (query == "") || (query == "*") {
+		queryParams = []any{limit, offset}
+		stmt, err = d.Statement(fetchRangeWithQuery, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+			return db.PrepareContext(
+				ctx,
+				`SELECT domain, sitename, fetch_client, user_agent, headers FROM domain_settings 
+				ORDER BY domain ASC LIMIT ? OFFSET ?`,
+			)
+		})
+	} else {
+		// convert leading and trailing * to %
+		query, err = parseDomainQuery(query)
+		if err != nil {
+			return nil, err
+		}
+		queryParams = []any{query, limit, offset}
+		stmt, err = d.Statement(fetchRange, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+			return db.PrepareContext(
+				ctx,
+				`SELECT domain, sitename, fetch_client, user_agent, headers FROM domain_settings 
+				WHERE domain LIKE ? 
+				ORDER BY domain ASC LIMIT ? OFFSET ?`,
+			)
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
-	rows, err := stmt.QueryContext(d.Ctx, limit, offset)
+	rows, err := stmt.QueryContext(d.Ctx, queryParams...)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +211,26 @@ func (d DomainSettingsStorage) FetchRange(offset int, limit int) ([]*DomainSetti
 	return dss, rows.Err()
 }
 
-func (d DomainSettingsStorage) Save(domain *DomainSettings) error {
+var starPattern = "^\\*|\\*$" // (separate bc of * unescaping)
+var starSyntax = regexp.MustCompile(starPattern)
+var queryValidator = regexp.MustCompile(`^(%?)[a-z0-9.-]{0,251}(%?)$`)
+
+func parseDomainQuery(query string) (string, error) {
+	query = starSyntax.ReplaceAllString(query, "%")
+	query = strings.ToLower(query)
+	// check for valid characters
+	match := queryValidator.FindStringSubmatch(query)
+	if match == nil {
+		return "", ErrInvalidQuery
+	}
+	// If there were no wildcards, wildcard both sides of the query
+	if match[1] == "" && match[2] == "" {
+		query = "%" + query + "%"
+	}
+	return query, nil
+}
+
+func (d *domainSettingsStorage) Save(domain *DomainSettings) error {
 	if domain.Domain == "" {
 		return ErrDomainRequired
 	}
@@ -189,11 +267,11 @@ var validDomainChars = regexp.MustCompile(`^[a-zA-Z0-9.-]{4,253}$`)
 var validTLDChars = regexp.MustCompile(`^[a-zA-Z]{2,63}$`)
 var validDomainElem = regexp.MustCompile(`^[a-zA-Z0-9]{1}[a-zA-Z0-9-]{0,62}$`)
 
-func validateDomain(domain string) error {
+func ValidateDomain(domain string) error {
 	if !validDomainChars.MatchString(domain) {
 		return errors.Join(
 			ErrInvalidDomain,
-			fmt.Errorf("domain contains invalid characters and/or length; %s", domain),
+			fmt.Errorf("domain contains non-allowed characters and/or length; %s", domain),
 		)
 	}
 	elem := strings.Split(domain, ".")
@@ -221,13 +299,13 @@ func validateDomain(domain string) error {
 		if !validDomainElem.MatchString(e) {
 			return errors.Join(
 				ErrInvalidDomain,
-				fmt.Errorf("invalid domain element; %s", e),
+				fmt.Errorf("illegal domain element; %s", e),
 			)
 		}
 		if strings.HasSuffix(e, "-") || strings.Contains(e, "--") {
 			return errors.Join(
 				ErrInvalidDomain,
-				fmt.Errorf("invalid domain element (dashes); %s", e),
+				fmt.Errorf("illegal domain element (dashes); %s", e),
 			)
 		}
 	}
