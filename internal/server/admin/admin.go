@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/server/version"
 )
 
@@ -18,21 +17,6 @@ const (
 	baseTemplateName = "base.html"
 	DefaultBasePath  = "/admin"
 )
-
-type AuthzProvider interface {
-	AuthEnabled() bool
-	SigningKey() auth.HMACBase64Key
-}
-
-type authzShim auth.HMACBase64Key
-
-func (a authzShim) AuthEnabled() bool {
-	return len(a) > 0
-}
-
-func (a authzShim) SigningKey() auth.HMACBase64Key {
-	return auth.HMACBase64Key(a)
-}
 
 //go:embed htdocs/*.html
 var htdocs embed.FS
@@ -132,6 +116,7 @@ func NewServer(mux *http.ServeMux, options ...option) (*adminServer, error) {
 			initPProf(mux, c.basePath)
 		}
 		mux.HandleFunc(c.basePath+"/settings", as.settingsHandler())
+		mux.HandleFunc(c.basePath+"/auth", as.checkAuthHandler())
 	}
 	return as, nil
 }
