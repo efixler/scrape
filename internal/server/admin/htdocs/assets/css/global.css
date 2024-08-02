@@ -60,3 +60,22 @@ input {
 }
 
 /* end of menubar styles */
+
+/* start of controls styles */
+.controls-container {
+    width: 100%;
+    background-color: #ffffff;
+    border: 1px solid #414141;
+    padding: 0.6rem;
+  }
+
+  .controls-container form {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .controls-container label {
+    padding-bottom: 0.1rem;
+  }
+
+  /* end of controls styles */
