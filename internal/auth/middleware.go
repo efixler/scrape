@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+type ClaimsContextKey struct{}
 type ClaimsAuthorizer func(claims *Claims) error
 
 // Checks the Authorization header for a JWT token and verifies it using the provided key.
@@ -21,7 +22,6 @@ type ClaimsAuthorizer func(claims *Claims) error
 // specified by contextKey.
 func JWTAuthMiddleware(
 	key HMACBase64Key,
-	contextKey any,
 	cc ...ClaimsAuthorizer,
 ) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
@@ -44,7 +44,7 @@ func JWTAuthMiddleware(
 					return
 				}
 			}
-			r = r.WithContext(context.WithValue(r.Context(), contextKey, claims))
+			r = r.WithContext(context.WithValue(r.Context(), ClaimsContextKey{}, claims))
 			next(w, r)
 		}
 	}

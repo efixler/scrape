@@ -47,6 +47,7 @@ type codeData struct {
 }
 type adminServer struct {
 	mutex        sync.Mutex
+	authz        AuthzProvider
 	baseTemplate *template.Template
 	data         codeData
 }
@@ -120,11 +121,12 @@ func NewServer(mux *http.ServeMux, options ...option) (*adminServer, error) {
 			RepoURL: version.RepoURL,
 			Tag:     version.Tag,
 		},
+		authz: c.authz,
 	}
 	// nil mux provided for tests
 	if mux != nil {
 		// home handler is always at root
-		mux.HandleFunc("/{$}", as.homeHandler(c.authz, c.openHome))
+		mux.HandleFunc("/{$}", as.homeHandler(as.authz, c.openHome))
 		mux.Handle("/assets/", assetsHandler())
 		if c.profile {
 			initPProf(mux, c.basePath)

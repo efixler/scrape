@@ -76,15 +76,15 @@ func TestJWTAuthMiddleWare(t *testing.T) {
 			expectStatus: http.StatusUnauthorized,
 		},
 	}
-	type contextKey struct{}
+
 	for _, tt := range tests {
 		req := httptest.NewRequest("GET", "http://example.com", nil)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Authorization", tt.authHeader)
-		m := JWTAuthMiddleware(tt.key, contextKey{}, tt.extra...)
+		m := JWTAuthMiddleware(tt.key, tt.extra...)
 
 		m(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := r.Context().Value(contextKey{}).(*Claims)
+			claims, ok := r.Context().Value(ClaimsContextKey{}).(*Claims)
 			if !ok {
 				t.Fatalf("[%s] JWTAuthMiddleware, expected claims, got %v", tt.name, claims)
 			}

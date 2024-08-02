@@ -7,6 +7,8 @@ import (
 	nurl "net/url"
 )
 
+type payloadKey struct{}
+
 type BatchRequest struct {
 	Urls []string `json:"urls"`
 }

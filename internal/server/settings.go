@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/efixler/scrape/internal/server/middleware"
 	"github.com/efixler/scrape/internal/settings"
 	"github.com/efixler/scrape/store"
 )
@@ -33,8 +34,8 @@ type batchDomainSettingsResponse struct {
 type dsKey struct{}
 
 func (ss *scrapeServer) getSingleDomainSettingsHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(4096), extractDomainFromPath(dsKey{}))
-	return Chain(ss.getSingleDomainSettings, ms...)
+	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), extractDomainFromPath(dsKey{}))
+	return middleware.Chain(ss.getSingleDomainSettings, ms...)
 }
 
 func (ss *scrapeServer) getSingleDomainSettings(w http.ResponseWriter, r *http.Request) {
@@ -52,16 +53,16 @@ func (ss *scrapeServer) getSingleDomainSettings(w http.ResponseWriter, r *http.R
 		w.Write([]byte(err.Error()))
 		return
 	}
-	writeJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
+	middleware.WriteJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
 }
 
 func (ss *scrapeServer) putDomainSettingsHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
-		MaxBytes(4096),
+		middleware.MaxBytes(4096),
 		extractDomainFromPath(dsKey{}),
-		DecodeJSONBody[settings.DomainSettings](),
+		middleware.DecodeJSONBody[settings.DomainSettings](payloadKey{}),
 	)
-	return Chain(ss.putDomainSettings, ms...)
+	return middleware.Chain(ss.putDomainSettings, ms...)
 }
 
 func (ss *scrapeServer) putDomainSettings(w http.ResponseWriter, r *http.Request) {
@@ -74,10 +75,10 @@ func (ss *scrapeServer) putDomainSettings(w http.ResponseWriter, r *http.Request
 		w.Write([]byte(err.Error()))
 		return
 	}
-	writeJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
+	middleware.WriteJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
 }
 
-func extractDomainFromPath(key ...any) middleware {
+func extractDomainFromPath(key ...any) middleware.Step {
 	var pkey any
 	pkey = payloadKey{}
 	if len(key) > 0 {
@@ -112,10 +113,10 @@ func extractDomainFromPath(key ...any) middleware {
 
 func (ss *scrapeServer) getBatchDomainSettingsHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
-		MaxBytes(4096),
-		extractBatchDomainSettingsQuery(),
+		middleware.MaxBytes(4096),
+		extractBatchDomainSettingsQuery(payloadKey{}),
 	)
-	return Chain(ss.getBatchDomainSettings, ms...)
+	return middleware.Chain(ss.getBatchDomainSettings, ms...)
 }
 
 func (ss *scrapeServer) getBatchDomainSettings(w http.ResponseWriter, r *http.Request) {
@@ -131,18 +132,13 @@ func (ss *scrapeServer) getBatchDomainSettings(w http.ResponseWriter, r *http.Re
 		w.Write([]byte(err.Error()))
 		return
 	}
-	writeJSONOutput(w, &batchDomainSettingsResponse{
+	middleware.WriteJSONOutput(w, &batchDomainSettingsResponse{
 		Request:  *req,
 		Settings: dss,
 	}, false, http.StatusOK)
 }
 
-func extractBatchDomainSettingsQuery(key ...any) middleware {
-	var pkey any
-	pkey = payloadKey{}
-	if len(key) > 0 {
-		pkey = key[0]
-	}
+func extractBatchDomainSettingsQuery(pkey any) middleware.Step {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			v := new(batchDomainSettingsRequest)
@@ -191,8 +187,8 @@ func extractBatchDomainSettingsQuery(key ...any) middleware {
 }
 
 func (ss *scrapeServer) deleteDomainSettingsHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(4096), extractDomainFromPath(dsKey{}))
-	return Chain(ss.deleteDomainSettings, ms...)
+	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), extractDomainFromPath(dsKey{}))
+	return middleware.Chain(ss.deleteDomainSettings, ms...)
 }
 
 func (ss *scrapeServer) deleteDomainSettings(w http.ResponseWriter, r *http.Request) {
