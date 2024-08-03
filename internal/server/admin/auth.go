@@ -49,6 +49,10 @@ func (as *adminServer) checkAuthHandler() http.HandlerFunc {
 		middleware.DecodeJSONBody[checkAuthRequest](payloadKey{}))
 }
 
+// This handler is a bridge login stub as/until OICD pieces come into place.
+// It'll take the token that was used to authorize the request (in a prior middleware step)
+// and put it in a cookie. The auth middleware (tbd) will respect the cookie on future requests
+// as it respects the Authorization header now.
 func (as *adminServer) checkAuth(w http.ResponseWriter, r *http.Request) {
 	claims, _ := r.Context().Value(auth.ClaimsContextKey{}).(*auth.Claims)
 	ar := new(checkAuthResponse)
