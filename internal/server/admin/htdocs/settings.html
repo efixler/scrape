@@ -45,7 +45,7 @@
       </tr>
     </thead>
     <tbody>
-      <template x-for="item in items" :key="item.domain">
+      <template x-for="item in items">
         <tr>
           <td x-text="item.domain"></td>
           <td x-text="item.sitename"></td>
@@ -79,7 +79,7 @@
             return response.json()
           })
           .then(data => {
-            this.items = data;
+            this.items = data.settings;
           })
           .catch(error => {
             console.error('Error fetching domain settings:', error);

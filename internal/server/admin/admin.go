@@ -116,7 +116,8 @@ func NewServer(mux *http.ServeMux, options ...option) (*adminServer, error) {
 			initPProf(mux, c.basePath)
 		}
 		mux.HandleFunc(c.basePath+"/settings", as.settingsHandler())
-		mux.HandleFunc(c.basePath+"/auth", as.checkAuthHandler())
+		// placeholder for real login
+		mux.HandleFunc(fmt.Sprintf("GET %s/login", c.basePath), as.tokenToCookieHandler())
 	}
 	return as, nil
 }

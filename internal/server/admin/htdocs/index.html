@@ -225,21 +225,46 @@
       controlHovered: false,
       authToken: localStorage.getItem('scrapeToken') || '{{AuthToken}}',
       async saveToken() {
+        const token = document.getElementById('token').value;
+        if (!token) {
+          return;
+        }
         try {
-          const token = document.getElementById('token').value;
-          if (token) {
-            localStorage.setItem('scrapeToken', token);
-            alert('Token saved');
+          const response = await fetch('/admin/login', {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          if (!response.ok) {
+            response.text().then(text => {
+              alert('Error validating token: ' + text);
+              throw new Error(response.status + ' ' + text);
+            });
+            return;
           }
         } catch (e) {
+          console.error('Error validating token', e);
+          alert('Error validating token: ' + e.message);
+          return;
+        }
+        try {
+          localStorage.setItem('scrapeToken', token);
+          alert('Token saved');
+          // also tell the server to make an auth cookie from the token
+          // TODO: replace with an OIDC login flow
+        } catch (e) {
           console.error('Error saving token to local storage', e);
+          return;
         }
       },
       async clearToken() {
         localStorage.removeItem('scrapeToken');
         this.authToken = '';
+        alert('Token cleared');
       },
+
     }
   }
 </script>
-{{ end}}
+{{ end }}

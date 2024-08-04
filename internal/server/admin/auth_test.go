@@ -1,7 +1,6 @@
 package admin
 
 import (
-	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -16,7 +15,6 @@ func TestCheckAuth(t *testing.T) {
 	tests := []struct {
 		name         string
 		signingKey   auth.HMACBase64Key
-		authRequest  checkAuthRequest
 		expectStatus int
 		expectCookie bool
 	}{
@@ -28,33 +26,25 @@ func TestCheckAuth(t *testing.T) {
 		{
 			name:         "valid token, expect cookie",
 			signingKey:   auth.MustNewHS256SigningKey(),
-			authRequest:  checkAuthRequest{Login: true},
 			expectStatus: http.StatusOK,
 			expectCookie: true,
-		},
-		{
-			name:         "valid token, expect no cookie",
-			signingKey:   auth.MustNewHS256SigningKey(),
-			authRequest:  checkAuthRequest{Login: false},
-			expectStatus: http.StatusOK,
-			expectCookie: false,
 		},
 	}
 
 	for _, tt := range tests {
-		bodyJson, _ := json.Marshal(tt.authRequest)
-		reader := bytes.NewReader(bodyJson)
-		req := httptest.NewRequest("POST", "http://foo.bar/", reader)
+		req := httptest.NewRequest("GET", "http://foo.bar/", nil)
 
 		authzShim := authzShim(tt.signingKey)
 		as := MustServer(nil, WithAuthz(authzShim))
-		handler := as.checkAuthHandler()
+		handler := as.tokenToCookieHandler()
 		var token string
+		var expires time.Time
 		if authzShim.AuthEnabled() {
+			expires = time.Now().Add(60 * time.Second)
 			claims, _ := auth.NewClaims(
 				auth.WithSubject("tester"),
 				auth.WithAudience("testing"),
-				auth.ExpiresIn(60*time.Second),
+				auth.ExpiresAt(expires),
 			)
 			token, _ = claims.Sign(authzShim.SigningKey())
 			req.Header.Set("Authorization", "Bearer "+token)
@@ -83,6 +73,9 @@ func TestCheckAuth(t *testing.T) {
 					}
 					if cookie.Value != token {
 						t.Errorf("[%s] Expected cookie value to match token, got %s", tt.name, cookie.Value)
+					}
+					if cookie.Expires.Unix() != expires.Unix() {
+						t.Errorf("[%s] Expected cookie expiration to match token at %s, got %s", tt.name, expires, cookie.Expires)
 					}
 					break
 				}

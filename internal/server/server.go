@@ -121,7 +121,10 @@ func (ss scrapeServer) AuthEnabled() bool {
 // Prepend the authorization checker to the list of passed middleware if authorization is enabled.
 func (ss scrapeServer) withAuthIfEnabled(ms ...middleware.Step) []middleware.Step {
 	if len(ss.signingKey) > 0 {
-		ms = append([]middleware.Step{auth.JWTAuthMiddleware(ss.signingKey)}, ms...)
+		ms = append([]middleware.Step{
+			auth.JWTAuthHeaderOrCookie(ss.signingKey, "jwt")},
+			ms...,
+		)
 	}
 	return ms
 }
