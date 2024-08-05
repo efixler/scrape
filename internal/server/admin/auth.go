@@ -57,8 +57,8 @@ func (as *adminServer) tokenToCookie(w http.ResponseWriter, r *http.Request) {
 	// Re-creating the token from claims. The token, in the authorization header,
 	// was already used to authorize this request, but we're not going to pull it from there
 	// to be safe, especially as things are in rapid flux.
-	// Ideally, we don't want to be re-making the token, as long as we can guarantee
-	// that the input token is valid and not tamperable by the client.
+	// Also, in the future, we'll probably want to tag the cookie tokens somehow to distinguish
+	// them from the Authorization header tokens (for CSRF requirements, etc)
 	token, err := claims.Sign(as.authz.SigningKey())
 	if err != nil {
 		http.Error(w, "Login failed", http.StatusInternalServerError)
