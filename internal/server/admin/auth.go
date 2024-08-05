@@ -40,7 +40,7 @@ func (as *adminServer) tokenToCookieHandler() http.HandlerFunc {
 	}
 	return middleware.Chain(
 		as.tokenToCookie,
-		auth.JWTAuthMiddleware(as.authz.SigningKey()),
+		auth.JWTAuthzMiddleware(as.authz.SigningKey()),
 	)
 }
 
@@ -67,7 +67,7 @@ func (as *adminServer) tokenToCookie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     "jwt",
+		Name:     "token",
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,

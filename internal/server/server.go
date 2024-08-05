@@ -122,7 +122,7 @@ func (ss scrapeServer) AuthEnabled() bool {
 func (ss scrapeServer) withAuthIfEnabled(ms ...middleware.Step) []middleware.Step {
 	if len(ss.signingKey) > 0 {
 		ms = append([]middleware.Step{
-			auth.JWTAuthHeaderOrCookie(ss.signingKey, "jwt")},
+			auth.JWTAuthzMiddleware(ss.signingKey, auth.WithCookie("token"))},
 			ms...,
 		)
 	}
