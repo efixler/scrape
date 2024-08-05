@@ -110,7 +110,7 @@ func NewServer(mux *http.ServeMux, options ...option) (*adminServer, error) {
 	// nil mux provided for tests
 	if mux != nil {
 		// home handler is always at root
-		mux.HandleFunc("/{$}", as.homeHandler(as.authz, c.openHome))
+		mux.HandleFunc("/{$}", as.homeHandler(c.openHome))
 		mux.Handle("/assets/", assetsHandler())
 		if c.profile {
 			initPProf(mux, c.basePath)

@@ -8,6 +8,10 @@ import (
 	"github.com/efixler/scrape/internal/server/middleware"
 )
 
+const (
+	TokenCookieName = "token"
+)
+
 type AuthzProvider interface {
 	AuthEnabled() bool
 	SigningKey() auth.HMACBase64Key
@@ -29,10 +33,6 @@ type checkAuthResponse struct {
 	Subject string `json:"subject"`
 	Expires int    `json:"expires"`
 }
-
-// type checkAuthRequest struct {
-// 	Login bool `json:"login"`
-// }
 
 func (as *adminServer) tokenToCookieHandler() http.HandlerFunc {
 	if !as.authz.AuthEnabled() {
@@ -67,7 +67,7 @@ func (as *adminServer) tokenToCookie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cookie := http.Cookie{
-		Name:     "token",
+		Name:     TokenCookieName,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,

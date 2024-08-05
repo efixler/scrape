@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
+// The JWTAuthMiddleware will store claims in the request context at this key.
 type ClaimsContextKey struct{}
+
+// Use this interface to add extra authorization checks to the middleware.
 type ClaimsAuthorizer func(claims *Claims) error
 
 type config struct {
@@ -17,9 +20,10 @@ type config struct {
 
 type middlewareOption func(*config) error
 
-func WithClaimsAuthorizer(ca ClaimsAuthorizer) middlewareOption {
+// Add additional claims authorizers to the middleware
+func WithClaimsAuthorizer(ca ...ClaimsAuthorizer) middlewareOption {
 	return func(c *config) error {
-		c.extraAuthorizers = append(c.extraAuthorizers, ca)
+		c.extraAuthorizers = append(c.extraAuthorizers, ca...)
 		return nil
 	}
 }

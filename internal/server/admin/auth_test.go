@@ -63,7 +63,7 @@ func TestCheckAuth(t *testing.T) {
 		if tt.expectCookie {
 			foundCookie := false
 			for _, cookie := range resp.Cookies() {
-				if cookie.Name == "jwt" {
+				if cookie.Name == TokenCookieName {
 					foundCookie = true
 					if !cookie.HttpOnly {
 						t.Errorf("[%s] Expected HttpOnly cookie, got none", tt.name)
