@@ -5,6 +5,7 @@ import (
 
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/internal/server/admin"
+	"github.com/efixler/scrape/internal/server/api"
 	"github.com/efixler/scrape/internal/server/healthchecks"
 )
 
@@ -15,7 +16,7 @@ import (
 //     if auth is enabled
 //   - enableProfiling: bool: if true, pprof routes will be added to the mux
 func InitMux(
-	ss *scrapeServer,
+	ss *api.Server,
 	db *database.DBHandle,
 	openHome bool,
 	enableProfiling bool,
@@ -31,23 +32,24 @@ func InitMux(
 	)
 
 	// API routes
-	h := ss.singleHandler()
+	h := ss.ExtractHandler()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
-	h = ss.singleHeadlessHandler()
+	h = ss.ExtractHeadlessHandler()
 	mux.HandleFunc("GET /extract/headless", h)
 	mux.HandleFunc("POST /extract/headless", h)
-	mux.HandleFunc("POST /batch", ss.batchHandler())
-	mux.HandleFunc("DELETE /extract", ss.deleteHandler())
-	h = ss.feedHandler()
+	mux.HandleFunc("POST /batch", ss.BatchHandler())
+	mux.HandleFunc("DELETE /extract", ss.DeleteHandler())
+	h = ss.FeedHandler()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
 	// settings
-	if ss.settingsStorage != nil {
-		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.getSingleDomainSettingsHandler())
-		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.putDomainSettingsHandler())
-		mux.HandleFunc("GET /settings/domain", ss.getBatchDomainSettingsHandler())
-		mux.HandleFunc("DELETE /settings/domain/{DOMAIN}", ss.deleteDomainSettingsHandler())
+	// Until settings migrations for MySQL are in place
+	if (db != nil) && db.Engine.Driver() == string(database.SQLite) {
+		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.GetDomainSettingsHandler())
+		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.PutDomainSettingsHandler())
+		mux.HandleFunc("GET /settings/domain", ss.SearchDomainSettingsHandler())
+		mux.HandleFunc("DELETE /settings/domain/{DOMAIN}", ss.DeleteDomainSettingsHandler())
 	} else {
 		mux.HandleFunc("/settings/domain/", serviceUnavailable)
 	}

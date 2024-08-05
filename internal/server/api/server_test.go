@@ -1,10 +1,11 @@
-package server
+package api
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	nurl "net/url"
@@ -25,8 +26,6 @@ type mockUrlFetcher struct {
 	fetchMethod resource.FetchClient
 }
 
-func (m *mockUrlFetcher) Open(ctx context.Context) error { return nil }
-func (m *mockUrlFetcher) Close() error                   { return nil }
 func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	r := &resource.WebPage{
 		OriginalURL:  url.String(),
@@ -68,14 +67,14 @@ func TestFeedSourceErrors(t *testing.T) {
 		{urlPath: "/?url=http://passthru.com/508", expected: 508},
 	}
 	mockFeedFetcher := &mockFeedFetcher{}
-	scrapeServer := MustScrapeServer(
+	scrapeServer := MustAPIServer(
 		context.Background(),
 		WithFeedFetcher(mockFeedFetcher),
 		WithURLFetcher(&mockUrlFetcher{}),
 	)
 
 	urlBase := "http://foo.bar" // just make the initial URL valid
-	handler := scrapeServer.feedHandler()
+	handler := scrapeServer.FeedHandler()
 	for _, test := range tests {
 		url := urlBase + test.urlPath
 		request := httptest.NewRequest("GET", url, nil)
@@ -89,7 +88,6 @@ func TestFeedSourceErrors(t *testing.T) {
 }
 
 func TestBatchReponseIsValid(t *testing.T) {
-	t.Parallel()
 	var dbh = database.New(sqlite.MustNew(sqlite.InMemoryDB()))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -102,42 +100,33 @@ func TestBatchReponseIsValid(t *testing.T) {
 		storage.NewURLDataStore(dbh),
 	)
 
-	ss := MustScrapeServer(
+	ss := MustAPIServer(
 		ctx,
 		WithURLFetcher(fetcher),
 	)
 
-	mux, err := InitMux(ss, nil, false, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ts := httptest.NewServer(mux)
-	defer ts.Close()
-	client := ts.Client()
+	batchHandler := ss.BatchHandler()
 	urlPath := "/batch"
-	targetUrl := ts.URL + urlPath
 	var batchPayload BatchRequest
-	batchPayload.Urls = []string{
-		ts.URL,
-		ts.URL + "/1",
-		ts.URL + "/2",
-	}
+	batchPayload.Urls = []string{"/", "/1", "/2"}
+
 	var buf = new(bytes.Buffer)
 	payloadEncoder := json.NewEncoder(buf)
 	payloadEncoder.Encode(batchPayload)
-	resp, err := client.Post(targetUrl, "application/json", buf)
-	if err != nil {
-		t.Fatal(err)
-	}
+	req := httptest.NewRequest("POST", urlPath, buf)
+	w := httptest.NewRecorder()
+	batchHandler(w, req)
+	resp := w.Result()
+
 	if resp.StatusCode != 200 {
-		t.Errorf("Expected 200 OK status, got %d (url: %s)", resp.StatusCode, targetUrl)
+		t.Errorf("Expected 200 OK status, got %d", resp.StatusCode)
 	}
 	if resp.Header.Get("Content-Type") != "application/json" {
 		t.Errorf("Expected Content-Type 'application/json', got '%s'", resp.Header.Get("Content-Type"))
 	}
 	var batchResponse []*resource.WebPage
 	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&batchResponse)
+	err := decoder.Decode(&batchResponse)
 	if err != nil {
 		t.Errorf("Error decoding JSON: %s", err)
 	}
@@ -154,19 +143,19 @@ func TestBatchReponseIsValid(t *testing.T) {
 }
 
 func TestNewFailsWithNilFetcher(t *testing.T) {
-	if _, err := NewScrapeServer(context.Background(), WithURLFetcher(nil)); err == nil {
+	if _, err := NewAPIServer(context.Background(), WithURLFetcher(nil)); err == nil {
 		t.Error("Expected error on nil URLFetcher, got nil")
 	}
-	if _, err := NewScrapeServer(context.Background()); err == nil {
+	if _, err := NewAPIServer(context.Background()); err == nil {
 		t.Error("Expected error on no URLFetcher, got nil")
 	}
 }
 
 func TestHeadless503WhenUnavailable(t *testing.T) {
-	ss := MustScrapeServer(context.Background(), WithURLFetcher(&mockUrlFetcher{}))
+	ss := MustAPIServer(context.Background(), WithURLFetcher(&mockUrlFetcher{}))
 
 	// ss := &scrapeServer{headlessFetcher: nil}
-	handler := ss.singleHeadlessHandler()
+	handler := ss.ExtractHeadlessHandler()
 	req := httptest.NewRequest("GET", "http://foo.bar?url=http://example.com", nil)
 	w := httptest.NewRecorder()
 	handler(w, req)
@@ -177,7 +166,7 @@ func TestHeadless503WhenUnavailable(t *testing.T) {
 }
 
 func TestSingleHandler(t *testing.T) {
-	ss := MustScrapeServer(
+	ss := MustAPIServer(
 		context.Background(),
 		WithURLFetcher(&mockUrlFetcher{fetchMethod: resource.DefaultClient}),
 		WithHeadlessIf(&mockUrlFetcher{fetchMethod: resource.HeadlessChromium}),
@@ -191,13 +180,13 @@ func TestSingleHandler(t *testing.T) {
 		{
 			name:         "client",
 			url:          "http://foo.bar",
-			handler:      ss.singleHandler(),
+			handler:      ss.ExtractHandler(),
 			expectMethod: resource.DefaultClient,
 		},
 		{
 			name:         "headless",
 			url:          "http://example.com",
-			handler:      ss.singleHeadlessHandler(),
+			handler:      ss.ExtractHeadlessHandler(),
 			expectMethod: resource.HeadlessChromium,
 		},
 	}
@@ -233,7 +222,7 @@ func TestSingleHandler(t *testing.T) {
 }
 
 func TestDeleteHandler(t *testing.T) {
-	ss := MustScrapeServer(
+	ss := MustAPIServer(
 		context.Background(),
 		WithURLFetcher(&mockUrlFetcher{}),
 	)
@@ -264,10 +253,14 @@ func TestDeleteHandler(t *testing.T) {
 	for _, test := range tests {
 		req := httptest.NewRequest("DELETE", "http://foo.bar", strings.NewReader(test.body))
 		w := httptest.NewRecorder()
-		ss.deleteHandler()(w, req)
+		ss.DeleteHandler()(w, req)
 		resp := w.Result()
 		if resp.StatusCode != test.expectedResult {
 			t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)
 		}
 	}
+}
+
+func init() {
+	slog.SetLogLoggerLevel(slog.LevelWarn)
 }

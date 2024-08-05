@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"context"
@@ -21,7 +21,7 @@ import (
 )
 
 func WithURLFetcher(f fetch.URLFetcher) option {
-	return func(s *scrapeServer) error {
+	return func(s *Server) error {
 		if f == nil {
 			return errors.New("nil fetcher provided")
 		}
@@ -31,7 +31,7 @@ func WithURLFetcher(f fetch.URLFetcher) option {
 }
 
 func WithHeadlessIf(hf fetch.URLFetcher) option {
-	return func(s *scrapeServer) error {
+	return func(s *Server) error {
 		if hf == nil {
 			return nil
 		}
@@ -41,7 +41,7 @@ func WithHeadlessIf(hf fetch.URLFetcher) option {
 }
 
 func WithFeedFetcher(ff fetch.FeedFetcher) option {
-	return func(s *scrapeServer) error {
+	return func(s *Server) error {
 		if ff == nil {
 			return errors.New("nil feed fetcher provided")
 		}
@@ -51,7 +51,7 @@ func WithFeedFetcher(ff fetch.FeedFetcher) option {
 }
 
 func WithSettingsStorage(db *database.DBHandle) option {
-	return func(s *scrapeServer) error {
+	return func(s *Server) error {
 		if db == nil {
 			return errors.New("nil database handle provided")
 		}
@@ -61,7 +61,7 @@ func WithSettingsStorage(db *database.DBHandle) option {
 }
 
 func WithAuthorizationIf(key auth.HMACBase64Key) option {
-	return func(s *scrapeServer) error {
+	return func(s *Server) error {
 		if len(key) > 0 {
 			s.signingKey = key
 		}
@@ -69,10 +69,10 @@ func WithAuthorizationIf(key auth.HMACBase64Key) option {
 	}
 }
 
-type option func(*scrapeServer) error
+type option func(*Server) error
 
-func MustScrapeServer(ctx context.Context, opts ...option) *scrapeServer {
-	ss, err := NewScrapeServer(ctx, opts...)
+func MustAPIServer(ctx context.Context, opts ...option) *Server {
+	ss, err := NewAPIServer(ctx, opts...)
 	if err != nil {
 		panic(err)
 	}
@@ -81,8 +81,8 @@ func MustScrapeServer(ctx context.Context, opts ...option) *scrapeServer {
 
 // When the context passed here is cancelled, the associated fetcher will
 // close and release any resources they have open.
-func NewScrapeServer(ctx context.Context, opts ...option) (*scrapeServer, error) {
-	ss := &scrapeServer{ctx: ctx}
+func NewAPIServer(ctx context.Context, opts ...option) (*Server, error) {
+	ss := &Server{ctx: ctx}
 	for _, opt := range opts {
 		err := opt(ss)
 		if err != nil {
@@ -101,7 +101,7 @@ func NewScrapeServer(ctx context.Context, opts ...option) (*scrapeServer, error)
 // The server struct is stateless but uses the same fetchers across all requests,
 // to optimize client and database connections. There's a general fetcher, and
 // special ones for headless scrapes and RSS/Atom feeds.
-type scrapeServer struct {
+type Server struct {
 	ctx             context.Context
 	urlFetcher      fetch.URLFetcher
 	headlessFetcher fetch.URLFetcher
@@ -110,16 +110,16 @@ type scrapeServer struct {
 	settingsStorage settings.DomainSettingsStore
 }
 
-func (ss scrapeServer) SigningKey() auth.HMACBase64Key {
+func (ss Server) SigningKey() auth.HMACBase64Key {
 	return ss.signingKey
 }
 
-func (ss scrapeServer) AuthEnabled() bool {
+func (ss Server) AuthEnabled() bool {
 	return len(ss.signingKey) > 0
 }
 
 // Prepend the authorization checker to the list of passed middleware if authorization is enabled.
-func (ss scrapeServer) withAuthIfEnabled(ms ...middleware.Step) []middleware.Step {
+func (ss Server) withAuthIfEnabled(ms ...middleware.Step) []middleware.Step {
 	if len(ss.signingKey) > 0 {
 		ms = append([]middleware.Step{
 			auth.JWTAuthzMiddleware(ss.signingKey, auth.WithCookie("token"))},
@@ -129,14 +129,14 @@ func (ss scrapeServer) withAuthIfEnabled(ms ...middleware.Step) []middleware.Ste
 	return ms
 }
 
-func (ss *scrapeServer) singleHandler() http.HandlerFunc {
+func (ss *Server) ExtractHandler() http.HandlerFunc {
 	return middleware.Chain(
 		ss.extract,
 		ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())...,
 	)
 }
 
-func (ss *scrapeServer) singleHeadlessHandler() http.HandlerFunc {
+func (ss *Server) ExtractHeadlessHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
 	return middleware.Chain(extractWithFetcher(ss.headlessFetcher), ms...)
 }
@@ -180,7 +180,7 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 	}
 }
 
-func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
+func (h *Server) extract(w http.ResponseWriter, r *http.Request) {
 	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
 	if !ok {
 		http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
@@ -211,7 +211,7 @@ func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
 	encoder.Encode(page)
 }
 
-func (ss *scrapeServer) batchHandler() http.HandlerFunc {
+func (ss *Server) BatchHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
 		middleware.MaxBytes(32768),
 		middleware.DecodeJSONBody[BatchRequest](payloadKey{}),
@@ -219,7 +219,7 @@ func (ss *scrapeServer) batchHandler() http.HandlerFunc {
 	return middleware.Chain(ss.batch, ms...)
 }
 
-func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
+func (h *Server) batch(w http.ResponseWriter, r *http.Request) {
 	req, ok := r.Context().Value(payloadKey{}).(*BatchRequest)
 	if !ok {
 		http.Error(w, "No batch request found", http.StatusInternalServerError)
@@ -257,12 +257,12 @@ func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ss *scrapeServer) deleteHandler() http.HandlerFunc {
+func (ss *Server) DeleteHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
 	return middleware.Chain(ss.delete, ms...)
 }
 
-func (ss *scrapeServer) delete(w http.ResponseWriter, r *http.Request) {
+func (ss *Server) delete(w http.ResponseWriter, r *http.Request) {
 	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
 	if !ok {
 		http.Error(w, "Can't process delete request, no input data", http.StatusInternalServerError)
@@ -285,7 +285,7 @@ func (ss *scrapeServer) delete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *scrapeServer) synchronousBatch(urls []string, encoder *jsonarray.Encoder[*resource.WebPage]) {
+func (h *Server) synchronousBatch(urls []string, encoder *jsonarray.Encoder[*resource.WebPage]) {
 	var page *resource.WebPage
 	for _, url := range urls {
 		if parsedUrl, err := nurl.Parse(url); err != nil {
@@ -304,12 +304,12 @@ func (h *scrapeServer) synchronousBatch(urls []string, encoder *jsonarray.Encode
 	}
 }
 
-func (ss *scrapeServer) feedHandler() http.HandlerFunc {
+func (ss *Server) FeedHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
 	return middleware.Chain(ss.feed, ms...)
 }
 
-func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
+func (h *Server) feed(w http.ResponseWriter, r *http.Request) {
 	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
 	if !ok {
 		http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)

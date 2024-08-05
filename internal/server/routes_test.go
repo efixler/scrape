@@ -2,13 +2,17 @@ package server
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	nurl "net/url"
 	"testing"
 
 	"github.com/efixler/scrape/fetch/trafilatura"
 	"github.com/efixler/scrape/internal/auth"
+	"github.com/efixler/scrape/internal/server/api"
+	"github.com/efixler/scrape/resource"
 )
 
 func TestWellknown(t *testing.T) {
@@ -16,7 +20,7 @@ func TestWellknown(t *testing.T) {
 	//ctx, cancel := context.WithCancel(context.Background())
 	//defer cancel()
 
-	mux, err := InitMux(&scrapeServer{}, nil, false, false)
+	mux, err := InitMux(&api.Server{}, nil, false, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +48,6 @@ func TestWellknown(t *testing.T) {
 }
 
 func TestExtractErrors(t *testing.T) {
-	t.Parallel()
 	type data struct {
 		url            string
 		expectedStatus int
@@ -57,9 +60,9 @@ func TestExtractErrors(t *testing.T) {
 		{url: "?url=http://[::1", expectedStatus: 400},
 	}
 
-	ss := MustScrapeServer(
+	ss := api.MustAPIServer(
 		context.Background(),
-		WithURLFetcher(trafilatura.MustNew(nil)),
+		api.WithURLFetcher(trafilatura.MustNew(nil)),
 	)
 
 	mux, err := InitMux(ss, nil, false, false)
@@ -83,6 +86,12 @@ func TestExtractErrors(t *testing.T) {
 	}
 }
 
+type mockUrlFetcher struct{}
+
+func (m mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
+	return nil, errors.New("not implemented")
+}
+
 // Test that a request to the relevant API routes without a valid token
 // is rejected when running with a signing key.
 // Since the auth middleware is (and always should be) placed in the
@@ -90,10 +99,11 @@ func TestExtractErrors(t *testing.T) {
 // a request body - the request should get rejected before that would get
 // evaluated.
 func TestAPIRoutesAreProtected(t *testing.T) {
-	ss := MustScrapeServer(
+
+	ss := api.MustAPIServer(
 		context.Background(),
-		WithURLFetcher(&mockUrlFetcher{}),
-		WithAuthorizationIf(auth.MustNewHS256SigningKey()),
+		api.WithURLFetcher(mockUrlFetcher{}),
+		api.WithAuthorizationIf(auth.MustNewHS256SigningKey()),
 	)
 	tests := []struct {
 		name    string
@@ -103,37 +113,37 @@ func TestAPIRoutesAreProtected(t *testing.T) {
 		{
 			name:    "POST /extract",
 			method:  http.MethodPost,
-			handler: ss.singleHandler,
+			handler: ss.ExtractHandler,
 		},
 		{
 			name:    "GET /extract",
 			method:  http.MethodGet,
-			handler: ss.singleHandler,
+			handler: ss.ExtractHandler,
 		},
 		{
 			name:    "POST /extract/headless",
 			method:  http.MethodPost,
-			handler: ss.singleHeadlessHandler,
+			handler: ss.ExtractHeadlessHandler,
 		},
 		{
 			name:    "POST /extract/batch",
 			method:  http.MethodPost,
-			handler: ss.batchHandler,
+			handler: ss.BatchHandler,
 		},
 		{
 			name:    "DELETE /extract",
 			method:  http.MethodDelete,
-			handler: ss.deleteHandler,
+			handler: ss.DeleteHandler,
 		},
 		{
 			name:    "GET /feed",
 			method:  http.MethodGet,
-			handler: ss.feedHandler,
+			handler: ss.FeedHandler,
 		},
 		{
 			name:    "POST /feed",
 			method:  http.MethodPost,
-			handler: ss.feedHandler,
+			handler: ss.FeedHandler,
 		},
 	}
 	for _, test := range tests {
