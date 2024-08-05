@@ -14,6 +14,7 @@ import (
 	"github.com/efixler/scrape/fetch/feed"
 	"github.com/efixler/scrape/internal"
 	"github.com/efixler/scrape/internal/auth"
+	"github.com/efixler/scrape/internal/server/middleware"
 	"github.com/efixler/scrape/internal/settings"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/webutil/jsonarray"
@@ -117,23 +118,27 @@ func (ss scrapeServer) AuthEnabled() bool {
 	return len(ss.signingKey) > 0
 }
 
-type claimsKey struct{}
-
 // Prepend the authorization checker to the list of passed middleware if authorization is enabled.
-func (ss scrapeServer) withAuthIfEnabled(ms ...middleware) []middleware {
+func (ss scrapeServer) withAuthIfEnabled(ms ...middleware.Step) []middleware.Step {
 	if len(ss.signingKey) > 0 {
-		ms = append([]middleware{auth.JWTAuthMiddleware(ss.signingKey, claimsKey{})}, ms...)
+		ms = append([]middleware.Step{
+			auth.JWTAuthzMiddleware(ss.signingKey, auth.WithCookie("token"))},
+			ms...,
+		)
 	}
 	return ms
 }
 
 func (ss *scrapeServer) singleHandler() http.HandlerFunc {
-	return Chain(ss.extract, ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())...)
+	return middleware.Chain(
+		ss.extract,
+		ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())...,
+	)
 }
 
 func (ss *scrapeServer) singleHeadlessHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())
-	return Chain(extractWithFetcher(ss.headlessFetcher), ms...)
+	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
+	return middleware.Chain(extractWithFetcher(ss.headlessFetcher), ms...)
 }
 
 // The nested handler here is the same as the one below, just enclosed around a fetcher.
@@ -207,8 +212,11 @@ func (h *scrapeServer) extract(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ss *scrapeServer) batchHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(32768), DecodeJSONBody[BatchRequest]())
-	return Chain(ss.batch, ms...)
+	ms := ss.withAuthIfEnabled(
+		middleware.MaxBytes(32768),
+		middleware.DecodeJSONBody[BatchRequest](payloadKey{}),
+	)
+	return middleware.Chain(ss.batch, ms...)
 }
 
 func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
@@ -250,8 +258,8 @@ func (h *scrapeServer) batch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (ss *scrapeServer) deleteHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())
-	return Chain(ss.delete, ms...)
+	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
+	return middleware.Chain(ss.delete, ms...)
 }
 
 func (ss *scrapeServer) delete(w http.ResponseWriter, r *http.Request) {
@@ -297,8 +305,8 @@ func (h *scrapeServer) synchronousBatch(urls []string, encoder *jsonarray.Encode
 }
 
 func (ss *scrapeServer) feedHandler() http.HandlerFunc {
-	ms := ss.withAuthIfEnabled(MaxBytes(4096), parseSinglePayload())
-	return Chain(ss.feed, ms...)
+	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
+	return middleware.Chain(ss.feed, ms...)
 }
 
 func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
@@ -323,15 +331,4 @@ func (h *scrapeServer) feed(w http.ResponseWriter, r *http.Request) {
 	v := BatchRequest{Urls: links}
 	r = r.WithContext(context.WithValue(r.Context(), payloadKey{}, &v))
 	h.batch(w, r)
-}
-
-func writeJSONOutput(w http.ResponseWriter, v any, pp bool, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	encoder := json.NewEncoder(w)
-	encoder.SetEscapeHTML(false)
-	if pp {
-		encoder.SetIndent("", "  ")
-	}
-	encoder.Encode(v)
 }

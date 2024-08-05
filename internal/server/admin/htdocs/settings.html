@@ -1,7 +1,30 @@
 {{ define "title" }}Settings{{ end }}
 {{ define "head" }}
 <style>
+  .table-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
+  table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  th,
+  td {
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    font-weight: normal;
+    font-size: 1.0rem;
+    border-bottom: 1px solid darkgray;
+    padding-bottom: 0.3rem;
+    text-align: left;
+  }
+
+  td {
+    padding-top: 0.3rem;
+  }
 </style>
 
 {{ end}}
@@ -10,8 +33,63 @@
 <div class="controls-container">
   <label>Settings</label>
 </div>
+<div class="controls-container" x-data="domainSettings()">
+  <table>
+    <thead>
+      <tr>
+        <th>Domain</th>
+        <th>Sitename</th>
+        <th>Fetch Client</th>
+        <th>User Agent</th>
+        <th>Headers</th>
+      </tr>
+    </thead>
+    <tbody>
+      <template x-for="item in items">
+        <tr>
+          <td x-text="item.domain"></td>
+          <td x-text="item.sitename"></td>
+          <td x-text="item.fetch_client"></td>
+          <td x-text="item.user_agent"></td>
+          <td x-text="item.headers"></td>
+        </tr>
+      </template>
+    </tbody>
+  </table>
+</div>
 {{ end }}
 
+{{ define "scripts" }}
+<script type="text/javascript">
+  function domainSettings() {
+    return {
+      items: [],
+      init() {
+        this.load();
+      },
+      async load() {
+        fetch('/settings/domain', {
+          method: 'GET',
+          credentials: 'same-origin'
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(response.status + " " + response.statusText);
+            }
+            return response.json()
+          })
+          .then(data => {
+            this.items = data.settings;
+          })
+          .catch(error => {
+            console.error('Error fetching domain settings:', error);
+            alert('Error loading domain settings: ' + error.message);
+          });
+      },
+    }
+  }
+</script>
+{{ end }}
 {{/*
 
 <body>
@@ -19,5 +97,4 @@
     <div class="panel-header" x-data="fragment('assets/menubar.html')" x-init="load()" x-html="content"></div>
     Settings
   </div>
-</body>
-*/}}
+  */}}

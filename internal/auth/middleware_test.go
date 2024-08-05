@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 )
 
 func TestJWTAuthMiddleWare(t *testing.T) {
-	t.Parallel()
 	realKey := MustNewHS256SigningKey()
 	c, _ := NewClaims(
 		ExpiresAt(time.Now().Add(24*time.Hour)),
@@ -22,7 +22,8 @@ func TestJWTAuthMiddleWare(t *testing.T) {
 		name         string
 		key          HMACBase64Key
 		authHeader   string
-		extra        []ClaimsAuthorizer
+		options      []middlewareOption
+		cookies      []http.Cookie
 		expectStatus int
 	}{
 		{
@@ -65,26 +66,42 @@ func TestJWTAuthMiddleWare(t *testing.T) {
 			name:         "With extra authorizer, passthru",
 			key:          realKey,
 			authHeader:   fmt.Sprintf("Bearer %s", token),
-			extra:        []ClaimsAuthorizer{func(c *Claims) error { return nil }},
+			options:      []middlewareOption{WithClaimsAuthorizer(func(c *Claims) error { return nil })},
 			expectStatus: http.StatusOK,
 		},
 		{
 			name:         "With extra authorizer, reject",
 			key:          realKey,
 			authHeader:   fmt.Sprintf("Bearer %s", token),
-			extra:        []ClaimsAuthorizer{func(c *Claims) error { return fmt.Errorf("nope") }},
+			options:      []middlewareOption{WithClaimsAuthorizer(func(c *Claims) error { return errors.New("reject") })},
+			expectStatus: http.StatusUnauthorized,
+		},
+		{
+			name:         "With valid cookie and no header",
+			key:          realKey,
+			options:      []middlewareOption{WithCookie("jwt")},
+			cookies:      []http.Cookie{{Name: "jwt", Value: token}},
+			expectStatus: http.StatusOK,
+		},
+		{
+			name:         "With cookie config but no cookie",
+			key:          realKey,
+			options:      []middlewareOption{WithCookie("jwt")},
 			expectStatus: http.StatusUnauthorized,
 		},
 	}
-	type contextKey struct{}
+
 	for _, tt := range tests {
 		req := httptest.NewRequest("GET", "http://example.com", nil)
+		for _, cookie := range tt.cookies {
+			req.AddCookie(&cookie)
+		}
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Authorization", tt.authHeader)
-		m := JWTAuthMiddleware(tt.key, contextKey{}, tt.extra...)
+		m := JWTAuthzMiddleware(tt.key, tt.options...)
 
 		m(func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := r.Context().Value(contextKey{}).(*Claims)
+			claims, ok := r.Context().Value(ClaimsContextKey{}).(*Claims)
 			if !ok {
 				t.Fatalf("[%s] JWTAuthMiddleware, expected claims, got %v", tt.name, claims)
 			}

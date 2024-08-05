@@ -3,69 +3,24 @@ package server
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	nurl "net/url"
-	"strings"
+
+	"github.com/efixler/scrape/internal/server/middleware"
 )
 
-type middleware func(http.HandlerFunc) http.HandlerFunc
-
-type payloadKey struct{}
-
-// Prepend the middlewares to the handler in the order they are provided.
-func Chain(h http.HandlerFunc, m ...middleware) http.HandlerFunc {
-	if len(m) == 0 {
-		return h
-	}
-	handler := h
-	for i := len(m) - 1; i >= 0; i-- {
-		handler = m[i](handler)
-	}
-	return handler
-}
-
-func MaxBytes(n int64) middleware {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet {
-				r.Body = http.MaxBytesReader(w, r.Body, n)
-			}
-			next(w, r)
-		}
-	}
-}
-
-// Anything that's not a GET and not a form is assumed to be JSON
-// This is imperfect but it allows for requests that don't send a content-type
-// header or inadvertently use text/plain
-func isJSON(r *http.Request) bool {
-	if r.Method == http.MethodGet {
-		return false
-	}
-	contentType := strings.SplitN(r.Header.Get("Content-Type"), ";", 2)[0]
-	switch contentType {
-	case "application/x-www-form-urlencoded":
-		return false
-	case "multipart/form-data":
-		return false
-	}
-	return true
-}
-
-func parseSinglePayload() middleware {
+func parseSinglePayload() middleware.Step {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			pp := r.FormValue("pp") == "1"
 			v := new(singleURLRequest)
-			if isJSON(r) {
+			if middleware.IsJSONRequest(r) {
 				decoder := json.NewDecoder(r.Body)
 				decoder.DisallowUnknownFields()
 				err := decoder.Decode(v)
-				if !assertDecode(err, w) {
+				if !middleware.AssertJSONDecode(err, w) {
 					return
 				}
 			} else {
@@ -91,50 +46,4 @@ func parseSinglePayload() middleware {
 			next(w, r)
 		}
 	}
-}
-
-func DecodeJSONBody[T any](key ...any) middleware {
-	var pkey any
-	pkey = payloadKey{}
-	if len(key) > 0 {
-		pkey = key[0]
-	}
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			decoder := json.NewDecoder(r.Body)
-			decoder.DisallowUnknownFields()
-			v := new(T)
-			err := decoder.Decode(v)
-			if !assertDecode(err, w) {
-				return
-			}
-			r = r.WithContext(context.WithValue(r.Context(), pkey, v))
-			next(w, r)
-		}
-	}
-}
-
-func assertDecode(err error, w http.ResponseWriter) bool {
-	if err != nil {
-		var syntaxErr *json.SyntaxError
-		var unmarshalErr *json.UnmarshalTypeError
-		var maxBytesError *http.MaxBytesError
-		switch {
-		case errors.As(err, &maxBytesError):
-			http.Error(w, fmt.Sprintf("Invalid request %s", maxBytesError), http.StatusRequestEntityTooLarge)
-			return false
-		case errors.Is(err, io.ErrUnexpectedEOF):
-			http.Error(w, "Invalid JSON: unexpected end of JSON input", http.StatusBadRequest)
-			return false
-		case errors.As(err, &syntaxErr):
-			http.Error(w, fmt.Sprintf("Invalid JSON: bad syntax at byte offset %d", syntaxErr.Offset), http.StatusBadRequest)
-			return false
-		case errors.As(err, &unmarshalErr):
-			http.Error(w, fmt.Sprintf("Invalid JSON: value %q at offset %d is not of type %s", unmarshalErr.Value, unmarshalErr.Offset, unmarshalErr.Type), http.StatusBadRequest)
-			return false
-		}
-		http.Error(w, fmt.Sprintf("Error decoding request: %s", err), http.StatusBadRequest)
-		return false
-	}
-	return true
 }

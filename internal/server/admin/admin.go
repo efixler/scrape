@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/efixler/scrape/internal/auth"
 	"github.com/efixler/scrape/internal/server/version"
 )
 
@@ -18,21 +17,6 @@ const (
 	baseTemplateName = "base.html"
 	DefaultBasePath  = "/admin"
 )
-
-type AuthzProvider interface {
-	AuthEnabled() bool
-	SigningKey() auth.HMACBase64Key
-}
-
-type authzShim auth.HMACBase64Key
-
-func (a authzShim) AuthEnabled() bool {
-	return len(a) > 0
-}
-
-func (a authzShim) SigningKey() auth.HMACBase64Key {
-	return auth.HMACBase64Key(a)
-}
 
 //go:embed htdocs/*.html
 var htdocs embed.FS
@@ -47,6 +31,7 @@ type codeData struct {
 }
 type adminServer struct {
 	mutex        sync.Mutex
+	authz        AuthzProvider
 	baseTemplate *template.Template
 	data         codeData
 }
@@ -120,16 +105,19 @@ func NewServer(mux *http.ServeMux, options ...option) (*adminServer, error) {
 			RepoURL: version.RepoURL,
 			Tag:     version.Tag,
 		},
+		authz: c.authz,
 	}
 	// nil mux provided for tests
 	if mux != nil {
 		// home handler is always at root
-		mux.HandleFunc("/{$}", as.homeHandler(c.authz, c.openHome))
+		mux.HandleFunc("/{$}", as.homeHandler(c.openHome))
 		mux.Handle("/assets/", assetsHandler())
 		if c.profile {
 			initPProf(mux, c.basePath)
 		}
 		mux.HandleFunc(c.basePath+"/settings", as.settingsHandler())
+		// placeholder for real login
+		mux.HandleFunc(fmt.Sprintf("GET %s/login", c.basePath), as.tokenToCookieHandler())
 	}
 	return as, nil
 }

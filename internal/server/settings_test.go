@@ -11,6 +11,7 @@ import (
 
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/database/sqlite"
+	"github.com/efixler/scrape/internal/server/middleware"
 	"github.com/efixler/scrape/internal/settings"
 	"github.com/pressly/goose/v3"
 )
@@ -52,7 +53,7 @@ func TestExtractDomainFromPath(t *testing.T) {
 		r := httptest.NewRequest("GET", "/foo/bar/{DOMAIN}", nil)
 		r.SetPathValue("DOMAIN", tt.domain)
 		w := httptest.NewRecorder()
-		chain := Chain(okHandler(tt.name, tt.domain), extractDomainFromPath(dsKey{}))
+		chain := middleware.Chain(okHandler(tt.name, tt.domain), extractDomainFromPath(dsKey{}))
 		chain(w, r)
 		if w.Code != tt.expectStatus {
 			t.Errorf("[%s]: got status %d, want %d", tt.name, w.Code, tt.expectStatus)
@@ -109,7 +110,7 @@ func TestGetDomainSettings(t *testing.T) {
 
 		r := httptest.NewRequest("GET", "/foo/bar/{DOMAIN}", nil)
 		w := httptest.NewRecorder()
-		chain := Chain(
+		chain := middleware.Chain(
 			ss.getSingleDomainSettings,
 			domainExtractor,
 		)
@@ -204,10 +205,10 @@ func TestPutDomainSettings(t *testing.T) {
 
 		r := httptest.NewRequest("PUT", "/foo/bar/{DOMAIN}", strings.NewReader(tt.payload))
 		w := httptest.NewRecorder()
-		chain := Chain(
+		chain := middleware.Chain(
 			ss.putDomainSettings,
 			domainExtractor,
-			DecodeJSONBody[settings.DomainSettings](),
+			middleware.DecodeJSONBody[settings.DomainSettings](payloadKey{}),
 		)
 		chain(w, r)
 		if w.Code != tt.expectStatus {
@@ -289,7 +290,7 @@ func TestExtractBatchDomainSettings(t *testing.T) {
 	for _, tt := range tests {
 		r := httptest.NewRequest("GET", "/foo/bar?"+tt.queryString, nil)
 		w := httptest.NewRecorder()
-		chain := Chain(okHandler(tt.name, tt.expect), extractBatchDomainSettingsQuery(dsKey{}))
+		chain := middleware.Chain(okHandler(tt.name, tt.expect), extractBatchDomainSettingsQuery(dsKey{}))
 		chain(w, r)
 		if w.Code != tt.expectStatus {
 			t.Errorf("[%s]: got status %d, want %d", tt.name, w.Code, tt.expectStatus)
@@ -347,9 +348,9 @@ func TestGetBatchDomainSettings(t *testing.T) {
 
 		r := httptest.NewRequest("GET", "/foo/bar", nil)
 		w := httptest.NewRecorder()
-		chain := Chain(
+		chain := middleware.Chain(
 			ss.getBatchDomainSettings,
-			extractBatchDomainSettingsQuery(),
+			extractBatchDomainSettingsQuery(payloadKey{}),
 		)
 		chain(w, r)
 		if w.Code != tt.expectStatus {

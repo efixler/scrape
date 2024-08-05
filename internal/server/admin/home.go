@@ -47,8 +47,8 @@ func (a *adminServer) mustHomeTemplate(ss AuthzProvider, openHome bool) *templat
 	return tmpl
 }
 
-func (a *adminServer) homeHandler(ss AuthzProvider, openHome bool) http.HandlerFunc {
-	tmpl := a.mustHomeTemplate(ss, openHome)
+func (a *adminServer) homeHandler(openHome bool) http.HandlerFunc {
+	tmpl := a.mustHomeTemplate(a.authz, openHome)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := tmpl.ExecuteTemplate(w, baseTemplateName, a.data); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
