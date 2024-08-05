@@ -1,3 +1,6 @@
+// Fetch RSS or Atom feed from the given URL.
+//
+// Invoke with -h flag to get usage information.
 package main
 
 import (

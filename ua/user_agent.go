@@ -1,3 +1,4 @@
+// Defines common user agent strings.
 package ua
 
 type UserAgent string

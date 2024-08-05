@@ -1,3 +1,4 @@
+// DSN options and migration support for MySQL databases.
 package mysql
 
 import (

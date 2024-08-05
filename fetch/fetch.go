@@ -1,3 +1,4 @@
+// Interfaces and a basic client for URL fetching and parsing.
 package fetch
 
 import (

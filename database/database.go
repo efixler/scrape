@@ -1,3 +1,5 @@
+// Extends the standard database/sql package with support for migrations,
+// maintenance functions, and prepared statement caching.
 package database
 
 import (

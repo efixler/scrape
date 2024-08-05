@@ -1,3 +1,4 @@
+// Implements the fetch.URLFetcher interface for the Trafilatura library.
 package trafilatura
 
 import (

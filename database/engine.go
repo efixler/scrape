@@ -7,12 +7,18 @@ import (
 
 // Interface for specific database implementations using DBHandle. SQL database
 // handling is typically differentiated across 3 dimensions:
+//
 // 1. Configuration and DSN string generation
+//
 // 2. Open semantics (e.g. things you have to do when opening the connection)
-// 3. Migrations (e.g. that's where platform-specific SQL needs tend to show up)
+//
+// 3. Migrations and maintenance functions (which is typically where platform-specific
+// SQL tends to show up)
+//
 // This interface (along with the supplemental/options interfaces below), provide
-// the hooks to implement platform-specific behaviors, while core CRUD operations
-// using DBHandle should only require one implementation.
+// the hooks to implement platform-specific behaviors in these 3 area. Application
+// runtime  operations using DBHandle should utilize common SQL syntax, which is
+// generally straightforward.
 type Engine interface {
 	// Provides DSN and basic configuration info
 	DSNSource() DataSource
@@ -30,9 +36,9 @@ type Observable interface {
 	Stats(dbh *DBHandle) (any, error)
 }
 
-// Interface for DB maintenance functions. Required for invoking
-// maintenance on-demand, not necessarily needed for setting up
-// periodic maintenance.
+// Interface for DB maintenance functions. If an engine implements this interface,
+// its maintenance can be invoked on-demand from the `scrape` app.
+// Not necessarily needed for setting up periodic maintenance.
 type Maintainable interface {
 	Maintain(dbh *DBHandle) error
 }

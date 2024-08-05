@@ -1,3 +1,4 @@
+// Implements a fetcher for RSS/Atom feeds using the gofeed library.
 package feed
 
 import (

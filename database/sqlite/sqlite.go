@@ -1,3 +1,4 @@
+// DSN options and migration support for SQLite databases.
 package sqlite
 
 import (

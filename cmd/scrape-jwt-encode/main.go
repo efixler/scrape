@@ -1,7 +1,6 @@
-// scrape-jwt-encode generates auth keys for the scrape service
+// Generates auth keys and token for the scrape service.
 //
 // Run `scrape-jwt-encode -h` for complete help and command line options.
-
 package main
 
 import (

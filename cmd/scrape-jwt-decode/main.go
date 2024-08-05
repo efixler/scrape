@@ -1,7 +1,6 @@
-// scrape-jwt-decode verifies and decodes auth keys for the scrape service
+// Verify and decode auth keys for the scrape service.
 //
 // Run `scrape-jwt-decode -h` for complete help and command line options.
-
 package main
 
 import (

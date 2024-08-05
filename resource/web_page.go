@@ -1,3 +1,4 @@
+// Defines struct formats for web page and feed resources.
 package resource
 
 import (
