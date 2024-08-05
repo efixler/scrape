@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"context"
@@ -96,7 +96,7 @@ func TestGetDomainSettings(t *testing.T) {
 			db.Close()
 		})
 
-		ss := &scrapeServer{
+		ss := &Server{
 			ctx:             context.Background(),
 			settingsStorage: settings.NewDomainSettingsStorage(db),
 		}
@@ -198,7 +198,7 @@ func TestPutDomainSettings(t *testing.T) {
 			db.Close()
 		})
 
-		ss := &scrapeServer{
+		ss := &Server{
 			ctx:             context.Background(),
 			settingsStorage: settings.NewDomainSettingsStorage(db),
 		}
@@ -341,7 +341,7 @@ func TestGetBatchDomainSettings(t *testing.T) {
 			settings: tt.settings,
 			error:    tt.error,
 		}
-		ss := &scrapeServer{
+		ss := &Server{
 			ctx:             context.Background(),
 			settingsStorage: dss,
 		}

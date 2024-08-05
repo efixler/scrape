@@ -24,6 +24,7 @@ import (
 	"github.com/efixler/scrape/internal/cmd"
 	"github.com/efixler/scrape/internal/headless"
 	"github.com/efixler/scrape/internal/server"
+	"github.com/efixler/scrape/internal/server/api"
 	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
 	"github.com/efixler/scrape/ua"
@@ -71,12 +72,12 @@ func main() {
 		storage.NewURLDataStore(dbh),
 	)
 
-	ss := server.MustScrapeServer(
+	ss := api.MustAPIServer(
 		ctx,
-		server.WithURLFetcher(sbf),
-		server.WithHeadlessIf(headlessFetcher),
-		server.WithAuthorizationIf(*signingKey.Get()),
-		server.WithSettingsStorage(dbh),
+		api.WithURLFetcher(sbf),
+		api.WithHeadlessIf(headlessFetcher),
+		api.WithAuthorizationIf(*signingKey.Get()),
+		api.WithSettingsStorage(dbh),
 	)
 
 	if ss.AuthEnabled() {

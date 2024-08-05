@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"context"
@@ -33,12 +33,12 @@ type batchDomainSettingsResponse struct {
 
 type dsKey struct{}
 
-func (ss *scrapeServer) getSingleDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) GetDomainSettingsHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), extractDomainFromPath(dsKey{}))
 	return middleware.Chain(ss.getSingleDomainSettings, ms...)
 }
 
-func (ss *scrapeServer) getSingleDomainSettings(w http.ResponseWriter, r *http.Request) {
+func (ss *Server) getSingleDomainSettings(w http.ResponseWriter, r *http.Request) {
 	// if this value isn't here the request will have already been rejected
 	// by middleware.
 	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
@@ -56,7 +56,7 @@ func (ss *scrapeServer) getSingleDomainSettings(w http.ResponseWriter, r *http.R
 	middleware.WriteJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
 }
 
-func (ss *scrapeServer) putDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) PutDomainSettingsHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
 		middleware.MaxBytes(4096),
 		extractDomainFromPath(dsKey{}),
@@ -65,7 +65,7 @@ func (ss *scrapeServer) putDomainSettingsHandler() http.HandlerFunc {
 	return middleware.Chain(ss.putDomainSettings, ms...)
 }
 
-func (ss *scrapeServer) putDomainSettings(w http.ResponseWriter, r *http.Request) {
+func (ss *Server) putDomainSettings(w http.ResponseWriter, r *http.Request) {
 	// for put we get the domain value from here
 	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
 	ds, _ := r.Context().Value(payloadKey{}).(*settings.DomainSettings)
@@ -111,7 +111,7 @@ func extractDomainFromPath(key ...any) middleware.Step {
 	}
 }
 
-func (ss *scrapeServer) getBatchDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) SearchDomainSettingsHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
 		middleware.MaxBytes(4096),
 		extractBatchDomainSettingsQuery(payloadKey{}),
@@ -119,7 +119,7 @@ func (ss *scrapeServer) getBatchDomainSettingsHandler() http.HandlerFunc {
 	return middleware.Chain(ss.getBatchDomainSettings, ms...)
 }
 
-func (ss *scrapeServer) getBatchDomainSettings(w http.ResponseWriter, r *http.Request) {
+func (ss *Server) getBatchDomainSettings(w http.ResponseWriter, r *http.Request) {
 	req, _ := r.Context().Value(payloadKey{}).(*batchDomainSettingsRequest)
 	dss, err := ss.settingsStorage.FetchRange(req.Offset, req.Limit, req.Query)
 	if err != nil {
@@ -186,12 +186,12 @@ func extractBatchDomainSettingsQuery(pkey any) middleware.Step {
 	}
 }
 
-func (ss *scrapeServer) deleteDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) DeleteDomainSettingsHandler() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), extractDomainFromPath(dsKey{}))
 	return middleware.Chain(ss.deleteDomainSettings, ms...)
 }
 
-func (ss *scrapeServer) deleteDomainSettings(w http.ResponseWriter, r *http.Request) {
+func (ss *Server) deleteDomainSettings(w http.ResponseWriter, r *http.Request) {
 	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
 	if _, err := ss.settingsStorage.Delete(req.Domain); err != nil {
 		if errors.Is(err, settings.ErrInvalidDomain) {
