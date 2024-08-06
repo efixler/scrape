@@ -5,6 +5,10 @@ import (
 	"log/slog"
 )
 
+type StatsProvider interface {
+	Stats() (*stats, error)
+}
+
 type stats struct {
 	SQL    sql.DBStats `json:"connections"`
 	Driver string      `json:"driver"`

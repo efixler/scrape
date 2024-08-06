@@ -1,3 +1,5 @@
+// Router setup;  Subpackages implement the API server and admin servers,
+// along with middleware, healthchecks, and utility functions.
 package server
 
 import (
@@ -10,7 +12,7 @@ import (
 )
 
 // Mux Initialization Arguments:
-//   - ss: scrapeServer: used for setting up API routes
+//   - ss: api.Server: used for setting up API routes
 //   - db: database.DBHandle: used for healthchecks
 //   - openHome: bool: if true, the the page will always be open, even
 //     if auth is enabled

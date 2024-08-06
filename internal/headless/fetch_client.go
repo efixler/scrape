@@ -1,3 +1,4 @@
+// Provides a fetch.Client implementation that uses headless Chrome to fetch resources.
 package headless
 
 import (

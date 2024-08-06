@@ -1,3 +1,4 @@
+// Heartbeat and healthcheck handlers for the server.
 package healthchecks
 
 import (
@@ -34,10 +35,10 @@ func heartbeat(w http.ResponseWriter, r *http.Request) {
 type health struct {
 	Application Application `json:"application"`
 	Memory      *Memory     `json:"memory"`
-	database    *database.DBHandle
+	database    database.StatsProvider
 }
 
-func HealthHandler(db *database.DBHandle) http.Handler {
+func HealthHandler(db database.StatsProvider) http.Handler {
 	h := health{
 		Application: Application{
 			StartTime: time.Now().UTC().Format(time.RFC3339),

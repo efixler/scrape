@@ -1,3 +1,4 @@
+// Utilities for interpreting application-specific command line flags.
 package cmd
 
 import (
@@ -52,6 +53,7 @@ func NewDatabaseSpec(s string) (DatabaseSpec, error) {
 	return spec, nil
 }
 
+// An envflags implementationt to support type:path database specs.
 func NewDatabaseValue(env string, def DatabaseSpec) *envflags.Value[DatabaseSpec] {
 	converter := NewDatabaseSpec
 	val := envflags.NewEnvFlagValue(env, def, converter)
@@ -65,6 +67,7 @@ type DatabaseFlags struct {
 	MigrationCommand MigrationCommand
 }
 
+// Add database flags to a flag set, optionally adding a migration flag.
 func AddDatabaseFlags(baseEnv string, flags *flag.FlagSet, migrateFlag bool) *DatabaseFlags {
 	dbFlags := &DatabaseFlags{
 		database: NewDatabaseValue(baseEnv, DefaultDatabase),
@@ -105,6 +108,7 @@ func (f DatabaseFlags) IsMigration() bool {
 	return string(f.MigrationCommand) != ""
 }
 
+// Get a database handle for the db specified in the flags.
 func (f DatabaseFlags) Database() (*db.DBHandle, error) {
 	return database(f.database.Get(), f.username.Get(), f.password.Get(), f.MigrationCommand)
 }

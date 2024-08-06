@@ -1,3 +1,4 @@
+// Middleware definitions and helper functions.
 package middleware
 
 import (
@@ -11,7 +12,8 @@ import (
 
 type Step func(http.HandlerFunc) http.HandlerFunc
 
-// Prepend the middlewares to the handler in the order they are provided.
+// Prepend the middlewares to the handler in the order they are provided,
+// and return the resulting (chained) handler.
 func Chain(h http.HandlerFunc, m ...Step) http.HandlerFunc {
 	if len(m) == 0 {
 		return h
@@ -23,6 +25,7 @@ func Chain(h http.HandlerFunc, m ...Step) http.HandlerFunc {
 	return handler
 }
 
+// Abort the request if the body is over the specified size in bytes.
 func MaxBytes(n int64) Step {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +37,9 @@ func MaxBytes(n int64) Step {
 	}
 }
 
+// Decode the JSON body of the request into the provided type and store it in the context.
+// If there are JSON errors, the request will be aborted, and an error response will be
+// sent.
 func DecodeJSONBody[T any](pkey any) Step {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +56,12 @@ func DecodeJSONBody[T any](pkey any) Step {
 	}
 }
 
+// Check JSON errors and send a correct error response if needed.
+// Possible http errors are:
+// - 400 Bad Request if the JSON is invalid
+// - 413 Request Entity Too Large if the JSON is too large
+//
+// returns true if the JSON is valid, false otherwise.
 func AssertJSONDecode(err error, w http.ResponseWriter) bool {
 	if err != nil {
 		var syntaxErr *json.SyntaxError

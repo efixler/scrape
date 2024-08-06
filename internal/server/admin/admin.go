@@ -1,3 +1,4 @@
+// Support for the test console and other admin tools.
 package admin
 
 import (

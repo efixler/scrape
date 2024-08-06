@@ -1,3 +1,4 @@
+// Implements API method handlers for scrape-server.
 package api
 
 import (

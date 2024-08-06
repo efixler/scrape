@@ -9,7 +9,6 @@ import (
 )
 
 func TestHeartbeat(t *testing.T) {
-	t.Parallel()
 	type data struct {
 		root string
 	}
