@@ -52,7 +52,7 @@ func HealthHandler(db database.StatsProvider) http.Handler {
 	return h
 }
 
-func (h health) MarshalJSON() ([]byte, error) {
+func (h *health) MarshalJSON() ([]byte, error) {
 	type alias health
 	var dbStats interface{}
 	if h.database != nil {
@@ -63,7 +63,7 @@ func (h health) MarshalJSON() ([]byte, error) {
 		*alias
 		Database interface{} `json:"database,omitempty"`
 	}{
-		alias:    (*alias)(&h),
+		alias:    (*alias)(h),
 		Database: dbStats,
 	})
 }

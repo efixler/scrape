@@ -21,6 +21,10 @@ import (
 	"github.com/efixler/webutil/jsonarray"
 )
 
+const (
+	TokenCookieName = "token"
+)
+
 func WithURLFetcher(f fetch.URLFetcher) option {
 	return func(s *Server) error {
 		if f == nil {
@@ -51,7 +55,7 @@ func WithFeedFetcher(ff fetch.FeedFetcher) option {
 	}
 }
 
-func WithSettingsStorage(db *database.DBHandle) option {
+func WithSettingsFrom(db *database.DBHandle) option {
 	return func(s *Server) error {
 		if db == nil {
 			return errors.New("nil database handle provided")
@@ -61,6 +65,7 @@ func WithSettingsStorage(db *database.DBHandle) option {
 	}
 }
 
+// Sets the HMAC key and enables JWT authorization if the key is non-empty.
 func WithAuthorizationIf(key auth.HMACBase64Key) option {
 	return func(s *Server) error {
 		if len(key) > 0 {
@@ -123,21 +128,21 @@ func (ss Server) AuthEnabled() bool {
 func (ss Server) withAuthIfEnabled(ms ...middleware.Step) []middleware.Step {
 	if len(ss.signingKey) > 0 {
 		ms = append([]middleware.Step{
-			auth.JWTAuthzMiddleware(ss.signingKey, auth.WithCookie("token"))},
+			auth.JWTAuthzMiddleware(ss.signingKey, auth.WithCookie(TokenCookieName))},
 			ms...,
 		)
 	}
 	return ms
 }
 
-func (ss *Server) ExtractHandler() http.HandlerFunc {
+func (ss *Server) Extract() http.HandlerFunc {
 	return middleware.Chain(
 		ss.extract,
 		ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())...,
 	)
 }
 
-func (ss *Server) ExtractHeadlessHandler() http.HandlerFunc {
+func (ss *Server) ExtractHeadless() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
 	return middleware.Chain(extractWithFetcher(ss.headlessFetcher), ms...)
 }
@@ -212,7 +217,7 @@ func (h *Server) extract(w http.ResponseWriter, r *http.Request) {
 	encoder.Encode(page)
 }
 
-func (ss *Server) BatchHandler() http.HandlerFunc {
+func (ss *Server) Batch() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
 		middleware.MaxBytes(32768),
 		middleware.DecodeJSONBody[BatchRequest](payloadKey{}),
@@ -258,7 +263,7 @@ func (h *Server) batch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ss *Server) DeleteHandler() http.HandlerFunc {
+func (ss *Server) Delete() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
 	return middleware.Chain(ss.delete, ms...)
 }
@@ -305,7 +310,7 @@ func (h *Server) synchronousBatch(urls []string, encoder *jsonarray.Encoder[*res
 	}
 }
 
-func (ss *Server) FeedHandler() http.HandlerFunc {
+func (ss *Server) Feed() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), parseSinglePayload())
 	return middleware.Chain(ss.feed, ms...)
 }

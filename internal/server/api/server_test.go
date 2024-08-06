@@ -74,7 +74,7 @@ func TestFeedSourceErrors(t *testing.T) {
 	)
 
 	urlBase := "http://foo.bar" // just make the initial URL valid
-	handler := scrapeServer.FeedHandler()
+	handler := scrapeServer.Feed()
 	for _, test := range tests {
 		url := urlBase + test.urlPath
 		request := httptest.NewRequest("GET", url, nil)
@@ -105,7 +105,7 @@ func TestBatchReponseIsValid(t *testing.T) {
 		WithURLFetcher(fetcher),
 	)
 
-	batchHandler := ss.BatchHandler()
+	batchHandler := ss.Batch()
 	urlPath := "/batch"
 	var batchPayload BatchRequest
 	batchPayload.Urls = []string{"/", "/1", "/2"}
@@ -155,7 +155,7 @@ func TestHeadless503WhenUnavailable(t *testing.T) {
 	ss := MustAPIServer(context.Background(), WithURLFetcher(&mockUrlFetcher{}))
 
 	// ss := &scrapeServer{headlessFetcher: nil}
-	handler := ss.ExtractHeadlessHandler()
+	handler := ss.ExtractHeadless()
 	req := httptest.NewRequest("GET", "http://foo.bar?url=http://example.com", nil)
 	w := httptest.NewRecorder()
 	handler(w, req)
@@ -180,13 +180,13 @@ func TestSingleHandler(t *testing.T) {
 		{
 			name:         "client",
 			url:          "http://foo.bar",
-			handler:      ss.ExtractHandler(),
+			handler:      ss.Extract(),
 			expectMethod: resource.DefaultClient,
 		},
 		{
 			name:         "headless",
 			url:          "http://example.com",
-			handler:      ss.ExtractHeadlessHandler(),
+			handler:      ss.ExtractHeadless(),
 			expectMethod: resource.HeadlessChromium,
 		},
 	}
@@ -253,7 +253,7 @@ func TestDeleteHandler(t *testing.T) {
 	for _, test := range tests {
 		req := httptest.NewRequest("DELETE", "http://foo.bar", strings.NewReader(test.body))
 		w := httptest.NewRecorder()
-		ss.DeleteHandler()(w, req)
+		ss.Delete()(w, req)
 		resp := w.Result()
 		if resp.StatusCode != test.expectedResult {
 			t.Errorf("[%s] Expected %d, got %d", test.name, test.expectedResult, resp.StatusCode)

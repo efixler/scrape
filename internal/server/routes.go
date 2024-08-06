@@ -34,24 +34,24 @@ func InitMux(
 	)
 
 	// API routes
-	h := ss.ExtractHandler()
+	h := ss.Extract()
 	mux.HandleFunc("GET /extract", h)
 	mux.HandleFunc("POST /extract", h)
-	h = ss.ExtractHeadlessHandler()
+	h = ss.ExtractHeadless()
 	mux.HandleFunc("GET /extract/headless", h)
 	mux.HandleFunc("POST /extract/headless", h)
-	mux.HandleFunc("POST /batch", ss.BatchHandler())
-	mux.HandleFunc("DELETE /extract", ss.DeleteHandler())
-	h = ss.FeedHandler()
+	mux.HandleFunc("POST /batch", ss.Batch())
+	mux.HandleFunc("DELETE /extract", ss.Delete())
+	h = ss.Feed()
 	mux.HandleFunc("GET /feed", h)
 	mux.HandleFunc("POST /feed", h)
 	// settings
 	// Until settings migrations for MySQL are in place
 	if (db != nil) && db.Engine.Driver() == string(database.SQLite) {
-		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.GetDomainSettingsHandler())
-		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.PutDomainSettingsHandler())
-		mux.HandleFunc("GET /settings/domain", ss.SearchDomainSettingsHandler())
-		mux.HandleFunc("DELETE /settings/domain/{DOMAIN}", ss.DeleteDomainSettingsHandler())
+		mux.HandleFunc("GET /settings/domain/{DOMAIN}", ss.DomainSettings())
+		mux.HandleFunc("PUT /settings/domain/{DOMAIN}", ss.WriteDomainSettings())
+		mux.HandleFunc("GET /settings/domain", ss.SearchDomainSettings())
+		mux.HandleFunc("DELETE /settings/domain/{DOMAIN}", ss.DeleteDomainSettings())
 	} else {
 		mux.HandleFunc("/settings/domain/", serviceUnavailable)
 	}
