@@ -113,37 +113,37 @@ func TestAPIRoutesAreProtected(t *testing.T) {
 		{
 			name:    "POST /extract",
 			method:  http.MethodPost,
-			handler: ss.ExtractHandler,
+			handler: ss.Extract,
 		},
 		{
 			name:    "GET /extract",
 			method:  http.MethodGet,
-			handler: ss.ExtractHandler,
+			handler: ss.Extract,
 		},
 		{
 			name:    "POST /extract/headless",
 			method:  http.MethodPost,
-			handler: ss.ExtractHeadlessHandler,
+			handler: ss.ExtractHeadless,
 		},
 		{
 			name:    "POST /extract/batch",
 			method:  http.MethodPost,
-			handler: ss.BatchHandler,
+			handler: ss.Batch,
 		},
 		{
 			name:    "DELETE /extract",
 			method:  http.MethodDelete,
-			handler: ss.DeleteHandler,
+			handler: ss.Delete,
 		},
 		{
 			name:    "GET /feed",
 			method:  http.MethodGet,
-			handler: ss.FeedHandler,
+			handler: ss.Feed,
 		},
 		{
 			name:    "POST /feed",
 			method:  http.MethodPost,
-			handler: ss.FeedHandler,
+			handler: ss.Feed,
 		},
 	}
 	for _, test := range tests {

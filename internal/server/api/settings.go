@@ -33,7 +33,7 @@ type batchDomainSettingsResponse struct {
 
 type dsKey struct{}
 
-func (ss *Server) GetDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) DomainSettings() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), extractDomainFromPath(dsKey{}))
 	return middleware.Chain(ss.getSingleDomainSettings, ms...)
 }
@@ -56,7 +56,7 @@ func (ss *Server) getSingleDomainSettings(w http.ResponseWriter, r *http.Request
 	middleware.WriteJSONOutput(w, ds, req.PrettyPrint, http.StatusOK)
 }
 
-func (ss *Server) PutDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) WriteDomainSettings() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
 		middleware.MaxBytes(4096),
 		extractDomainFromPath(dsKey{}),
@@ -111,7 +111,7 @@ func extractDomainFromPath(key ...any) middleware.Step {
 	}
 }
 
-func (ss *Server) SearchDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) SearchDomainSettings() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(
 		middleware.MaxBytes(4096),
 		extractBatchDomainSettingsQuery(payloadKey{}),
@@ -186,7 +186,7 @@ func extractBatchDomainSettingsQuery(pkey any) middleware.Step {
 	}
 }
 
-func (ss *Server) DeleteDomainSettingsHandler() http.HandlerFunc {
+func (ss *Server) DeleteDomainSettings() http.HandlerFunc {
 	ms := ss.withAuthIfEnabled(middleware.MaxBytes(4096), extractDomainFromPath(dsKey{}))
 	return middleware.Chain(ss.deleteDomainSettings, ms...)
 }

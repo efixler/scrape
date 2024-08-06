@@ -77,7 +77,7 @@ func main() {
 		api.WithURLFetcher(sbf),
 		api.WithHeadlessIf(headlessFetcher),
 		api.WithAuthorizationIf(*signingKey.Get()),
-		api.WithSettingsStorage(dbh),
+		api.WithSettingsFrom(dbh),
 	)
 
 	if ss.AuthEnabled() {
