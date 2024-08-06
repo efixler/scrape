@@ -22,7 +22,7 @@ func TestHomeHandlerAuth(t *testing.T) {
 		},
 		{
 			name:           "good key",
-			key:            auth.MustNewHS256SigningKey(),
+			key:            auth.MustHS256SigningKey(),
 			expectedResult: 200,
 		},
 	}
@@ -50,13 +50,13 @@ func TestHomeTemplateAuthSettings(t *testing.T) {
 	}{
 		{
 			name:        "auth enabled",
-			key:         auth.MustNewHS256SigningKey(),
+			key:         auth.MustHS256SigningKey(),
 			openHome:    false,
 			expectToken: false,
 		},
 		{
 			name:        "auth enabled with open home",
-			key:         auth.MustNewHS256SigningKey(),
+			key:         auth.MustHS256SigningKey(),
 			openHome:    true,
 			expectToken: true,
 		},

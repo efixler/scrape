@@ -103,7 +103,7 @@ func TestAPIRoutesAreProtected(t *testing.T) {
 	ss := api.MustAPIServer(
 		context.Background(),
 		api.WithURLFetcher(mockUrlFetcher{}),
-		api.WithAuthorizationIf(auth.MustNewHS256SigningKey()),
+		api.WithAuthorizationIf(auth.MustHS256SigningKey()),
 	)
 	tests := []struct {
 		name    string

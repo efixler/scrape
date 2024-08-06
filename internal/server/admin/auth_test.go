@@ -25,7 +25,7 @@ func TestCheckAuth(t *testing.T) {
 		},
 		{
 			name:         "valid token, expect cookie",
-			signingKey:   auth.MustNewHS256SigningKey(),
+			signingKey:   auth.MustHS256SigningKey(),
 			expectStatus: http.StatusOK,
 			expectCookie: true,
 		},

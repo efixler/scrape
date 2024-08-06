@@ -1,7 +1,6 @@
 /*
-Package scrape provides a simple interface for fetching and storing web pages'
-metadata and text content. The `scrape` and `scrape-server` commands provide
-a command-line interface and a REST API, respectively.
+This package, and its subpackages, generally provide support for `scrape`,
+`scrape-server`, the other tools in the top-level cmd/ directory.
 */
 package internal
 
@@ -18,6 +17,7 @@ import (
 	"github.com/efixler/scrape/store"
 )
 
+// StorageBackedFetcher returns URLs from a storage backend, and fetches them if they are not found.
 type StorageBackedFetcher struct {
 	Fetcher fetch.URLFetcher
 	Storage store.URLDataStore
@@ -25,6 +25,8 @@ type StorageBackedFetcher struct {
 	closed  bool
 }
 
+// NewStorageBackedFetcher returns a new StorageBackedFetcher that uses the given fetcher and storage.
+// It will add a CloseListener to the storage to wait for pending saves.
 func NewStorageBackedFetcher(
 	fetcher fetch.URLFetcher,
 	storage store.URLDataStore,
@@ -40,22 +42,9 @@ func NewStorageBackedFetcher(
 	return s
 }
 
-// // The context passed to Open() will be passed on to child components
-// // so that they can hook into the context directly, specifically to
-// // close and release resources on cancellation.
-// func (f StorageBackedFetcher) Open(ctx context.Context) error {
-// 	context.AfterFunc(ctx, func() {
-// 		f.Close()
-// 	})
-// 	return nil
-// }
-
-// WithAlternateURLFetcher returns new SBF using the same storage but a different url fetcher.
-// This is to support headless fetching, where we want to use a different underlying http client
+// WithAlternateURLFetcher returns a new StorageBatchedFetcher using the same storage but a different url fetcher.
+// This is to support headless fetching, where we want to use a different underlying http retrieval client
 // but the same storage.
-// Call this _after_ Open() has been called. On the source fetcher. This function will Open() the passed
-// URLFetcher with passed context, which should be the same context that was passed to Open() on the source fetcher.
-// Do not call Open() on the returned fetcher.
 func (f *StorageBackedFetcher) WithAlternateURLFetcher(ctx context.Context, uf fetch.URLFetcher) (*StorageBackedFetcher, error) {
 	if f.closed {
 		return nil, errors.New("StorageBackedFetcher is closed")
@@ -98,6 +87,8 @@ func (f *StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	return res, nil
 }
 
+// Batch fetches a batch of URLs, returning a channel of WebPages. The channel is not guaranteed to return
+// URLs in the order they were requested.
 func (f StorageBackedFetcher) Batch(urls []string, options fetch.BatchOptions) <-chan *resource.WebPage {
 	rchan := make(chan *resource.WebPage, len(urls))
 	unstoredChan := make(chan fetchMsg)

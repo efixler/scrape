@@ -26,6 +26,7 @@ coverage.out
 coverage.html
 *.db-shm
 *.db-wal
+docs/
 /.rest
 /scrape_data/
 /build/

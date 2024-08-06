@@ -104,7 +104,7 @@ func TestWithAuthzOption(t *testing.T) {
 		},
 		{
 			name:          "non-nil authz",
-			authz:         authzShim(auth.MustNewHS256SigningKey()),
+			authz:         authzShim(auth.MustHS256SigningKey()),
 			expectEnabled: true,
 		},
 	}

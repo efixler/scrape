@@ -96,7 +96,7 @@ func TestHMACBase64Key(t *testing.T) {
 		},
 		{
 			name:  "random key",
-			input: MustNewHS256SigningKey(),
+			input: MustHS256SigningKey(),
 		},
 	}
 	for _, tt := range tests {
@@ -121,7 +121,7 @@ func TestHMACBase64Key(t *testing.T) {
 
 func TestSignAndVerify(t *testing.T) {
 	t.Parallel()
-	defaultKey := MustNewHS256SigningKey()
+	defaultKey := MustHS256SigningKey()
 	baseClaims, _ := NewClaims(
 		ExpiresAt(time.Now().Add(24*time.Hour)),
 		WithSubject("test"),

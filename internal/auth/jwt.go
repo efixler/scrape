@@ -1,4 +1,5 @@
-// JWT token generation and verification logic.
+// JWT token generation and verification logic, and token verification
+// middleware.
 package auth
 
 import (
@@ -46,6 +47,7 @@ func (c Claims) Validate() error {
 	return nil
 }
 
+// Returns a pretty-printed JSON representation of the claims.
 func (c Claims) String() string {
 	val, err := json.MarshalIndent(c, "", "  ")
 	if err != nil {
@@ -54,10 +56,12 @@ func (c Claims) String() string {
 	return string(val)
 }
 
+// Token returns a new JWT token with the claims set.
 func (c Claims) Token() *jwt.Token {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, c)
 }
 
+// Sign returns a signed JWT token string using the provided key.
 func (c Claims) Sign(key HMACBase64Key) (string, error) {
 	return c.Token().SignedString([]byte(key))
 }
@@ -93,7 +97,9 @@ func WithAudience(aud string) option {
 	}
 }
 
-func MustNewHS256SigningKey() HMACBase64Key {
+// MustHS256SigningKey returns a new random 256-bit HMAC key suitable
+// for use with HS256, panicking if there's an error.
+func MustHS256SigningKey() HMACBase64Key {
 	key, err := NewHS256SigningKey()
 	if err != nil {
 		panic(err)
@@ -101,6 +107,7 @@ func MustNewHS256SigningKey() HMACBase64Key {
 	return key
 }
 
+// Returns a new random 256-bit HMAC key suitable for use with HS256.
 func NewHS256SigningKey() (HMACBase64Key, error) {
 	key := make([]byte, 32)
 	_, err := rand.Read(key)
@@ -109,15 +116,18 @@ func NewHS256SigningKey() (HMACBase64Key, error) {
 
 type HMACBase64Key []byte
 
+// String returns the base64-encoded key.
 func (b HMACBase64Key) String() string {
 	return base64.StdEncoding.EncodeToString([]byte(b))
 }
 
+// MarshalText returns the base64-encoded key.
 func (b HMACBase64Key) MarshalText() ([]byte, error) {
 	encoded := base64.StdEncoding.EncodeToString([]byte(b))
 	return []byte(encoded), nil
 }
 
+// UnmarshalText decodes the base64-encoded key.
 func (b *HMACBase64Key) UnmarshalText(text []byte) error {
 	decoded := make([]byte, base64.StdEncoding.DecodedLen(len(text)))
 	n, err := base64.StdEncoding.Decode(decoded, text)
@@ -131,7 +141,8 @@ func (b *HMACBase64Key) UnmarshalText(text []byte) error {
 var parser *jwt.Parser
 
 // VerifyToken verifies the token string using the provided key.
-// In the case where the token's signature is invalid, the function will not return any claims.
+// In the case where the token's signature is invalid, the function
+// will not return any claims.
 func VerifyToken(key HMACBase64Key, tokenString string) (*Claims, error) {
 	if parser == nil {
 		parser = makeParser()

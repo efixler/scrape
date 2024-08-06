@@ -28,6 +28,7 @@ func WithClaimsAuthorizer(ca ...ClaimsAuthorizer) middlewareOption {
 	}
 }
 
+// Accept a token passed via a cookie of the specified name.
 func WithCookie(cookieName string) middlewareOption {
 	return func(c *config) error {
 		c.tokenF = append(c.tokenF, tokenFromCookie(cookieName))
@@ -35,16 +36,17 @@ func WithCookie(cookieName string) middlewareOption {
 	}
 }
 
-// Checks the Authorization header for a JWT token and verifies it using the provided key.
-// The token is always validated against the HMAC key, the issuer, and the Claims.Validate
-// function.
+// Checks the Authorization header for a JWT token and verifies it using
+// the provided key.
+// The token is always validated against the HMAC key, the issuer, and
+// the Claims.Validate function.
 //
-// The ClaimsAuthorizer functions, if any, are called in order. If any of them return an
-// error, the request is rejected with a 401 Unauthorized status and the error message
-// is written to the response body.
+// ClaimsAuthorizer functions, if any, are called in order. If any of them
+// return an error, the request is rejected with a 401 Unauthorized status
+// and the error message is written to the response body.
 //
-// If the token is valid, the claims are added to the request context at the key value
-// of ClaimsContextKey{}.
+// If the token is valid, the claims are added to the request context at
+// the key value of ClaimsContextKey{}.
 func JWTAuthzMiddleware(
 	key HMACBase64Key,
 	options ...middlewareOption,

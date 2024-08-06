@@ -11,7 +11,7 @@ import (
 )
 
 func TestJWTAuthMiddleWare(t *testing.T) {
-	realKey := MustNewHS256SigningKey()
+	realKey := MustHS256SigningKey()
 	c, _ := NewClaims(
 		ExpiresAt(time.Now().Add(24*time.Hour)),
 		WithSubject("subject"),
@@ -58,7 +58,7 @@ func TestJWTAuthMiddleWare(t *testing.T) {
 		},
 		{
 			name:         "Key mismatch",
-			key:          MustNewHS256SigningKey(),
+			key:          MustHS256SigningKey(),
 			authHeader:   fmt.Sprintf("Bearer %s", token),
 			expectStatus: http.StatusUnauthorized,
 		},
