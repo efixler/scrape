@@ -45,7 +45,7 @@ func TestUnmarshalSingleUrlRequest(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		var sur singleURLRequest
+		var sur SingleURLRequest
 		err := sur.UnmarshalJSON([]byte(tt.body))
 		if (err != nil) != tt.expectErr {
 			t.Fatalf("[%s] UnmarshalSingleUrlRequest, expected error %v, got %v", tt.name, tt.expectErr, err)
@@ -60,7 +60,7 @@ func TestUnmarshalSingleUrlRequest(t *testing.T) {
 		reader := strings.NewReader(tt.body)
 		decoder := json.NewDecoder(reader)
 		decoder.DisallowUnknownFields()
-		surD := new(singleURLRequest)
+		surD := new(SingleURLRequest)
 		err = decoder.Decode(surD)
 		if (err != nil) != tt.expectErr {
 			t.Fatalf("[%s] json.Decoder.Decode, expected error %v, got %v", tt.name, tt.expectErr, err)

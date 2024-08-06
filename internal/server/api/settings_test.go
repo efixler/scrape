@@ -42,7 +42,7 @@ func TestExtractDomainFromPath(t *testing.T) {
 	okHandler := func(testname string, domain string) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			ds, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
+			ds, _ := r.Context().Value(dsKey{}).(*SingleDomainRequest)
 			if ds.Domain != domain {
 				t.Errorf("[%s]: got domain %q, want %q", testname, domain, ds.Domain)
 			}
@@ -80,7 +80,7 @@ func TestGetDomainSettings(t *testing.T) {
 
 	domainExtractor := func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			v := new(singleDomainRequest)
+			v := new(SingleDomainRequest)
 			v.Domain = "example.com"
 			r = r.WithContext(context.WithValue(r.Context(), dsKey{}, v))
 			next(w, r)
@@ -182,7 +182,7 @@ func TestPutDomainSettings(t *testing.T) {
 
 	domainExtractor := func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			v := new(singleDomainRequest)
+			v := new(SingleDomainRequest)
 			v.Domain = "example.com"
 			r = r.WithContext(context.WithValue(r.Context(), dsKey{}, v))
 			next(w, r)
@@ -237,44 +237,44 @@ func TestExtractBatchDomainSettings(t *testing.T) {
 		name         string
 		queryString  string
 		expectStatus int
-		expect       batchDomainSettingsRequest
+		expect       BatchDomainSettingsRequest
 	}{
 		{
 			name:         "empty",
 			queryString:  "",
 			expectStatus: 200,
-			expect:       batchDomainSettingsRequest{Limit: MaxDomainSettingsBatchSize},
+			expect:       BatchDomainSettingsRequest{Limit: MaxDomainSettingsBatchSize},
 		},
 		{
 			name:         "fully populated",
 			queryString:  "q=foo&offset=1&limit=2",
 			expectStatus: 200,
-			expect:       batchDomainSettingsRequest{Query: "foo", Offset: 1, Limit: 2},
+			expect:       BatchDomainSettingsRequest{Query: "foo", Offset: 1, Limit: 2},
 		},
 		{
 			name:         "limit too high",
 			queryString:  "limit=1001",
 			expectStatus: 200,
-			expect:       batchDomainSettingsRequest{Limit: MaxDomainSettingsBatchSize},
+			expect:       BatchDomainSettingsRequest{Limit: MaxDomainSettingsBatchSize},
 		},
 		{
 			name:         "negative offset",
 			queryString:  "offset=-1",
 			expectStatus: 400,
-			expect:       batchDomainSettingsRequest{},
+			expect:       BatchDomainSettingsRequest{},
 		},
 		{
 			name:         "case folding query",
 			queryString:  "q=FOO",
 			expectStatus: 200,
-			expect:       batchDomainSettingsRequest{Query: "foo", Limit: MaxDomainSettingsBatchSize},
+			expect:       BatchDomainSettingsRequest{Query: "foo", Limit: MaxDomainSettingsBatchSize},
 		},
 	}
 
-	okHandler := func(testname string, expect batchDomainSettingsRequest) http.HandlerFunc {
+	okHandler := func(testname string, expect BatchDomainSettingsRequest) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
-			ds, _ := r.Context().Value(dsKey{}).(*batchDomainSettingsRequest)
+			ds, _ := r.Context().Value(dsKey{}).(*BatchDomainSettingsRequest)
 			if ds.Query != expect.Query {
 				t.Errorf("[%s]: got query %q, want %q", testname, ds.Query, expect.Query)
 			}
@@ -361,7 +361,7 @@ func TestGetBatchDomainSettings(t *testing.T) {
 			continue
 		}
 		body := w.Result().Body
-		result := new(batchDomainSettingsResponse)
+		result := new(BatchDomainSettingsResponse)
 		if err := json.NewDecoder(body).Decode(&result); err != nil {
 			t.Errorf("[%s]: error decoding response %v", tt.name, err)
 			continue

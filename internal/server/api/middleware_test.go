@@ -31,7 +31,7 @@ func TestParseSingleGet(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		m := parseSinglePayload()
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			pp, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+			pp, ok := r.Context().Value(payloadKey{}).(*SingleURLRequest)
 			if !ok {
 				t.Fatalf("[%s] ParseSingle, expected payload, got %v", tt.name, pp)
 			}
@@ -69,7 +69,7 @@ func TestParseSingleJSON(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		m := parseSinglePayload()
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			pp, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+			pp, ok := r.Context().Value(payloadKey{}).(*SingleURLRequest)
 			if !ok {
 				t.Fatalf("[%s] ParseSingle, expected payload, got %v", tt.name, pp)
 			}
@@ -105,7 +105,7 @@ func TestParseSinglePostForm(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		m := parseSinglePayload()
 		m(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			pp, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+			pp, ok := r.Context().Value(payloadKey{}).(*SingleURLRequest)
 			if !ok {
 				t.Fatalf("[%s] ParseSingle, expected payload, got %v", tt.name, pp)
 			}

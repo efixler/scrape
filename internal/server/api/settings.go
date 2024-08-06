@@ -15,19 +15,24 @@ import (
 
 const MaxDomainSettingsBatchSize = 1000
 
-type singleDomainRequest struct {
+// Defines valid inputs for a single domain settings request.
+type SingleDomainRequest struct {
 	Domain      string `json:"domain"`
 	PrettyPrint bool   `json:"pp,omitempty"`
 }
 
-type batchDomainSettingsRequest struct {
+// Defines valid inputs for a single domain settings request.
+// Note that * is the wildcard for the Query field, and an
+// empty query is the equivalent of *.
+type BatchDomainSettingsRequest struct {
 	Query  string `json:"q,omitempty"`
 	Offset int    `json:"offset,omitempty"`
 	Limit  int    `json:"limit,omitempty"`
 }
 
-type batchDomainSettingsResponse struct {
-	Request  batchDomainSettingsRequest `json:"request"`
+// Defines the output for a batch domain settings request.
+type BatchDomainSettingsResponse struct {
+	Request  BatchDomainSettingsRequest `json:"request"`
 	Settings []settings.DomainSettings  `json:"settings"`
 }
 
@@ -41,7 +46,7 @@ func (ss *Server) DomainSettings() http.HandlerFunc {
 func (ss *Server) getSingleDomainSettings(w http.ResponseWriter, r *http.Request) {
 	// if this value isn't here the request will have already been rejected
 	// by middleware.
-	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
+	req, _ := r.Context().Value(dsKey{}).(*SingleDomainRequest)
 	ds, err := ss.settingsStorage.Fetch(req.Domain)
 	if err != nil {
 		switch err {
@@ -67,7 +72,7 @@ func (ss *Server) WriteDomainSettings() http.HandlerFunc {
 
 func (ss *Server) putDomainSettings(w http.ResponseWriter, r *http.Request) {
 	// for put we get the domain value from here
-	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
+	req, _ := r.Context().Value(dsKey{}).(*SingleDomainRequest)
 	ds, _ := r.Context().Value(payloadKey{}).(*settings.DomainSettings)
 	ds.Domain = req.Domain
 	if err := ss.settingsStorage.Save(ds); err != nil {
@@ -87,7 +92,7 @@ func extractDomainFromPath(key ...any) middleware.Step {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			pp := r.FormValue("pp") == "1"
-			v := new(singleDomainRequest)
+			v := new(SingleDomainRequest)
 			if pp {
 				v.PrettyPrint = true
 			}
@@ -120,7 +125,7 @@ func (ss *Server) SearchDomainSettings() http.HandlerFunc {
 }
 
 func (ss *Server) getBatchDomainSettings(w http.ResponseWriter, r *http.Request) {
-	req, _ := r.Context().Value(payloadKey{}).(*batchDomainSettingsRequest)
+	req, _ := r.Context().Value(payloadKey{}).(*BatchDomainSettingsRequest)
 	dss, err := ss.settingsStorage.FetchRange(req.Offset, req.Limit, req.Query)
 	if err != nil {
 		switch err {
@@ -132,7 +137,7 @@ func (ss *Server) getBatchDomainSettings(w http.ResponseWriter, r *http.Request)
 		w.Write([]byte(err.Error()))
 		return
 	}
-	middleware.WriteJSONOutput(w, &batchDomainSettingsResponse{
+	middleware.WriteJSONOutput(w, &BatchDomainSettingsResponse{
 		Request:  *req,
 		Settings: dss,
 	}, false, http.StatusOK)
@@ -141,7 +146,7 @@ func (ss *Server) getBatchDomainSettings(w http.ResponseWriter, r *http.Request)
 func extractBatchDomainSettingsQuery(pkey any) middleware.Step {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			v := new(batchDomainSettingsRequest)
+			v := new(BatchDomainSettingsRequest)
 			v.Query = strings.ToLower(r.FormValue("q"))
 			var (
 				err    error
@@ -192,7 +197,7 @@ func (ss *Server) DeleteDomainSettings() http.HandlerFunc {
 }
 
 func (ss *Server) deleteDomainSettings(w http.ResponseWriter, r *http.Request) {
-	req, _ := r.Context().Value(dsKey{}).(*singleDomainRequest)
+	req, _ := r.Context().Value(dsKey{}).(*SingleDomainRequest)
 	if _, err := ss.settingsStorage.Delete(req.Domain); err != nil {
 		if errors.Is(err, settings.ErrInvalidDomain) {
 			w.WriteHeader(http.StatusBadRequest)

@@ -66,6 +66,7 @@ func WithAuthz(authz AuthzProvider) option {
 	}
 }
 
+// Enable public access to the home page test console, even if auth is enabled.
 func WithOpenHome(openHome bool) option {
 	return func(c *config) error {
 		c.openHome = openHome
@@ -73,6 +74,7 @@ func WithOpenHome(openHome bool) option {
 	}
 }
 
+// Enable profiling endpoints.
 func WithProfiling(profile bool) option {
 	return func(c *config) error {
 		c.profile = profile

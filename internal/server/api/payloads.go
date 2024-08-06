@@ -9,18 +9,23 @@ import (
 
 type payloadKey struct{}
 
+// Defines the input payload for a batch request.
 type BatchRequest struct {
 	Urls []string `json:"urls"`
 }
-type singleURLRequest struct {
+
+// Defines the input payload for a single URL request.
+// The URL field is required, converted from a string on input,
+// and must be an absolute URL.
+type SingleURLRequest struct {
 	URL         *nurl.URL `json:"url"`
 	PrettyPrint bool      `json:"pp,omitempty"`
 }
 
 var errNoURL = errors.New("URL is required")
 
-func (sur *singleURLRequest) UnmarshalJSON(b []byte) error {
-	type alias singleURLRequest
+func (sur *SingleURLRequest) UnmarshalJSON(b []byte) error {
+	type alias SingleURLRequest
 	asur := &struct {
 		URL string `json:"url"`
 		*alias

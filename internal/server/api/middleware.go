@@ -15,7 +15,7 @@ func parseSinglePayload() middleware.Step {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			pp := r.FormValue("pp") == "1"
-			v := new(singleURLRequest)
+			v := new(SingleURLRequest)
 			if middleware.IsJSONRequest(r) {
 				decoder := json.NewDecoder(r.Body)
 				decoder.DisallowUnknownFields()

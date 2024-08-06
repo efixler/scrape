@@ -85,8 +85,6 @@ func MustAPIServer(ctx context.Context, opts ...option) *Server {
 	return ss
 }
 
-// When the context passed here is cancelled, the associated fetcher will
-// close and release any resources they have open.
 func NewAPIServer(ctx context.Context, opts ...option) (*Server, error) {
 	ss := &Server{ctx: ctx}
 	for _, opt := range opts {
@@ -104,9 +102,7 @@ func NewAPIServer(ctx context.Context, opts ...option) (*Server, error) {
 	return ss, nil
 }
 
-// The server struct is stateless but uses the same fetchers across all requests,
-// to optimize client and database connections. There's a general fetcher, and
-// special ones for headless scrapes and RSS/Atom feeds.
+// The API server is the main entry point for the scrape-server API.
 type Server struct {
 	ctx             context.Context
 	urlFetcher      fetch.URLFetcher
@@ -160,7 +156,7 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		req, _ := r.Context().Value(payloadKey{}).(*singleURLRequest)
+		req, _ := r.Context().Value(payloadKey{}).(*SingleURLRequest)
 		w.Header().Set("Content-Type", "application/json")
 		page, err := fetcher.Fetch(req.URL)
 		if err != nil {
@@ -187,14 +183,12 @@ func extractWithFetcher(fetcher fetch.URLFetcher) http.HandlerFunc {
 }
 
 func (h *Server) extract(w http.ResponseWriter, r *http.Request) {
-	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+	req, ok := r.Context().Value(payloadKey{}).(*SingleURLRequest)
 	if !ok {
 		http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	// fetcher, _ := r.Context().Value(fetcherKey{}).(fetch.URLFetcher)
-
 	page, err := h.urlFetcher.Fetch(req.URL)
 	if err != nil {
 		if errors.Is(err, fetch.HttpError{}) {
@@ -269,7 +263,7 @@ func (ss *Server) Delete() http.HandlerFunc {
 }
 
 func (ss *Server) delete(w http.ResponseWriter, r *http.Request) {
-	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+	req, ok := r.Context().Value(payloadKey{}).(*SingleURLRequest)
 	if !ok {
 		http.Error(w, "Can't process delete request, no input data", http.StatusInternalServerError)
 		return
@@ -316,7 +310,7 @@ func (ss *Server) Feed() http.HandlerFunc {
 }
 
 func (h *Server) feed(w http.ResponseWriter, r *http.Request) {
-	req, ok := r.Context().Value(payloadKey{}).(*singleURLRequest)
+	req, ok := r.Context().Value(payloadKey{}).(*SingleURLRequest)
 	if !ok {
 		http.Error(w, "Can't process extract request, no input data", http.StatusInternalServerError)
 		return
