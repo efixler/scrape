@@ -5,8 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/efixler/scrape/store"
 )
 
 func TestPasswordMaskingOnString(t *testing.T) {
@@ -33,7 +31,7 @@ func TestUsername(t *testing.T) {
 		expectedErr error
 	}
 	tests := []data{
-		{"empty", "", store.ErrValueNotAllowed},
+		{"empty", "", ErrValueNotAllowed},
 		{"foo", "foo", nil},
 	}
 	for _, test := range tests {
@@ -94,7 +92,7 @@ func TestAddress(t *testing.T) {
 		if (err != nil) != test.expectError {
 			t.Fatalf("%s: unexpected error: %s", test.name, err)
 		} else if test.expectError {
-			if !errors.Is(err, store.ErrValueNotAllowed) {
+			if !errors.Is(err, ErrValueNotAllowed) {
 				t.Errorf("%s: unexpected error: %s", test.name, err)
 			}
 			continue

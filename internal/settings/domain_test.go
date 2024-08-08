@@ -12,8 +12,8 @@ import (
 
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/database/sqlite"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/ua"
 	"github.com/pressly/goose/v3"
 )
@@ -310,7 +310,7 @@ func TestDelete(t *testing.T) {
 		t.Errorf("expected domain %v to be deleted", domains[0])
 	}
 
-	if _, err = dss.Fetch(domains[0]); err != store.ErrResourceNotFound {
+	if _, err = dss.Fetch(domains[0]); err != storage.ErrResourceNotFound {
 		t.Errorf("expected domain %v to be deleted, it wasn't", domains[0])
 	}
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
 )
 
 func getURLDataStore(t *testing.T) *URLDataStore {
@@ -182,8 +181,8 @@ func TestReturnValuesWhenResourceNotExists(t *testing.T) {
 		t.Errorf("Error parsing url: %v", err)
 	}
 	res, err := s.Fetch(url)
-	if err != store.ErrResourceNotFound {
-		t.Errorf("Expected error %v, got %v", store.ErrResourceNotFound, err)
+	if err != ErrResourceNotFound {
+		t.Errorf("Expected error %v, got %v", ErrResourceNotFound, err)
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)
@@ -210,8 +209,8 @@ func TestReturnValuesWhenResourceIsExpired(t *testing.T) {
 		t.Errorf("Error storing data: %v", err)
 	}
 	res, err := s.Fetch(url)
-	if err != store.ErrResourceNotFound {
-		t.Errorf("Expected error %v, got %v", store.ErrResourceNotFound, err)
+	if err != ErrResourceNotFound {
+		t.Errorf("Expected error %v, got %v", ErrResourceNotFound, err)
 	}
 	if res != nil {
 		t.Errorf("Expected nil resource, got %v", res)

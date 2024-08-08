@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	nurl "net/url"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
 )
 
 type stmtIndex int
@@ -21,7 +21,7 @@ const (
 	save
 	saveId
 	lookupId
-	fetch
+	fetchOne
 	delete
 )
 
@@ -29,10 +29,15 @@ const (
 	qSave     = `REPLACE INTO urls (id, url, parsed_url, fetch_time, expires, metadata, content_text, fetch_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?);`
 	qSaveId   = `REPLACE INTO id_map (requested_id, canonical_id) VALUES (?, ?)`
 	qLookupId = `SELECT canonical_id FROM id_map WHERE requested_id = ?`
-	qFetch    = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text, fetch_method FROM urls WHERE id = ?`
+	qFetchOne = `SELECT url, parsed_url, fetch_time, expires, metadata, content_text, fetch_method FROM urls WHERE id = ?`
 	qDelete   = `DELETE FROM urls WHERE id = ?`
 	qClear    = `DELETE FROM urls; DELETE FROM id_map;`
 	// qClearId  = `DELETE FROM id_map where canonical_id = ?`
+)
+
+var (
+	ErrResourceNotFound = errors.New("resource not found in data store")
+	ErrMappingNotFound  = errors.New("id mapping not found")
 )
 
 type URLDataStore struct {
@@ -139,7 +144,7 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	requested_key := Key(url)
 	key, err := s.lookupId(requested_key)
 	switch err {
-	case store.ErrMappingNotFound:
+	case ErrMappingNotFound:
 		slog.Debug("sqlite: No mapped key for resource, trying direct key", "url", url.String(), "requested_key", requested_key, "canonical_key", key)
 		key = requested_key
 	case nil:
@@ -148,8 +153,8 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	default:
 		return nil, err
 	}
-	stmt, err := s.dbh.Statement(fetch, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
-		return db.PrepareContext(ctx, qFetch)
+	stmt, err := s.dbh.Statement(fetchOne, func(ctx context.Context, db *sql.DB) (*sql.Stmt, error) {
+		return db.PrepareContext(ctx, qFetchOne)
 	})
 	if err != nil {
 		return nil, err
@@ -160,7 +165,7 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return nil, store.ErrResourceNotFound
+		return nil, ErrResourceNotFound
 	}
 	// parsed_url, fetch_time, expires, metadata, content_text
 	var (
@@ -178,7 +183,7 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	}
 	exptime := time.Unix(expiryEpoch, 0)
 	if time.Now().After(exptime) {
-		return nil, store.ErrResourceNotFound
+		return nil, ErrResourceNotFound
 	}
 	page := &resource.WebPage{}
 	err = json.Unmarshal([]byte(metadata), page)
@@ -214,7 +219,7 @@ func (s *URLDataStore) lookupId(requested_id uint64) (uint64, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return 0, store.ErrMappingNotFound
+		return 0, ErrMappingNotFound
 	}
 	var lookupId uint64
 	err = rows.Scan(&lookupId)
