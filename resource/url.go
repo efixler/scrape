@@ -16,6 +16,7 @@ var illegalParams = []string{
 	"utm_brand",
 }
 
+// CleanURL removes utm_ parameters from the URL
 func CleanURL(url *nurl.URL) *nurl.URL {
 	if url == nil {
 		return nil

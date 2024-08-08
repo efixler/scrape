@@ -246,7 +246,7 @@ func TestExpireTime(t *testing.T) {
 func TestFetchMethod(t *testing.T) {
 	tests := []struct {
 		name string
-		f    FetchClient
+		f    ClientIdentifier
 		want string
 	}{
 		{

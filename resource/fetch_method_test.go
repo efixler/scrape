@@ -9,7 +9,7 @@ import (
 func TestFetchMethodString(t *testing.T) {
 	tests := []struct {
 		name string
-		f    FetchClient
+		f    ClientIdentifier
 		want string
 	}{
 		{
@@ -37,11 +37,11 @@ func TestFetchMethodString(t *testing.T) {
 
 func TestUnmarshal(t *testing.T) {
 	type container struct {
-		F FetchClient `json:"fetch_method"`
+		F ClientIdentifier `json:"fetch_method"`
 	}
 	tests := []struct {
 		input         string
-		expectedValue FetchClient
+		expectedValue ClientIdentifier
 		expectError   bool
 	}{
 		{input: "unspecified", expectedValue: Unspecified},
@@ -69,13 +69,13 @@ func TestMarshal(t *testing.T) {
 		expectedValue string
 		expectError   bool
 	}{
-		{input: 0, expectedValue: fetchMethods[Unspecified]},
-		{input: 1, expectedValue: fetchMethods[DefaultClient]},
-		{input: 2, expectedValue: fetchMethods[HeadlessChromium]},
+		{input: 0, expectedValue: fetchClientNames[Unspecified]},
+		{input: 1, expectedValue: fetchClientNames[DefaultClient]},
+		{input: 2, expectedValue: fetchClientNames[HeadlessChromium]},
 		{input: -1, expectError: true},
 	}
 	for _, test := range tests {
-		fm := FetchClient(test.input)
+		fm := ClientIdentifier(test.input)
 		val, err := fm.MarshalText()
 		if (err != nil) != test.expectError {
 			t.Errorf("%q expected error %v, got %v", test.input, test.expectError, err)

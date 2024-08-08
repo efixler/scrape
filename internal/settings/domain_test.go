@@ -24,7 +24,7 @@ func TestJSONUnmarshal(t *testing.T) {
 		data              string
 		expectErr         bool
 		expectSitename    string
-		expectFetchClient resource.FetchClient
+		expectFetchClient resource.ClientIdentifier
 		expectUserAgent   ua.UserAgent
 		expectHeaders     map[string]string
 	}{
@@ -90,7 +90,7 @@ func TestJSONMarshal(t *testing.T) {
 		expectErr         bool
 		expectJSON        string
 		expectSitename    string
-		expectFetchClient resource.FetchClient
+		expectFetchClient resource.ClientIdentifier
 		expectUserAgent   ua.UserAgent
 		expectHeaders     map[string]string
 	}{

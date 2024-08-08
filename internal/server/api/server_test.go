@@ -23,7 +23,7 @@ import (
 )
 
 type mockUrlFetcher struct {
-	fetchMethod resource.FetchClient
+	fetchMethod resource.ClientIdentifier
 }
 
 func (m *mockUrlFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
@@ -175,7 +175,7 @@ func TestSingleHandler(t *testing.T) {
 		name         string
 		url          string
 		handler      http.HandlerFunc
-		expectMethod resource.FetchClient
+		expectMethod resource.ClientIdentifier
 	}{
 		{
 			name:         "client",

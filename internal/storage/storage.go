@@ -175,7 +175,7 @@ func (s URLDataStore) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 		expiryEpoch  int64
 		metadata     string
 		contentText  string
-		fetchMethod  resource.FetchClient
+		fetchMethod  resource.ClientIdentifier
 	)
 	err = rows.Scan(&canonicalUrl, &parsedUrl, &fetchEpoch, &expiryEpoch, &metadata, &contentText, &fetchMethod)
 	if err != nil {
