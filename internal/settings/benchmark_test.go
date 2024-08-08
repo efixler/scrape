@@ -22,7 +22,7 @@ func populateTestDB(dbh *database.DBHandle, count int) ([]string, error) {
 		ds := &DomainSettings{
 			Domain:      d,
 			Sitename:    randomString(32),
-			FetchClient: resource.FetchClient(rand.Intn(3)),
+			FetchClient: resource.ClientIdentifier(rand.Intn(3)),
 			UserAgent:   ua.UserAgent(randomString(64)),
 			Headers: map[string]string{
 				"x-token":      randomString(rand.Intn(128) + 127),

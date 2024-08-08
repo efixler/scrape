@@ -18,7 +18,7 @@ const (
 
 type Client interface {
 	Get(url string, headers http.Header) (*http.Response, error)
-	Identifier() resource.FetchClient
+	Identifier() resource.ClientIdentifier
 }
 
 type ClientOption func(*defaultClient) error
@@ -49,7 +49,7 @@ type defaultClient struct {
 	httpClient *http.Client
 }
 
-func (c defaultClient) Identifier() resource.FetchClient {
+func (c defaultClient) Identifier() resource.ClientIdentifier {
 	return resource.DefaultClient
 }
 

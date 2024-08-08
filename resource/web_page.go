@@ -35,29 +35,29 @@ func NewWebPage(url nurl.URL) *WebPage {
 // Represents a web page that was fetched, including metadata from the page itself,
 // text content, and information about the fetch operation.
 type WebPage struct { // The page that was requested by the caller
-	RequestedURL *nurl.URL     `json:"-"` // The page that was actually fetched
-	CanonicalURL *nurl.URL     `json:"-"`
-	OriginalURL  string        `json:"original_url,omitempty"` // The canonical URL of the page
-	TTL          time.Duration `json:"-"`                      // Time to live for the resource
-	FetchTime    *time.Time    `json:"fetch_time,omitempty"`   // When the returned source was fetched
-	FetchMethod  FetchClient   `json:"fetch_method,omitempty"` // Method used to fetch the page
-	Hostname     string        `json:"hostname,omitempty"`     // Hostname of the page
-	StatusCode   int           `json:"status_code,omitempty"`  // HTTP status code
-	Error        error         `json:"error,omitempty"`
-	Title        string        `json:"title,omitempty"`        // Title of the page
-	Description  string        `json:"description,omitempty"`  // Description of the page
-	Sitename     string        `json:"sitename,omitempty"`     // Name of the site
-	Authors      []string      `json:"authors,omitempty"`      // Authors of the page
-	Date         *time.Time    `json:"date,omitempty"`         // Date of the page
-	Categories   []string      `json:"categories,omitempty"`   // Categories of the page
-	Tags         []string      `json:"tags,omitempty"`         // Tags of the page
-	Language     string        `json:"language,omitempty"`     // Language of the page
-	Image        string        `json:"image,omitempty"`        // Image of the page
-	PageType     string        `json:"page_type,omitempty"`    // Type of the page
-	License      string        `json:"license,omitempty"`      // License of the page
-	ID           string        `json:"id,omitempty"`           // ID of the page
-	Fingerprint  string        `json:"fingerprint,omitempty"`  // Fingerprint of the page
-	ContentText  string        `json:"content_text,omitempty"` // Error that occurred during fetching
+	RequestedURL *nurl.URL        `json:"-"` // The page that was actually fetched
+	CanonicalURL *nurl.URL        `json:"-"`
+	OriginalURL  string           `json:"original_url,omitempty"` // The canonical URL of the page
+	TTL          time.Duration    `json:"-"`                      // Time to live for the resource
+	FetchTime    *time.Time       `json:"fetch_time,omitempty"`   // When the returned source was fetched
+	FetchMethod  ClientIdentifier `json:"fetch_method,omitempty"` // Method used to fetch the page
+	Hostname     string           `json:"hostname,omitempty"`     // Hostname of the page
+	StatusCode   int              `json:"status_code,omitempty"`  // HTTP status code
+	Error        error            `json:"error,omitempty"`
+	Title        string           `json:"title,omitempty"`        // Title of the page
+	Description  string           `json:"description,omitempty"`  // Description of the page
+	Sitename     string           `json:"sitename,omitempty"`     // Name of the site
+	Authors      []string         `json:"authors,omitempty"`      // Authors of the page
+	Date         *time.Time       `json:"date,omitempty"`         // Date of the page
+	Categories   []string         `json:"categories,omitempty"`   // Categories of the page
+	Tags         []string         `json:"tags,omitempty"`         // Tags of the page
+	Language     string           `json:"language,omitempty"`     // Language of the page
+	Image        string           `json:"image,omitempty"`        // Image of the page
+	PageType     string           `json:"page_type,omitempty"`    // Type of the page
+	License      string           `json:"license,omitempty"`      // License of the page
+	ID           string           `json:"id,omitempty"`           // ID of the page
+	Fingerprint  string           `json:"fingerprint,omitempty"`  // Fingerprint of the page
+	ContentText  string           `json:"content_text,omitempty"` // Error that occurred during fetching
 	skipMap      map[skippable]bool
 }
 

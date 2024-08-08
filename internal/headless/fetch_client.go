@@ -40,7 +40,7 @@ func NewChromeClient(ctx context.Context, userAgent string, maxConcurrent int) (
 	return c, nil
 }
 
-func (c client) Identifier() resource.FetchClient {
+func (c client) Identifier() resource.ClientIdentifier {
 	return resource.HeadlessChromium
 }
 

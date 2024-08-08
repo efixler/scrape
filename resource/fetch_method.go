@@ -7,50 +7,50 @@ import (
 	"fmt"
 )
 
-type FetchClient int
+type ClientIdentifier int
 
 const (
-	Unspecified FetchClient = iota
+	Unspecified ClientIdentifier = iota
 	DefaultClient
 	HeadlessChromium
 )
 
-var fetchMethods = map[FetchClient]string{
+var fetchClientNames = map[ClientIdentifier]string{
 	Unspecified:      "unspecified",
 	DefaultClient:    "direct",
 	HeadlessChromium: "chromium-headless",
 }
 
-var ErrNoSuchFetchMethod = errors.New("no such FetchMethod")
+var ErrNoSuchFetchMethod = errors.New("no such fetch client identifier")
 
-func (f FetchClient) String() string {
-	if val, ok := fetchMethods[f]; ok {
+func (f ClientIdentifier) String() string {
+	if val, ok := fetchClientNames[f]; ok {
 		return val
 	} else {
 		return "Unknown"
 	}
 }
 
-func (f *FetchClient) UnmarshalText(data []byte) error {
-	for k, v := range fetchMethods {
+func (f *ClientIdentifier) UnmarshalText(data []byte) error {
+	for k, v := range fetchClientNames {
 		if v == string(data) {
 			*f = k
 			return nil
 		}
 	}
 	return errors.Join(
-		fmt.Errorf("invalid FetchMethod %q", string(data)),
+		fmt.Errorf("invalid name %q", string(data)),
 		ErrNoSuchFetchMethod,
 	)
 }
 
-func (f FetchClient) MarshalText() ([]byte, error) {
-	if val, ok := fetchMethods[f]; ok {
+func (f ClientIdentifier) MarshalText() ([]byte, error) {
+	if val, ok := fetchClientNames[f]; ok {
 		return []byte(val), nil
 	} else {
-		return []byte(fetchMethods[Unspecified]),
+		return []byte(fetchClientNames[Unspecified]),
 			errors.Join(
-				fmt.Errorf("invalid FetchMethod %q", int(f)),
+				fmt.Errorf("invalid name %q", int(f)),
 				ErrNoSuchFetchMethod,
 			)
 	}
