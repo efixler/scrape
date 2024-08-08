@@ -29,7 +29,7 @@ var (
 type StatementGenerator func(ctx context.Context, db *sql.DB) (*sql.Stmt, error)
 
 // MaintenanceFunction is a function that can be called periodically to
-// perform maintenance on the database. It's passed the context and current
+// perform maintenance on the database. It's passed the current
 // database handle. Returning an error will stop the maintenance ticker.
 type MaintenanceFunction func(dbh *DBHandle) error
 
