@@ -1,7 +1,6 @@
 package database
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"os"
@@ -105,7 +104,7 @@ func (d DBHandle) PrintMigrationStatus() error {
 	return nil
 }
 
-func extractMigrationFS(migrationFS *embed.FS) (fs.FS, string, error) {
+func extractMigrationFS(migrationFS fs.FS) (fs.FS, string, error) {
 	if migrationFS == nil {
 		return nil, "", ErrNoMigrationFS
 	}

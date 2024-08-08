@@ -2,6 +2,7 @@ package database
 
 import (
 	"embed"
+	"io/fs"
 	"time"
 )
 
@@ -25,7 +26,7 @@ type Engine interface {
 	// Driver Name
 	Driver() string
 	// Migrations directory, or nil if unsupported
-	MigrationFS() *embed.FS
+	MigrationFS() fs.FS
 }
 
 // This interface is to expose a method to supply
@@ -66,7 +67,7 @@ type MigrationEnvSetter interface {
 type BaseEngine struct {
 	driver      string
 	dsnSource   DataSource
-	migrationFS *embed.FS
+	migrationFS fs.FS
 }
 
 // Provides a basic Engine implementation that can be used to build and test
@@ -87,7 +88,7 @@ func (e BaseEngine) DSNSource() DataSource {
 	return e.dsnSource
 }
 
-func (e BaseEngine) MigrationFS() *embed.FS {
+func (e BaseEngine) MigrationFS() fs.FS {
 	return e.migrationFS
 }
 

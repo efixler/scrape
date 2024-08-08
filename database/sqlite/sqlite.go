@@ -3,6 +3,7 @@ package sqlite
 
 import (
 	"embed"
+	"io/fs"
 	"time"
 
 	"github.com/efixler/scrape/database"
@@ -47,10 +48,10 @@ func (s SQLite) DSNSource() database.DataSource {
 }
 
 //go:embed migrations/*.sql
-var MigrationFS embed.FS
+var migrationFS embed.FS
 
-func (s SQLite) MigrationFS() *embed.FS {
-	return &MigrationFS
+func (s SQLite) MigrationFS() fs.FS {
+	return migrationFS
 }
 
 func (s *SQLite) AfterOpen(dbh *database.DBHandle) error {
