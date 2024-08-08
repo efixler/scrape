@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"embed"
+	"io/fs"
 	"os"
 	"testing"
 )
@@ -13,13 +14,19 @@ var good_migrations_dir embed.FS
 func TestExtractMigrationFS(t *testing.T) {
 	var tests = []struct {
 		name        string
-		fs          *embed.FS
+		fs          fs.FS
 		expectName  string
 		expectError bool
 	}{
 		{
-			name:        "good migrations dir",
+			name:        "good migrations dir (reference)",
 			fs:          &good_migrations_dir,
+			expectName:  "migration_test_embed/in_here/migrations",
+			expectError: false,
+		},
+		{
+			name:        "good migrations dir (value)",
+			fs:          good_migrations_dir,
 			expectName:  "migration_test_embed/in_here/migrations",
 			expectError: false,
 		},
@@ -78,7 +85,7 @@ var dummy_migrations_dir embed.FS
 func TestPrepareForMigration(t *testing.T) {
 	tests := []struct {
 		name        string
-		migrationFS *embed.FS
+		migrationFS fs.FS
 		env         []string
 		expectError bool
 	}{
@@ -90,25 +97,25 @@ func TestPrepareForMigration(t *testing.T) {
 		},
 		{
 			name:        "no extra env (nil)",
-			migrationFS: &dummy_migrations_dir,
+			migrationFS: dummy_migrations_dir,
 			env:         nil,
 			expectError: false,
 		},
 		{
 			name:        "no extra env (empty slice)",
-			migrationFS: &dummy_migrations_dir,
+			migrationFS: dummy_migrations_dir,
 			env:         []string{},
 			expectError: false,
 		},
 		{
 			name:        "odd number of extra env",
-			migrationFS: &dummy_migrations_dir,
+			migrationFS: dummy_migrations_dir,
 			env:         []string{"one", "two", "three"},
 			expectError: true,
 		},
 		{
 			name:        "extra env",
-			migrationFS: &dummy_migrations_dir,
+			migrationFS: dummy_migrations_dir,
 			env:         []string{"one", "two", "three", "four"},
 			expectError: false,
 		},

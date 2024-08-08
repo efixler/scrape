@@ -1,7 +1,6 @@
 package database
 
 import (
-	"embed"
 	"io/fs"
 	"time"
 )
@@ -72,7 +71,7 @@ type BaseEngine struct {
 
 // Provides a basic Engine implementation that can be used to build and test
 // new DB implementations.
-func NewEngine(driver string, dsnSource DataSource, migrationFS *embed.FS) BaseEngine {
+func NewEngine(driver string, dsnSource DataSource, migrationFS fs.FS) BaseEngine {
 	return BaseEngine{
 		driver:      driver,
 		dsnSource:   dsnSource,
