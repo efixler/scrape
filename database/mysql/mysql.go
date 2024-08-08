@@ -3,6 +3,7 @@ package mysql
 
 import (
 	"embed"
+	"io/fs"
 
 	"github.com/efixler/scrape/database"
 )
@@ -43,10 +44,10 @@ func (s MySQL) DSNSource() database.DataSource {
 }
 
 //go:embed migrations/*.sql
-var MigrationFS embed.FS
+var migrationFS embed.FS
 
-func (s MySQL) MigrationFS() *embed.FS {
-	return &MigrationFS
+func (s MySQL) MigrationFS() fs.FS {
+	return migrationFS
 }
 
 func (s MySQL) MigrationEnv() []string {

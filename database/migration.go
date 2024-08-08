@@ -1,7 +1,6 @@
 package database
 
 import (
-	"embed"
 	"fmt"
 	"io/fs"
 	"os"
@@ -38,6 +37,7 @@ func (d *DBHandle) MigrateUp(env ...string) error {
 
 }
 
+// Execute a reset (down-to-zero) migration using goose.
 func (d DBHandle) MigrateReset(env ...string) error {
 	clearF, err := d.prepareForMigration(env...)
 	if err != nil {
@@ -105,7 +105,8 @@ func (d DBHandle) PrintMigrationStatus() error {
 	return nil
 }
 
-func extractMigrationFS(migrationFS *embed.FS) (fs.FS, string, error) {
+// Get the subdirectory of the migration directory that actually contains the migration files.
+func extractMigrationFS(migrationFS fs.FS) (fs.FS, string, error) {
 	if migrationFS == nil {
 		return nil, "", ErrNoMigrationFS
 	}
