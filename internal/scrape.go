@@ -12,15 +12,23 @@ import (
 
 	"log/slog"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
 )
+
+type URLStore interface {
+	fetch.URLFetcher
+	Database() *database.DBHandle
+	Save(*resource.WebPage) (uint64, error)
+	Delete(*nurl.URL) (bool, error)
+}
 
 // StorageBackedFetcher returns URLs from a storage backend, and fetches them if they are not found.
 type StorageBackedFetcher struct {
 	Fetcher fetch.URLFetcher
-	Storage store.URLDataStore
+	Storage URLStore
 	saving  *sync.WaitGroup
 	closed  bool
 }
@@ -29,7 +37,7 @@ type StorageBackedFetcher struct {
 // It will add a CloseListener to the storage to wait for pending saves.
 func NewStorageBackedFetcher(
 	fetcher fetch.URLFetcher,
-	storage store.URLDataStore,
+	storage URLStore,
 ) *StorageBackedFetcher {
 	s := &StorageBackedFetcher{
 		Fetcher: fetcher,
@@ -65,7 +73,7 @@ func (f *StorageBackedFetcher) Fetch(url *nurl.URL) (*resource.WebPage, error) {
 	url = resource.CleanURL(url)
 	// Now fetch the item from storage
 	res, err := f.Storage.Fetch(url)
-	if err != nil && !errors.Is(err, store.ErrResourceNotFound) {
+	if err != nil && !errors.Is(err, storage.ErrResourceNotFound) {
 		return nil, err
 	}
 	defer func() { res.OriginalURL = originalURL }()
@@ -171,7 +179,7 @@ func (f *StorageBackedFetcher) loadBatch(
 		if res, err := f.Storage.Fetch(url); err == nil {
 			res.OriginalURL = originalURL
 			foundChan <- res
-		} else if errors.Is(err, store.ErrResourceNotFound) {
+		} else if errors.Is(err, storage.ErrResourceNotFound) {
 			notFoundChan <- fetchMsg{cleanedURL: url, originalURL: originalURL}
 		} else { // this is really an error
 			slog.Error("Error fetching url in Batch", "url", url, "error", err)

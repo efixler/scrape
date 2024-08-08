@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/efixler/scrape/store"
 	"github.com/go-sql-driver/mysql"
 )
 
@@ -33,10 +32,14 @@ const (
 	DefaultQueryTimeout                   = 60 * time.Second
 )
 
+var (
+	ErrValueNotAllowed = errors.New("value not allowed")
+)
+
 func NetAddress(addr string) Option {
 	return func(c *Config) error {
 		if addr == "" {
-			return errors.Join(store.ErrValueNotAllowed, errors.New("mysql address cannot be empty"))
+			return errors.Join(ErrValueNotAllowed, errors.New("mysql address cannot be empty"))
 		}
 		elems := strings.SplitN(addr, ":", 2)
 		switch len(elems) {
@@ -44,7 +47,7 @@ func NetAddress(addr string) Option {
 			addr = fmt.Sprintf("%s:%d", elems[0], DefaultPort)
 		case 2:
 			if _, err := strconv.Atoi(elems[1]); err != nil {
-				return errors.Join(store.ErrValueNotAllowed, errors.New("mysql port must be a number"), err)
+				return errors.Join(ErrValueNotAllowed, errors.New("mysql port must be a number"), err)
 			}
 		}
 		c.Net = string(TCP)
@@ -56,7 +59,7 @@ func NetAddress(addr string) Option {
 func Username(username string) Option {
 	return func(c *Config) error {
 		if username == "" {
-			return errors.Join(store.ErrValueNotAllowed, errors.New("username cannot be empty"))
+			return errors.Join(ErrValueNotAllowed, errors.New("username cannot be empty"))
 		}
 		c.User = username
 		return nil
@@ -89,7 +92,7 @@ func ForMigration() Option {
 func WithMaxConnections(max int) Option {
 	return func(c *Config) error {
 		if max < 1 {
-			return errors.Join(store.ErrValueNotAllowed, errors.New("max connections must be at least 1"))
+			return errors.Join(ErrValueNotAllowed, errors.New("max connections must be at least 1"))
 		}
 		c.maxConns = max
 		return nil

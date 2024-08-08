@@ -10,7 +10,7 @@ import (
 
 	"github.com/efixler/scrape/internal/server/middleware"
 	"github.com/efixler/scrape/internal/settings"
-	"github.com/efixler/scrape/store"
+	"github.com/efixler/scrape/internal/storage"
 )
 
 const MaxDomainSettingsBatchSize = 1000
@@ -50,7 +50,7 @@ func (ss *Server) getSingleDomainSettings(w http.ResponseWriter, r *http.Request
 	ds, err := ss.settingsStorage.Fetch(req.Domain)
 	if err != nil {
 		switch err {
-		case store.ErrResourceNotFound:
+		case storage.ErrResourceNotFound:
 			w.WriteHeader(http.StatusNotFound)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)

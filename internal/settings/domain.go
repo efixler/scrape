@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/efixler/scrape/database"
+	"github.com/efixler/scrape/internal/storage"
 	"github.com/efixler/scrape/resource"
-	"github.com/efixler/scrape/store"
 	"github.com/efixler/scrape/ua"
 )
 
@@ -127,7 +127,7 @@ func (d *domainSettingsStorage) Fetch(domain string) (DomainSettings, error) {
 	}
 	defer rows.Close()
 	if !rows.Next() {
-		return DomainSettings{}, store.ErrResourceNotFound
+		return DomainSettings{}, storage.ErrResourceNotFound
 	}
 	ds, err := d.loadSettingFromRow(rows)
 	if err != nil {
