@@ -3,6 +3,7 @@ package sqlite
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"time"
 
 	"github.com/efixler/scrape/database"
@@ -26,6 +27,20 @@ const (
 	AccessModeRWC       AccessMode  = "rwc"
 	AccessModeMemory    AccessMode  = "memory"
 )
+
+type config struct {
+	filename        string
+	busyTimeout     time.Duration // SQLite's busy timeout specifies the time to wait if a table is locked
+	queryTimeout    time.Duration
+	journalMode     JournalMode
+	cacheSize       int
+	synchronous     SyncMode
+	accessMode      AccessMode
+	maxConnections  int           // 0 = use driver defaults
+	connMaxLifetime time.Duration // 0 = use driver defaults
+	noAutoCreate    bool
+	migrationFS     fs.FS
+}
 
 func InMemoryDB() Option {
 	return func(c *config) error {
@@ -90,17 +105,11 @@ func WithoutAutoCreate() Option {
 	}
 }
 
-type config struct {
-	filename        string
-	busyTimeout     time.Duration // SQLite's busy timeout specifies the time to wait if a table is locked
-	queryTimeout    time.Duration
-	journalMode     JournalMode
-	cacheSize       int
-	synchronous     SyncMode
-	accessMode      AccessMode
-	maxConnections  int           // 0 = use driver defaults
-	connMaxLifetime time.Duration // 0 = use driver defaults
-	noAutoCreate    bool
+func WithMigrationFS(fs fs.FS) Option {
+	return func(c *config) error {
+		c.migrationFS = fs
+		return nil
+	}
 }
 
 func (o config) DSN() string {

@@ -10,11 +10,13 @@ import (
 )
 
 const (
-	MigrationDir = "migrations" // Default directory for migration files (in the embed.FS)
+	// TODO: This should be configurable or removeable
+	MigrationDir = "migrations" // Default directory for migration files (in the passed FS)
 )
 
 var (
-	ErrNoMigrationFS = fmt.Errorf("migration filesystem is not set")
+	ErrNoMigrationFS     = fmt.Errorf("migration filesystem is not set")
+	ErrNoMigrationsFound = fmt.Errorf("could not find any migrations")
 )
 
 // Execute an up migration using goose.
@@ -137,5 +139,5 @@ func findMigrationsDir(fsys fs.FS, currentPath string) (fs.FS, string, error) {
 		}
 	}
 
-	return nil, "", ErrNoMigrationFS
+	return nil, "", ErrNoMigrationsFound
 }
