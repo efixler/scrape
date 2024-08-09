@@ -36,6 +36,12 @@ func New(options ...Option) (*SQLite, error) {
 			return nil, err
 		}
 	}
+	// If the migrationFS is not set, use the embedded migrations
+	// This would make the embedded migrations in this package redundant --
+	// it would be good to remove these to keep the engine implementation (reusable)
+	// totally separate from migrations (not reusable().
+	// However, that requires too many changes in too many places
+	// (particularly in the tests) to be worth it right now, so leaving it hardwired/as-is.
 	if c.migrationFS == nil {
 		c.migrationFS = migrationFS
 	}
