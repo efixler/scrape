@@ -12,6 +12,9 @@ import (
 
 const SQLiteDriver = "sqlite3"
 
+//go:embed migrations/*.sql
+var migrationFS embed.FS
+
 type SQLite struct {
 	config config
 	stats  *Stats
@@ -33,6 +36,15 @@ func New(options ...Option) (*SQLite, error) {
 			return nil, err
 		}
 	}
+	// If the migrationFS is not set, use the embedded migrations
+	// This would make the embedded migrations in this package redundant --
+	// it would be good to remove these to keep the engine implementation (reusable)
+	// totally separate from migrations (not reusable().
+	// However, that requires too many changes in too many places
+	// (particularly in the tests) to be worth it right now, so leaving it hardwired/as-is.
+	if c.migrationFS == nil {
+		c.migrationFS = migrationFS
+	}
 	s := &SQLite{
 		config: *c,
 	}
@@ -47,11 +59,8 @@ func (s SQLite) DSNSource() database.DataSource {
 	return s.config
 }
 
-//go:embed migrations/*.sql
-var migrationFS embed.FS
-
-func (s SQLite) MigrationFS() fs.FS {
-	return migrationFS
+func (s *SQLite) MigrationFS() fs.FS {
+	return s.config.migrationFS
 }
 
 func (s *SQLite) AfterOpen(dbh *database.DBHandle) error {

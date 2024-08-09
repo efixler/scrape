@@ -146,9 +146,9 @@ func database(spec DatabaseSpec, username string, password string, migration Mig
 			mysql.Username(username),
 			mysql.Password(password),
 		}
-		// For MySQL we need special handling only when it's possible that the db doesn't
-		// exist yet.
 		if migration == Up {
+			// For MySQL we need special handling only when it's possible
+			// that the db doesn't exist yet.
 			options = append(options, mysql.ForMigration())
 		}
 		engine, err := mysql.New(options...)

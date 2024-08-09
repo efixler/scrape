@@ -3,6 +3,7 @@ package mysql
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"strconv"
 	"strings"
 	"time"
@@ -106,12 +107,20 @@ func WithQueryTimeout(timeout time.Duration) Option {
 	}
 }
 
+func WithMigrationFS(fs fs.FS) Option {
+	return func(c *Config) error {
+		c.migrationFS = fs
+		return nil
+	}
+}
+
 type Config struct {
 	mysql.Config
 	TargetSchema    string // here for schema-less conns, e.g. for create
 	queryTimeout    time.Duration
 	maxConns        int
 	connMaxLifetime time.Duration
+	migrationFS     fs.FS
 }
 
 func defaultConfig() Config {

@@ -10,6 +10,9 @@ import (
 
 const MySQLDriver = "mysql"
 
+//go:embed migrations/*.sql
+var migrationFS embed.FS
+
 type MySQL struct {
 	config Config
 }
@@ -20,6 +23,9 @@ func New(options ...Option) (*MySQL, error) {
 		if err := opt(&config); err != nil {
 			return nil, err
 		}
+	}
+	if config.migrationFS == nil {
+		config.migrationFS = migrationFS
 	}
 	s := &MySQL{
 		config: config,
@@ -43,11 +49,8 @@ func (s MySQL) DSNSource() database.DataSource {
 	return s.config
 }
 
-//go:embed migrations/*.sql
-var migrationFS embed.FS
-
 func (s MySQL) MigrationFS() fs.FS {
-	return migrationFS
+	return s.config.migrationFS
 }
 
 func (s MySQL) MigrationEnv() []string {
