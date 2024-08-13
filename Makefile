@@ -77,7 +77,7 @@ test: ## run the tests
 
 test-mysql: ## run the MySQL integration tests
 	@echo "Running MySQL tests..."
-	@go test -tags mysql -coverprofile=mysql_coverage.out ./internal/storage ./database/mysql
+	@go test -tags mysql -coverprofile=mysql_coverage.out ./internal/settings/... ./internal/storage/... ./database/mysql/...
 
 vet: fmt ## fmt, vet, and staticcheck
 	@echo "Running go vet and staticcheck..."
