@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS domain_settings (
     check (length(domain) <= 255)
     check (length(sitename) <= 255)
     check (length(fetch_client) <= 255)
-    check (length(user_agent) <= 1024)
+    check (length(user_agent) <= 512)
     check (json_valid(headers))
 ) WITHOUT ROWID;
 -- +goose StatementEnd
