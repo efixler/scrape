@@ -57,6 +57,26 @@ func TestStoreAndRetrieve(t *testing.T) {
 				Headers:     MIMEHeader{"x-special": "special"},
 			},
 		},
+		{
+			name: "nil headers",
+			settings: DomainSettings{
+				Domain:      "example.com",
+				Sitename:    "example",
+				FetchClient: resource.DefaultClient,
+				UserAgent:   ua.UserAgent("Mozilla/5.0"),
+				Headers:     nil,
+			},
+		},
+		{
+			name: "empty headers",
+			settings: DomainSettings{
+				Domain:      "example.com",
+				Sitename:    "example",
+				FetchClient: resource.DefaultClient,
+				UserAgent:   ua.UserAgent("Mozilla/5.0"),
+				Headers:     MIMEHeader{},
+			},
+		},
 	}
 	for _, test := range tests {
 		if err := dss.Save(&test.settings); (err != nil) != test.expectErr {
