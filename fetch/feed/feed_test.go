@@ -31,10 +31,10 @@ func TestFetchCancelsOnTimeout(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	options := DefaultOptions
-	options.Timeout = timeout
-	options.Client = client
-	fetcher := NewFeedFetcher(options)
+	fetcher := MustFeedFetcher(
+		WithTimeout(timeout),
+		WithClient(client),
+	)
 	url, _ := nurl.Parse(ts.URL)
 	_, err := fetcher.Fetch(url)
 	if err == nil {
@@ -59,9 +59,9 @@ func TestFetchReturnsRequestedURL(t *testing.T) {
 	}))
 	defer ts.Close()
 	client := ts.Client()
-	options := DefaultOptions
-	options.Client = client
-	fetcher := NewFeedFetcher(options)
+	fetcher := MustFeedFetcher(
+		WithClient(client),
+	)
 	url, _ := nurl.Parse(ts.URL)
 	feed, err := fetcher.Fetch(url)
 	if err != nil {
@@ -69,5 +69,106 @@ func TestFetchReturnsRequestedURL(t *testing.T) {
 	}
 	if feed.RequestedURL != url.String() {
 		t.Errorf("Expected URL %s, got %s", url, feed.RequestedURL)
+	}
+}
+
+func TestWithTimeout(t *testing.T) {
+	tests := []struct {
+		name      string
+		timeout   time.Duration
+		expectErr bool
+	}{
+		{
+			name:      "valid",
+			timeout:   50 * time.Millisecond,
+			expectErr: false,
+		},
+		{
+			name:      "negative",
+			timeout:   -1 * time.Millisecond,
+			expectErr: true,
+		},
+		{
+			name:      "zero",
+			timeout:   0,
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		err := WithTimeout(tt.timeout)(&config{})
+		if tt.expectErr && err == nil {
+			t.Errorf("Expected error for %s, got nil", tt.timeout)
+		} else if !tt.expectErr && err != nil {
+			t.Errorf("Unexpected error for %s: %s", tt.timeout, err)
+		}
+	}
+}
+
+func TestWithUserAgentOption(t *testing.T) {
+	tests := []struct {
+		name      string
+		ua        string
+		expectErr bool
+	}{
+		{
+			name:      "valid",
+			ua:        "test",
+			expectErr: false,
+		},
+		{
+			name:      "empty",
+			ua:        "",
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		err := WithUserAgent(tt.ua)(&config{})
+		if tt.expectErr && err == nil {
+			t.Errorf("[%s] Expected error for %s, got nil", tt.name, tt.ua)
+		} else if !tt.expectErr && err != nil {
+			t.Errorf("[%s] Unexpected error for %s: %s", tt.name, tt.ua, err)
+		}
+	}
+}
+
+func TestUserAgent(t *testing.T) {
+	tests := []struct {
+		name     string
+		option   option
+		expected string
+	}{
+		{
+			name:     "default",
+			option:   nil,
+			expected: fetch.DefaultUserAgent,
+		},
+		{
+			name:     "custom",
+			option:   WithUserAgent("test/1.0"),
+			expected: "test/1.0",
+		},
+	}
+	for _, tt := range tests {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.UserAgent() != tt.expected {
+				t.Errorf("[%s] Expected %s, got %s", tt.name, tt.expected, r.UserAgent())
+			}
+			w.WriteHeader(http.StatusOK)
+			w.Header().Set("Content-Type", "application/rss+xml")
+			w.Write([]byte(dummyRSS))
+		}))
+		t.Cleanup(func() { ts.Close() })
+		client := ts.Client()
+		options := []option{WithClient(client)}
+		if tt.option != nil {
+			options = append(options, tt.option)
+		}
+		fetcher := MustFeedFetcher(options...)
+		url, _ := nurl.Parse(ts.URL)
+		if _, err := fetcher.Fetch(url); err != nil {
+			t.Errorf("[%s] Unexpected error for %s: %s", tt.name, url, err)
+		}
 	}
 }

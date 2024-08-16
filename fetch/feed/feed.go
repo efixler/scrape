@@ -18,14 +18,43 @@ const (
 	DefaultTimeout = 30 * time.Second
 )
 
+type option func(*config) error
+
+func WithUserAgent(ua string) option {
+	return func(c *config) error {
+		if ua == "" {
+			return errors.New("user agent must not be empty")
+		}
+		c.UserAgent = ua
+		return nil
+	}
+}
+
+func WithTimeout(t time.Duration) option {
+	return func(c *config) error {
+		if t <= 0 {
+			return errors.New("timeout must be positive")
+		}
+		c.Timeout = t
+		return nil
+	}
+}
+
+func WithClient(client *http.Client) option {
+	return func(c *config) error {
+		c.Client = client
+		return nil
+	}
+}
+
 var (
-	DefaultOptions = Options{
+	DefaultConfig = config{
 		Timeout:   DefaultTimeout,
 		UserAgent: fetch.DefaultUserAgent,
 	}
 )
 
-type Options struct {
+type config struct {
 	UserAgent string
 	Timeout   time.Duration
 	Client    *http.Client
@@ -36,21 +65,31 @@ type FeedFetcher struct {
 	timeout time.Duration
 }
 
-func NewFeedFetcher(options Options) *FeedFetcher {
+func MustFeedFetcher(options ...option) *FeedFetcher {
+	f, err := NewFeedFetcher(options...)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
+
+func NewFeedFetcher(options ...option) (*FeedFetcher, error) {
+	config := DefaultConfig
+	for _, opt := range options {
+		if err := opt(&config); err != nil {
+			return nil, err
+		}
+	}
 	parser := gofeed.NewParser()
-	if options.UserAgent != "" {
-		parser.UserAgent = options.UserAgent
-	}
-	if options.Client != nil {
-		parser.Client = options.Client
-	}
-	if options.Timeout == 0 {
-		options.Timeout = DefaultTimeout
+	parser.UserAgent = config.UserAgent
+
+	if config.Client != nil {
+		parser.Client = config.Client
 	}
 	return &FeedFetcher{
 		parser:  parser,
-		timeout: options.Timeout,
-	}
+		timeout: config.Timeout,
+	}, nil
 }
 
 func (f *FeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
