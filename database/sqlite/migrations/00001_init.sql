@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS urls (
     parsed_url   TEXT    NOT NULL,
     fetch_time   INTEGER DEFAULT (unixepoch() ),
     fetch_method INTEGER NOT NULL DEFAULT 0,
-    expires      INTEGER DEFAULT (unixepoch() + 86400),
+    expires      INTEGER DEFAULT (unixepoch() + (86400 * 30)),
     metadata     TEXT,
     content_text TEXT
 )

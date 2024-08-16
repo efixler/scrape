@@ -32,7 +32,7 @@ func main() {
 		flags.Usage()
 		os.Exit(1)
 	}
-	feedFetcher := feed.NewFeedFetcher(feed.DefaultOptions)
+	feedFetcher := feed.MustFeedFetcher()
 	resource, err := feedFetcher.Fetch(feedUrl)
 	if err != nil {
 		slog.Error("Error fetching", "url", feedUrl, "err", err)

@@ -97,7 +97,7 @@ func NewAPIServer(ctx context.Context, opts ...option) (*Server, error) {
 		return nil, errors.New("no URL fetcher provided")
 	}
 	if ss.feedFetcher == nil {
-		ss.feedFetcher = feed.NewFeedFetcher(feed.DefaultOptions)
+		ss.feedFetcher = feed.MustFeedFetcher()
 	}
 	return ss, nil
 }
