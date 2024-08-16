@@ -96,7 +96,7 @@ func TestWithTimeout(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		err := WithTimeout(tt.timeout)(&Config{})
+		err := WithTimeout(tt.timeout)(&config{})
 		if tt.expectErr && err == nil {
 			t.Errorf("Expected error for %s, got nil", tt.timeout)
 		} else if !tt.expectErr && err != nil {
@@ -124,7 +124,7 @@ func TestWithUserAgentOption(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		err := WithUserAgent(tt.ua)(&Config{})
+		err := WithUserAgent(tt.ua)(&config{})
 		if tt.expectErr && err == nil {
 			t.Errorf("[%s] Expected error for %s, got nil", tt.name, tt.ua)
 		} else if !tt.expectErr && err != nil {

@@ -18,10 +18,10 @@ const (
 	DefaultTimeout = 30 * time.Second
 )
 
-type option func(*Config) error
+type option func(*config) error
 
 func WithUserAgent(ua string) option {
-	return func(c *Config) error {
+	return func(c *config) error {
 		if ua == "" {
 			return errors.New("user agent must not be empty")
 		}
@@ -31,7 +31,7 @@ func WithUserAgent(ua string) option {
 }
 
 func WithTimeout(t time.Duration) option {
-	return func(c *Config) error {
+	return func(c *config) error {
 		if t <= 0 {
 			return errors.New("timeout must be positive")
 		}
@@ -41,20 +41,20 @@ func WithTimeout(t time.Duration) option {
 }
 
 func WithClient(client *http.Client) option {
-	return func(c *Config) error {
+	return func(c *config) error {
 		c.Client = client
 		return nil
 	}
 }
 
 var (
-	DefaultConfig = Config{
+	DefaultConfig = config{
 		Timeout:   DefaultTimeout,
 		UserAgent: fetch.DefaultUserAgent,
 	}
 )
 
-type Config struct {
+type config struct {
 	UserAgent string
 	Timeout   time.Duration
 	Client    *http.Client
