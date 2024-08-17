@@ -9,6 +9,7 @@ import (
 	nurl "net/url"
 	"time"
 
+	"github.com/efixler/scrape/database"
 	"github.com/efixler/scrape/fetch"
 	"github.com/efixler/scrape/resource"
 	"github.com/mmcdole/gofeed"
@@ -25,7 +26,7 @@ func WithUserAgent(ua string) option {
 		if ua == "" {
 			return errors.New("user agent must not be empty")
 		}
-		c.UserAgent = ua
+		c.userAgent = ua
 		return nil
 	}
 }
@@ -35,34 +36,36 @@ func WithTimeout(t time.Duration) option {
 		if t <= 0 {
 			return errors.New("timeout must be positive")
 		}
-		c.Timeout = t
+		c.timeout = t
 		return nil
 	}
 }
 
 func WithClient(client *http.Client) option {
 	return func(c *config) error {
-		c.Client = client
+		c.client = client
 		return nil
 	}
 }
 
 var (
 	DefaultConfig = config{
-		Timeout:   DefaultTimeout,
-		UserAgent: fetch.DefaultUserAgent,
+		timeout:   DefaultTimeout,
+		userAgent: fetch.DefaultUserAgent,
 	}
 )
 
 type config struct {
-	UserAgent string
-	Timeout   time.Duration
-	Client    *http.Client
+	userAgent string
+	timeout   time.Duration
+	client    *http.Client
+	db        *database.DBHandle
 }
 
 type FeedFetcher struct {
-	parser  *gofeed.Parser
-	timeout time.Duration
+	parser    *gofeed.Parser
+	timeout   time.Duration
+	afterLoad afterLoadFunc
 }
 
 func MustFeedFetcher(options ...option) *FeedFetcher {
@@ -81,15 +84,22 @@ func NewFeedFetcher(options ...option) (*FeedFetcher, error) {
 		}
 	}
 	parser := gofeed.NewParser()
-	parser.UserAgent = config.UserAgent
+	parser.UserAgent = config.userAgent
 
-	if config.Client != nil {
-		parser.Client = config.Client
+	if config.client != nil {
+		parser.Client = config.client
 	}
-	return &FeedFetcher{
+	ff := &FeedFetcher{
 		parser:  parser,
-		timeout: config.Timeout,
-	}, nil
+		timeout: config.timeout,
+	}
+	if config.db != nil {
+		var err error
+		if ff.afterLoad, err = recordLastUpdatedTimeF(config.db); err != nil {
+			return nil, err
+		}
+	}
+	return ff, nil
 }
 
 func (f *FeedFetcher) Fetch(url *nurl.URL) (*resource.Feed, error) {
@@ -109,6 +119,9 @@ func (f *FeedFetcher) FetchContext(ctx context.Context, url *nurl.URL) (*resourc
 			}
 		}
 		return nil, err
+	}
+	if f.afterLoad != nil {
+		go f.afterLoad(*url)
 	}
 	return &resource.Feed{
 		Feed:         *feed,
