@@ -171,7 +171,7 @@ func TestMetadataPopulatedSmokeTest(t *testing.T) {
 	if resource.Image != "https://smoke.scrape/image.png" {
 		t.Errorf("Expected image 'https://smoke.scrape/image.png' for %s, got %s", url, resource.Image)
 	}
-	smokerContent := "Smoke Test Smoke test body this is english"
+	smokerContent := "Smoke Test This body is in english, it should be detected as such."
 	if resource.ContentText != smokerContent {
 		t.Errorf("Expected '%s' for %s, got '%s'", smokerContent, url, resource.ContentText)
 	}
