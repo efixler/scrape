@@ -159,7 +159,7 @@ func TestUserAgent(t *testing.T) {
 			w.Header().Set("Content-Type", "application/rss+xml")
 			w.Write([]byte(dummyRSS))
 		}))
-		t.Cleanup(func() { ts.Close() })
+		t.Cleanup(ts.Close)
 		client := ts.Client()
 		options := []option{WithClient(client)}
 		if tt.option != nil {

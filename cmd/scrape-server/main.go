@@ -111,7 +111,7 @@ func main() {
 		}
 	}()
 	slog.Info("scrape-server started", "addr", s.Addr)
-	graceful.WaitForShutdown(s, cancel)
+	graceful.WaitForShutdown(s, 120*time.Second, cancel)
 	slog.Info("scrape-server bye!")
 	if logFile, ok := (logWriter).(*os.File); ok {
 		logFile.Sync()

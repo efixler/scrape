@@ -10,7 +10,7 @@ import (
 	"github.com/efixler/scrape/database"
 )
 
-func WithLastRequestRecord(dbh *database.DBHandle) option {
+func WithSaveActivity(dbh *database.DBHandle) option {
 	return func(c *config) error {
 		return nil
 	}
