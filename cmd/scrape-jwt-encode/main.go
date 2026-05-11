@@ -19,7 +19,7 @@ var (
 	flags      flag.FlagSet
 	expires    = time.Now().Add(24 * time.Hour * 365)
 	subject    string
-	audience   = "moz"
+	audience   = "scr"
 	signingKey *envflags.Value[*auth.HMACBase64Key]
 	makeKey    bool
 )

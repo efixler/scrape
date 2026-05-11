@@ -372,7 +372,7 @@ scrape-jwt-encode -sub subject [-signing-key key] [-exp expiration] [-aud audien
 scrape-jwt-encode -make-key
 
   -aud string
-        Audience (recipient) for the key (default "moz")
+        Audience (recipient) for the key (default "scr")
   -exp value
         Expiration date for the key, in RFC3339 format. Default is 1 year from now. (default 2025-05-16T11:45:45.842362-04:00)
   -make-key
@@ -398,7 +398,7 @@ Claims:
   "iss": "scrape",
   "sub": "some_user",
   "aud": [
-    "moz"
+    "scr"
   ],
   "exp": 1747410570,
   "iat": 1715874570
